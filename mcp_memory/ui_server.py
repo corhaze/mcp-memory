@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 import mcp_memory.db as _db
 
@@ -114,6 +115,61 @@ def _note_dict(n: _db.Note) -> Dict[str, Any]:
         "updated_at": n.updated_at,
     }
 
+
+# ── Request Models ────────────────────────────────────────────────────────────
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: str = "active"
+
+class ProjectUpdate(BaseModel):
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: str = "open"
+    priority: str = "medium"
+    parent_task_id: Optional[str] = None
+    assigned_agent: Optional[str] = None
+    blocked_by_task_id: Optional[str] = None
+    next_action: Optional[str] = None
+    due_at: Optional[str] = None
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assigned_agent: Optional[str] = None
+    blocked_by_task_id: Optional[str] = None
+    next_action: Optional[str] = None
+    due_at: Optional[str] = None
+
+class DecisionCreate(BaseModel):
+    title: str
+    decision_text: str
+    rationale: Optional[str] = None
+    status: str = "active"
+    supersedes_decision_id: Optional[str] = None
+
+class DecisionUpdate(BaseModel):
+    title: Optional[str] = None
+    decision_text: Optional[str] = None
+    rationale: Optional[str] = None
+    status: Optional[str] = None
+
+class NoteCreate(BaseModel):
+    title: str
+    note_text: str
+    note_type: str = "context"
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    note_text: Optional[str] = None
+    note_type: Optional[str] = None
 
 # ── API routes ─────────────────────────────────────────────────────────────────
 
@@ -207,12 +263,99 @@ def get_timeline(project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     return events[:limit]
 
 
+@app.post("/api/projects")
+def create_project(req: ProjectCreate) -> Dict[str, Any]:
+    proj = _db.create_project(req.name, req.description, req.status)
+    return {"id": proj.id, "name": proj.name}
+
+@app.patch("/api/projects/{project_id}")
+def update_project(project_id: str, req: ProjectUpdate) -> Dict[str, Any]:
+    proj = _db.update_project(project_id, req.description, req.status)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"id": proj.id, "name": proj.name}
+
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: str) -> Dict[str, str]:
     """Delete a project and all its data."""
     proj = _project_or_404(project_id)
     _db.delete_project(proj.id)
     return {"deleted": proj.name}
+
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+
+@app.post("/api/projects/{project_id}/tasks")
+def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
+    proj = _project_or_404(project_id)
+    task = _db.create_task(
+        proj.id, req.title, req.description, req.status, req.priority,
+        req.parent_task_id, req.assigned_agent, req.blocked_by_task_id,
+        req.next_action, req.due_at
+    )
+    return _task_dict(task)
+
+@app.patch("/api/projects/{project_id}/tasks/{task_id}")
+def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any]:
+    task = _db.update_task(
+        task_id, req.title, req.description, req.status, req.priority,
+        req.assigned_agent, req.blocked_by_task_id, req.next_action, req.due_at
+    )
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return _task_dict(task)
+
+@app.delete("/api/projects/{project_id}/tasks/{task_id}")
+def delete_task(project_id: str, task_id: str) -> Dict[str, str]:
+    if not _db.delete_task(task_id):
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"deleted": task_id}
+
+# ── Decisions ──────────────────────────────────────────────────────────────────
+
+@app.post("/api/projects/{project_id}/decisions")
+def create_decision(project_id: str, req: DecisionCreate) -> Dict[str, Any]:
+    proj = _project_or_404(project_id)
+    dec = _db.create_decision(
+        proj.id, req.title, req.decision_text, req.rationale, req.status,
+        req.supersedes_decision_id
+    )
+    return _decision_dict(dec)
+
+@app.patch("/api/projects/{project_id}/decisions/{decision_id}")
+def update_decision(project_id: str, decision_id: str, req: DecisionUpdate) -> Dict[str, Any]:
+    dec = _db.update_decision(
+        decision_id, req.title, req.decision_text, req.rationale, req.status
+    )
+    if not dec:
+        raise HTTPException(status_code=404, detail="Decision not found")
+    return _decision_dict(dec)
+
+@app.delete("/api/projects/{project_id}/decisions/{decision_id}")
+def delete_decision(project_id: str, decision_id: str) -> Dict[str, str]:
+    if not _db.delete_decision(decision_id):
+        raise HTTPException(status_code=404, detail="Decision not found")
+    return {"deleted": decision_id}
+
+# ── Notes ──────────────────────────────────────────────────────────────────────
+
+@app.post("/api/projects/{project_id}/notes")
+def create_note(project_id: str, req: NoteCreate) -> Dict[str, Any]:
+    proj = _project_or_404(project_id)
+    note = _db.create_note(proj.id, req.title, req.note_text, req.note_type)
+    return _note_dict(note)
+
+@app.patch("/api/projects/{project_id}/notes/{note_id}")
+def update_note(project_id: str, note_id: str, req: NoteUpdate) -> Dict[str, Any]:
+    note = _db.update_note(note_id, req.title, req.note_text, req.note_type)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return _note_dict(note)
+
+@app.delete("/api/projects/{project_id}/notes/{note_id}")
+def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
+    if not _db.delete_note(note_id):
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"deleted": note_id}
 
 
 # ── Static UI + SPA catch-all ─────────────────────────────────────────────────

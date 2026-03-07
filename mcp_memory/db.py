@@ -910,6 +910,12 @@ def supersede_decision(old_decision_id: str, project_id: str, title: str,
                            status="active", supersedes_decision_id=old_decision_id)
 
 
+def delete_decision(decision_id: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM decisions WHERE id=?", (decision_id,))
+    return cur.rowcount > 0
+
+
 # ── Notes ──────────────────────────────────────────────────────────────────────
 
 def create_note(project_id: str, title: str, note_text: str,
