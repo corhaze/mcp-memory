@@ -1,0 +1,20 @@
+[project]
+name = "mcp-memory"
+version = "0.1.0"
+description = "MCP server for persisting project/session context across LLM sessions"
+requires-python = ">=3.9"
+dependencies = [
+    "mcp[cli]>=1.4.0",
+    "click>=8.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+mcp-memory = "mcp_memory.server:main"
+mcp-memory-cli = "mcp_memory.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_memory"]
