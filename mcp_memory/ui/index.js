@@ -18,11 +18,23 @@ const state = {
 
 // ── API ────────────────────────────────────────────────────────────────────────
 const api = {
-    async get(path) {
-        const res = await fetch(path);
-        if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
+    async request(path, method = 'GET', body = null) {
+        const options = { method };
+        if (body) {
+            options.headers = { 'Content-Type': 'application/json' };
+            options.body = JSON.stringify(body);
+        }
+        const res = await fetch(path, options);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || `API error: ${res.status}`);
+        }
         return res.json();
     },
+    get(path) { return this.request(path, 'GET'); },
+    post(path, body) { return this.request(path, 'POST', body); },
+    patch(path, body) { return this.request(path, 'PATCH', body); },
+    delete(path) { return this.request(path, 'DELETE'); }
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────────
@@ -70,6 +82,23 @@ async function init() {
     renderProjectNav();
     bindTabs();
     bindFilters();
+
+    // Event Listeners for CRUD
+    $('add-project-btn').addEventListener('click', () => showProjectForm());
+    $('edit-project-btn').addEventListener('click', () => {
+        const proj = state.projects.find(p => p.id === state.activeProjectId);
+        if (proj) showProjectForm(proj);
+    });
+    $('delete-project-btn').addEventListener('click', () => deleteProject(state.activeProjectId));
+
+    $('add-task-btn').addEventListener('click', () => showTaskForm());
+    $('add-decision-btn').addEventListener('click', () => showDecisionForm());
+    $('add-note-btn').addEventListener('click', () => showNoteForm());
+
+    $('modal-close').addEventListener('click', hideModal);
+    $('modal-cancel').addEventListener('click', hideModal);
+    $('modal-save').addEventListener('click', handleModalSave);
+    $('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) hideModal(); });
 
     // Restore state from URL on load
     const route = parsePath();
@@ -142,12 +171,16 @@ async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
         api.get(`/api/projects/${id}/timeline`),
     ]);
 
-    state.tasks = tasks;
-    state.decisions = decisions;
-    state.notes = notes;
-    state.timeline = timeline;
+    state.tasks = tasks || [];
+    state.decisions = decisions || [];
+    state.notes = notes || [];
+    state.timeline = timeline || [];
 
-    // Render header
+    renderProjectView(ctx, tab, updatePath);
+}
+
+function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
+    const id = state.activeProjectId;
     const proj = ctx.project || {};
     projectName.textContent = proj.name || id;
     projectDesc.textContent = proj.description || '';
@@ -169,6 +202,209 @@ async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
     if (updatePath) {
         const proj = state.projects.find(p => p.id === id);
         if (proj) setPath(proj.name, tab);
+    }
+}
+
+// ── Modals & CRUD ─────────────────────────────────────────────────────────────
+function showModal(title, contentHtml) {
+    $('modal-title').textContent = title;
+    $('modal-body').innerHTML = contentHtml;
+    $('modal-overlay').classList.remove('hidden');
+}
+
+function hideModal() {
+    $('modal-overlay').classList.add('hidden');
+    $('modal-body').innerHTML = '';
+}
+
+async function handleModalSave() {
+    const form = $('modal-body').querySelector('form');
+    if (!form) return;
+    const type = form.dataset.type;
+    const id = form.dataset.id;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        if (type === 'project') {
+            if (id) await api.patch(`/api/projects/${id}`, data);
+            else await api.post('/api/projects', data);
+            state.projects = await api.get('/api/projects');
+            renderProjectNav();
+            if (id === state.activeProjectId) await selectProject(id);
+        } else if (type === 'task') {
+            if (id) await api.patch(`/api/projects/${state.activeProjectId}/tasks/${id}`, data);
+            else await api.post(`/api/projects/${state.activeProjectId}/tasks`, data);
+            await selectProject(state.activeProjectId);
+        } else if (type === 'decision') {
+            if (id) await api.patch(`/api/projects/${state.activeProjectId}/decisions/${id}`, data);
+            else await api.post(`/api/projects/${state.activeProjectId}/decisions`, data);
+            await selectProject(state.activeProjectId);
+        } else if (type === 'note') {
+            if (id) await api.patch(`/api/projects/${state.activeProjectId}/notes/${id}`, data);
+            else await api.post(`/api/projects/${state.activeProjectId}/notes`, data);
+            await selectProject(state.activeProjectId);
+        }
+        hideModal();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function showProjectForm(proj = null) {
+    const html = `
+    <form data-type="project" data-id="${proj ? proj.id : ''}">
+        <div class="form-group">
+            <label>Name</label>
+            <input name="name" class="form-control" value="${proj ? esc(proj.name) : ''}" required ${proj ? 'readonly' : ''}>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" class="form-control">${proj ? esc(proj.description) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" class="form-control">
+                <option value="active" ${proj?.status === 'active' ? 'selected' : ''}>Active</option>
+                <option value="archived" ${proj?.status === 'archived' ? 'selected' : ''}>Archived</option>
+            </select>
+        </div>
+    </form>`;
+    showModal(proj ? 'Edit Project' : 'New Project', html);
+}
+
+async function deleteProject(id) {
+    if (!confirm('Are you sure you want to delete this project and all its data?')) return;
+    try {
+        await api.delete(`/api/projects/${id}`);
+        state.projects = await api.get('/api/projects');
+        state.activeProjectId = null;
+        renderProjectNav();
+        emptyState.classList.remove('hidden');
+        projectView.classList.add('hidden');
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function showTaskForm(task = null) {
+    const html = `
+    <form data-type="task" data-id="${task ? task.id : ''}">
+        <div class="form-group">
+            <label>Title</label>
+            <input name="title" class="form-control" value="${task ? esc(task.title) : ''}" required>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" class="form-control">${task ? esc(task.description) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" class="form-control">
+                <option value="open" ${task?.status === 'open' ? 'selected' : ''}>Open</option>
+                <option value="in_progress" ${task?.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                <option value="blocked" ${task?.status === 'blocked' ? 'selected' : ''}>Blocked</option>
+                <option value="done" ${task?.status === 'done' ? 'selected' : ''}>Done</option>
+                <option value="cancelled" ${task?.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Priority</label>
+            <select name="priority" class="form-control">
+                <option value="low" ${task?.priority === 'low' ? 'selected' : ''}>Low</option>
+                <option value="medium" ${task?.priority === 'medium' || !task ? 'selected' : ''}>Medium</option>
+                <option value="high" ${task?.priority === 'high' ? 'selected' : ''}>High</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Assigned Agent</label>
+            <input name="assigned_agent" class="form-control" value="${task ? esc(task.assigned_agent) : ''}">
+        </div>
+        <div class="form-group">
+            <label>Parent Task ID</label>
+            <input name="parent_task_id" class="form-control" value="${task ? esc(task.parent_task_id) : ''}">
+        </div>
+        <div class="form-group">
+            <label>Blocked By Task ID</label>
+            <input name="blocked_by_task_id" class="form-control" value="${task ? esc(task.blocked_by_task_id) : ''}">
+        </div>
+        <div class="form-group">
+            <label>Next Action</label>
+            <input name="next_action" class="form-control" value="${task ? esc(task.next_action) : ''}">
+        </div>
+    </form>`;
+    showModal(task ? 'Edit Task' : 'New Task', html);
+}
+
+async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    try {
+        await api.delete(`/api/projects/${state.activeProjectId}/tasks/${id}`);
+        await selectProject(state.activeProjectId);
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function showDecisionForm(dec = null) {
+    const html = `
+    <form data-type="decision" data-id="${dec ? dec.id : ''}">
+        <div class="form-group">
+            <label>Title</label>
+            <input name="title" class="form-control" value="${dec ? esc(dec.title) : ''}" required>
+        </div>
+        <div class="form-group">
+            <label>Decision Text</label>
+            <textarea name="decision_text" class="form-control" required>${dec ? esc(dec.decision_text) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Rationale</label>
+            <textarea name="rationale" class="form-control">${dec ? esc(dec.rationale) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" class="form-control">
+                <option value="active" ${dec?.status === 'active' || !dec ? 'selected' : ''}>Active</option>
+                <option value="draft" ${dec?.status === 'draft' ? 'selected' : ''}>Draft</option>
+                <option value="superseded" ${dec?.status === 'superseded' ? 'selected' : ''}>Superseded</option>
+            </select>
+        </div>
+    </form>`;
+    showModal(dec ? 'Edit Decision' : 'New Decision', html);
+}
+
+function showNoteForm(note = null) {
+    const html = `
+    <form data-type="note" data-id="${note ? note.id : ''}">
+        <div class="form-group">
+            <label>Title</label>
+            <input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required>
+        </div>
+        <div class="form-group">
+            <label>Note Text</label>
+            <textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Type</label>
+            <select name="note_type" class="form-control">
+                <option value="context" ${note?.note_type === 'context' || !note ? 'selected' : ''}>Context</option>
+                <option value="investigation" ${note?.note_type === 'investigation' ? 'selected' : ''}>Investigation</option>
+                <option value="implementation" ${note?.note_type === 'implementation' ? 'selected' : ''}>Implementation</option>
+                <option value="bug" ${note?.note_type === 'bug' ? 'selected' : ''}>Bug</option>
+                <option value="handover" ${note?.note_type === 'handover' ? 'selected' : ''}>Handover</option>
+            </select>
+        </div>
+    </form>`;
+    showModal(note ? 'Edit Note' : 'New Note', html);
+}
+
+async function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    try {
+        await api.delete(`/api/projects/${state.activeProjectId}/notes/${id}`);
+        await selectProject(state.activeProjectId);
+    } catch (err) {
+        alert(err.message);
     }
 }
 
@@ -257,6 +493,33 @@ function renderTasks() {
             btn.classList.toggle('open', nowExpanded);
         });
     });
+
+    taskListEl.querySelectorAll('.edit-task').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const task = findTask(id, state.tasks);
+            if (task) showTaskForm(task);
+        });
+    });
+
+    taskListEl.querySelectorAll('.delete-task').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            deleteTask(btn.dataset.id);
+        });
+    });
+}
+
+function findTask(id, tasks) {
+    for (const t of tasks) {
+        if (t.id === id) return t;
+        if (t.subtasks) {
+            const found = findTask(id, t.subtasks);
+            if (found) return found;
+        }
+    }
+    return null;
 }
 
 function renderTaskItem(task, depth = 0) {
@@ -307,6 +570,10 @@ function renderTaskItem(task, depth = 0) {
             </div>
             ${nextAction}
           </div>
+          <div class="header-actions">
+            <button class="icon-btn edit-task" data-id="${task.id}">✎</button>
+            <button class="icon-btn danger delete-task" data-id="${task.id}">🗑</button>
+          </div>
           ${toggle}
         </div>
         ${bodyHtml}
@@ -330,6 +597,10 @@ function renderDecisions() {
     <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
       <div class="decision-header">
         <span class="decision-title">${esc(d.title)}</span>
+        <div class="header-actions">
+          <button class="icon-btn edit-decision" data-id="${d.id}">✎</button>
+          <button class="icon-btn danger delete-decision" data-id="${d.id}">🗑</button>
+        </div>
         <span class="status-badge badge-${d.status}">${d.status}</span>
       </div>
       <div class="decision-text">${esc(d.decision_text)}</div>
@@ -337,13 +608,34 @@ function renderDecisions() {
       ${d.supersedes_decision_id ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">↳ Supersedes ${d.supersedes_decision_id.slice(0, 8)}</div>` : ''}
     </li>
   `).join('');
+
+    decisionListEl.querySelectorAll('.edit-decision').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const dec = state.decisions.find(d => d.id === btn.dataset.id);
+            if (dec) showDecisionForm(dec);
+        });
+    });
+    decisionListEl.querySelectorAll('.delete-decision').forEach(btn => {
+        btn.addEventListener('click', () => deleteDecision(btn.dataset.id));
+    });
+}
+
+async function deleteDecision(id) {
+    if (!confirm('Delete this decision?')) return;
+    try {
+        await api.delete(`/api/projects/${state.activeProjectId}/decisions/${id}`);
+        await selectProject(state.activeProjectId);
+    } catch (err) {
+        alert(err.message);
+    }
 }
 
 // ── Notes ──────────────────────────────────────────────────────────────────────
 function renderNotes() {
+    const notes = state.notes || [];
     const filtered = state.noteFilter
-        ? state.notes.filter(n => n.note_type === state.noteFilter)
-        : state.notes;
+        ? notes.filter(n => n.note_type === state.noteFilter)
+        : notes;
 
     if (!filtered.length) {
         noteListEl.innerHTML = '<li class="list-empty">No notes found.</li>';
@@ -354,11 +646,25 @@ function renderNotes() {
     <li class="note-item">
       <div class="note-header">
         <span class="note-title">${esc(n.title)}</span>
+        <div class="header-actions">
+          <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
+          <button class="icon-btn danger delete-note" data-id="${n.id}">🗑</button>
+        </div>
         <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
       </div>
       <div class="note-text">${esc(n.note_text)}</div>
     </li>
   `).join('');
+
+    noteListEl.querySelectorAll('.edit-note').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const note = state.notes.find(n => n.id === btn.dataset.id);
+            if (note) showNoteForm(note);
+        });
+    });
+    noteListEl.querySelectorAll('.delete-note').forEach(btn => {
+        btn.addEventListener('click', () => deleteNote(btn.dataset.id));
+    });
 }
 
 // ── Timeline ───────────────────────────────────────────────────────────────────

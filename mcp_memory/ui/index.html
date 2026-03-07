@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mcp-memory Explorer</title>
   <link rel="stylesheet" href="/index.css" />
 </head>
+
 <body>
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
       <div class="sidebar-header">
-        <pre class="sidebar-logo-art">╔══════════════╗
+        <div class="header-main">
+          <pre class="sidebar-logo-art">╔══════════════╗
 ║  MCP·MEMORY  ║
 ╚══════════════╝</pre>
+          <button id="add-project-btn" class="icon-btn" title="New Project">+</button>
+        </div>
         <p class="logo-sub">// project explorer</p>
       </div>
       <nav id="project-list" aria-label="Projects">
@@ -41,6 +46,10 @@
           <div class="project-title-row">
             <h2 id="project-name"></h2>
             <span id="project-status-badge" class="status-badge"></span>
+            <div class="header-actions">
+              <button id="edit-project-btn" class="icon-btn" title="Edit Project">✎</button>
+              <button id="delete-project-btn" class="icon-btn danger" title="Delete Project">🗑</button>
+            </div>
           </div>
           <p id="project-description" class="project-description"></p>
           <p id="project-summary-text" class="project-summary"></p>
@@ -57,7 +66,10 @@
         <!-- Tasks panel -->
         <section id="panel-tasks" class="panel">
           <div class="panel-toolbar">
-            <span class="panel-label">Task dependency order</span>
+            <div class="panel-info">
+              <span class="panel-label">Task dependency order</span>
+              <button id="add-task-btn" class="icon-btn" title="New Task">+</button>
+            </div>
             <div class="filter-group" id="task-filters">
               <button class="filter-btn active" data-status="">All</button>
               <button class="filter-btn" data-status="open">Open</button>
@@ -72,7 +84,10 @@
         <!-- Decisions panel -->
         <section id="panel-decisions" class="panel hidden">
           <div class="panel-toolbar">
-            <span class="panel-label">Architecture decisions</span>
+            <div class="panel-info">
+              <span class="panel-label">Architecture decisions</span>
+              <button id="add-decision-btn" class="icon-btn" title="New Decision">+</button>
+            </div>
             <div class="filter-group" id="decision-filters">
               <button class="filter-btn active" data-status="">All</button>
               <button class="filter-btn" data-status="active">Active</button>
@@ -86,7 +101,10 @@
         <!-- Notes panel -->
         <section id="panel-notes" class="panel hidden">
           <div class="panel-toolbar">
-            <span class="panel-label">Operational notes</span>
+            <div class="panel-info">
+              <span class="panel-label">Operational notes</span>
+              <button id="add-note-btn" class="icon-btn" title="New Note">+</button>
+            </div>
             <div class="filter-group" id="note-filters">
               <button class="filter-btn active" data-type="">All</button>
               <button class="filter-btn" data-type="investigation">Investigation</button>
@@ -110,6 +128,24 @@
     </main>
   </div>
 
+  <!-- Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal Title</h3>
+        <button id="modal-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Dynamic form content -->
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel" class="btn-secondary">Cancel</button>
+        <button id="modal-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/index.js"></script>
 </body>
+
 </html>
