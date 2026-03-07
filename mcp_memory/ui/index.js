@@ -10,10 +10,11 @@ const state = {
     decisions: [],
     notes: [],
     timeline: [],
-    taskFilter: '',
+    taskFilter: 'open',
     decisionFilter: '',
     noteFilter: '',
     expandedTasks: new Set(),
+    searchResults: null,
 };
 
 // ── API ────────────────────────────────────────────────────────────────────────
@@ -51,9 +52,17 @@ const decisionListEl = $('decision-list');
 const noteListEl = $('note-list');
 const timelineListEl = $('timeline-list');
 
+const searchInput = $('global-search-input');
+const searchTab = $('tab-search');
+const clearSearchBtn = $('clear-search-btn');
+const searchTasksList = $('search-tasks-list');
+const searchDecisionsList = $('search-decisions-list');
+const searchNotesList = $('search-notes-list');
+const searchEmptyState = $('search-empty-state');
+
 // ── Routing ────────────────────────────────────────────────────────────────────
 // URL format: /{project-name}/{tab}  e.g. /mcp-memory/decisions
-const VALID_TABS = ['tasks', 'decisions', 'notes', 'timeline'];
+const VALID_TABS = ['tasks', 'decisions', 'notes', 'timeline', 'search'];
 
 function parsePath() {
     const parts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
@@ -82,6 +91,21 @@ async function init() {
     renderProjectNav();
     bindTabs();
     bindFilters();
+
+    // Search events
+    searchInput.addEventListener('keyup', e => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value.trim();
+            if (query) performSearch(query);
+        }
+    });
+
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        state.searchResults = null;
+        searchTab.classList.add('hidden');
+        activateTab('tasks');
+    });
 
     // Event Listeners for CRUD
     $('add-project-btn').addEventListener('click', () => showProjectForm());
@@ -161,6 +185,7 @@ async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
     // Show project view, hide empty state
     emptyState.classList.add('hidden');
     projectView.classList.remove('hidden');
+    searchInput.disabled = false;
 
     // Load all data in parallel
     const [ctx, tasks, decisions, notes, timeline] = await Promise.all([
@@ -186,8 +211,13 @@ function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
     projectDesc.textContent = proj.description || '';
     projectStatus.textContent = proj.status || '';
     projectStatus.className = `status-badge badge-${proj.status || 'active'}`;
-    projectSummary.textContent = ctx.summary || '';
-    projectSummary.classList.toggle('hidden', !ctx.summary);
+    if (ctx.summary) {
+        projectSummary.innerHTML = marked.parse(ctx.summary);
+        projectSummary.classList.remove('hidden');
+    } else {
+        projectSummary.innerHTML = '';
+        projectSummary.classList.add('hidden');
+    }
 
     // Render panels
     renderTasks();
@@ -209,6 +239,7 @@ function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
 function showModal(title, contentHtml) {
     $('modal-title').textContent = title;
     $('modal-body').innerHTML = contentHtml;
+    initCustomSelects($('modal-body'));
     $('modal-overlay').classList.remove('hidden');
 }
 
@@ -217,6 +248,60 @@ function hideModal() {
     $('modal-body').innerHTML = '';
 }
 
+function initCustomSelects(container) {
+    container.querySelectorAll('select.form-control').forEach(select => {
+        select.style.display = 'none'; // Hide native dropdown
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger form-control';
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'custom-select-options hidden';
+
+        const updateTrigger = () => {
+            const selectedOpt = select.options[select.selectedIndex];
+            trigger.textContent = selectedOpt ? selectedOpt.textContent : '';
+        };
+        updateTrigger();
+
+        Array.from(select.options).forEach(opt => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'custom-select-option';
+            optionEl.textContent = opt.textContent;
+            optionEl.dataset.value = opt.value;
+            if (opt.selected || opt.value === select.value) optionEl.classList.add('selected');
+
+            optionEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                select.value = opt.value;
+                updateTrigger();
+                optionsDiv.classList.add('hidden');
+                Array.from(optionsDiv.children).forEach(c => c.classList.remove('selected'));
+                optionEl.classList.add('selected');
+            });
+            optionsDiv.appendChild(optionEl);
+        });
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = optionsDiv.classList.contains('hidden');
+            document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
+            if (isHidden) optionsDiv.classList.remove('hidden');
+        });
+
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(optionsDiv);
+        select.parentNode.insertBefore(wrapper, select.nextSibling);
+    });
+}
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
+});
+
 async function handleModalSave() {
     const form = $('modal-body').querySelector('form');
     if (!form) return;
@@ -224,6 +309,17 @@ async function handleModalSave() {
     const id = form.dataset.id;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    // Only map empty strings to null for ID fields (e.g., parent_task_id, blocked_by_task_id)
+    for (const key in data) {
+        if (data[key] === '' && key.endsWith('_id')) {
+            data[key] = null;
+        }
+    }
+
+    // Handle checkbox for urgent field (FormData won't include it if unchecked)
+    if (type === 'task') {
+        data['urgent'] = !!data['urgent'];
+    }
 
     try {
         if (type === 'project') {
@@ -309,12 +405,8 @@ function showTaskForm(task = null) {
             </select>
         </div>
         <div class="form-group">
-            <label>Priority</label>
-            <select name="priority" class="form-control">
-                <option value="low" ${task?.priority === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${task?.priority === 'medium' || !task ? 'selected' : ''}>Medium</option>
-                <option value="high" ${task?.priority === 'high' ? 'selected' : ''}>High</option>
-            </select>
+            <label>Urgent</label>
+            <input type="checkbox" name="urgent" ${task?.urgent ? 'checked' : ''} />
         </div>
         <div class="form-group">
             <label>Assigned Agent</label>
@@ -426,6 +518,121 @@ function bindTabs() {
             }
         });
     });
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────────
+async function performSearch(query) {
+    if (!state.activeProjectId) return;
+    try {
+        const results = await api.get(`/api/projects/${state.activeProjectId}/semantic_search?q=${encodeURIComponent(query)}&limit=10`);
+        state.searchResults = results;
+        searchTab.classList.remove('hidden');
+        activateTab('search');
+        renderSearch();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function renderSearch() {
+    const rs = state.searchResults;
+    if (!rs) return;
+
+    const hasTasks = rs.tasks && rs.tasks.length > 0;
+    const hasDecisions = rs.decisions && rs.decisions.length > 0;
+    const hasNotes = rs.notes && rs.notes.length > 0;
+
+    $('search-tasks-section').classList.toggle('hidden', !hasTasks);
+    $('search-decisions-section').classList.toggle('hidden', !hasDecisions);
+    $('search-notes-section').classList.toggle('hidden', !hasNotes);
+
+    if (!hasTasks && !hasDecisions && !hasNotes) {
+        searchEmptyState.classList.remove('hidden');
+    } else {
+        searchEmptyState.classList.add('hidden');
+    }
+
+    if (hasTasks) {
+        searchTasksList.innerHTML = rs.tasks.map(t => renderTaskItem(t, 0)).join('');
+        // Bind expand toggles for search results
+        searchTasksList.querySelectorAll('.task-toggle').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const id = btn.dataset.taskId;
+                const body = document.getElementById(`task-body-${id}`);
+                const isExpanded = btn.classList.contains('open');
+                if (body) body.classList.toggle('hidden', isExpanded);
+                btn.classList.toggle('open', !isExpanded);
+            });
+        });
+        searchTasksList.querySelectorAll('.edit-task').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const task = rs.tasks.find(t => t.id === id);
+                if (task) showTaskForm(task);
+            });
+        });
+        searchTasksList.querySelectorAll('.delete-task').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                deleteTask(btn.dataset.id);
+            });
+        });
+    }
+
+    if (hasDecisions) {
+        searchDecisionsList.innerHTML = rs.decisions.map(d => `
+        <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
+          <div class="decision-header">
+            <span class="decision-title">${esc(d.title)}</span>
+            <div class="header-actions">
+              <button class="icon-btn edit-decision" data-id="${d.id}">✎</button>
+              <button class="icon-btn danger delete-decision" data-id="${d.id}">🗑</button>
+            </div>
+            <span class="status-badge badge-${d.status}">${d.status}</span>
+          </div>
+          <div class="decision-text">${esc(d.decision_text)}</div>
+          ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
+        </li>
+      `).join('');
+
+        searchDecisionsList.querySelectorAll('.edit-decision').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dec = rs.decisions.find(d => d.id === btn.dataset.id);
+                if (dec) showDecisionForm(dec);
+            });
+        });
+        searchDecisionsList.querySelectorAll('.delete-decision').forEach(btn => {
+            btn.addEventListener('click', () => deleteDecision(btn.dataset.id));
+        });
+    }
+
+    if (hasNotes) {
+        searchNotesList.innerHTML = rs.notes.map(n => `
+        <li class="note-item">
+          <div class="note-header">
+            <span class="note-title">${esc(n.title)}</span>
+            <div class="header-actions">
+              <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
+              <button class="icon-btn danger delete-note" data-id="${n.id}">🗑</button>
+            </div>
+            <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+          </div>
+          <div class="note-text">${esc(n.note_text)}</div>
+        </li>
+      `).join('');
+
+        searchNotesList.querySelectorAll('.edit-note').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const note = rs.notes.find(n => n.id === btn.dataset.id);
+                if (note) showNoteForm(note);
+            });
+        });
+        searchNotesList.querySelectorAll('.delete-note').forEach(btn => {
+            btn.addEventListener('click', () => deleteNote(btn.dataset.id));
+        });
+    }
 }
 
 // ── Filters ────────────────────────────────────────────────────────────────────
@@ -545,7 +752,7 @@ function renderTaskItem(task, depth = 0) {
     // Description-only body (no subtasks here — they appear as siblings below the card)
     const bodyHtml = hasDesc
         ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
-             <div class="task-description">${esc(task.description)}</div>
+             <div class="task-description markdown-body">${marked.parse(task.description)}</div>
            </div>`
         : '';
 
@@ -556,11 +763,15 @@ function renderTaskItem(task, depth = 0) {
            </ul>`
         : '';
 
+    const urgentBadge = task.urgent
+        ? `<span class="urgent-dot" title="Urgent"></span>`
+        : '';
+
     return `
     <li class="task-group" data-depth="${depth}">
       <div class="task-item ${task.status}">
         <div class="task-header">
-          <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
+          ${urgentBadge}
           <div class="task-title-area">
             <div class="task-title">${statusIcon} ${esc(task.title)}</div>
             <div class="task-meta">
@@ -603,7 +814,7 @@ function renderDecisions() {
         </div>
         <span class="status-badge badge-${d.status}">${d.status}</span>
       </div>
-      <div class="decision-text">${esc(d.decision_text)}</div>
+      <div class="decision-text markdown-body">${marked.parse(d.decision_text)}</div>
       ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
       ${d.supersedes_decision_id ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">↳ Supersedes ${d.supersedes_decision_id.slice(0, 8)}</div>` : ''}
     </li>
@@ -652,7 +863,7 @@ function renderNotes() {
         </div>
         <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
       </div>
-      <div class="note-text">${esc(n.note_text)}</div>
+      <div class="note-text markdown-body">${marked.parse(n.note_text)}</div>
     </li>
   `).join('');
 

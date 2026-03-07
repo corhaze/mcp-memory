@@ -229,7 +229,7 @@ def create_task(
     title: str,
     description: Optional[str] = None,
     status: str = "open",
-    priority: str = "medium",
+    urgent: bool = False,
     parent_task_id: Optional[str] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
@@ -248,7 +248,7 @@ def create_task(
         title:              Short task title.
         description:        Detailed plan or context.
         status:             open (default), in_progress, blocked, done, cancelled.
-        priority:           low, medium (default), high.
+        urgent:             Boolean flag indicating high urgency.
         parent_task_id:     UUID of parent task (for subtasks).
         assigned_agent:     Agent identifier.
         blocked_by_task_id: UUID of blocking task.
@@ -259,7 +259,7 @@ def create_task(
     if not proj:
         return f"Project '{project_id}' not found."
     task = _db.create_task(
-        proj.id, title, description, status, priority,
+        proj.id, title, description, status, urgent,
         parent_task_id, assigned_agent, blocked_by_task_id, next_action, due_at,
     )
     return f"Task created: '{task.title}' (id: {task.id}, status: {task.status})"
@@ -279,7 +279,7 @@ def get_task(task_id: str) -> str:
     lines = [
         f"Task: {task.title}",
         f"ID: {task.id}",
-        f"Status: {task.status}  Priority: {task.priority}",
+        f"Status: {task.status}  Urgent: {'Yes' if task.urgent else 'No'}",
         f"Description: {task.description or '—'}",
     ]
     if task.next_action:
@@ -335,7 +335,7 @@ def update_task(
     title: Optional[str] = None,
     description: Optional[str] = None,
     status: Optional[str] = None,
-    priority: Optional[str] = None,
+    urgent: Optional[bool] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
     next_action: Optional[str] = None,
@@ -357,7 +357,7 @@ def update_task(
         next_action:        Next immediate step.
         due_at:             ISO 8601 datetime.
     """
-    task = _db.update_task(task_id, title, description, status, priority,
+    task = _db.update_task(task_id, title, description, status, urgent,
                            assigned_agent, blocked_by_task_id, next_action, due_at)
     if not task:
         return f"Task '{task_id}' not found."
@@ -900,7 +900,7 @@ def semantic_search_tasks(
     tasks = _db.semantic_search_tasks(query, pid, limit)
     if not tasks:
         return "No results found."
-    lines = [f"[{t.status}][{t.priority}] {t.title} ({t.id})" for t in tasks]
+    lines = [f"[{t.status}] {'[!] ' if t.urgent else ''}{t.title} ({t.id})" for t in tasks]
     return f"{len(tasks)} result(s):\n" + "\n".join(lines)
 
 
@@ -1018,7 +1018,8 @@ def get_working_context(project_id: str) -> str:
         lines.append("## Active Tasks")
         for t in ctx["active_tasks"]:
             na = f" → {t['next_action']}" if t.get("next_action") else ""
-            lines.append(f"  [{t['status']}][{t['priority']}] {t['title']} ({t['id'][:8]}){na}")
+            urgent_flag = "[!] " if t.get("urgent") else ""
+            lines.append(f"  [{t['status']}] {urgent_flag}{t['title']} ({t['id'][:8]}){na}")
         lines.append("")
 
     if ctx["linked_decisions"]:

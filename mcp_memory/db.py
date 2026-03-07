@@ -11,13 +11,14 @@ All data lives in ~/.mcp-memory/memory.db.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import pickle
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Iterator
 from uuid import uuid4
 
 from . import embeddings as _emb
@@ -33,15 +34,28 @@ def db_path() -> Path:
     return p
 
 
-def get_conn() -> sqlite3.Connection:
+@contextlib.contextmanager
+def get_conn() -> Iterator[sqlite3.Connection]:
     """Open (or create) the database and ensure the schema exists."""
     conn = sqlite3.connect(str(db_path()))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
     _init_schema(conn)
-    return conn
+    
+    try:
+        columns = [row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "urgent" not in columns:
+            conn.execute("ALTER TABLE tasks ADD COLUMN urgent INTEGER NOT NULL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # Ignore if running in a read-only sandbox
 
+    try:
+        # sqlite3.Connection can act as its own context manager for transactions
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -84,7 +98,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             title              TEXT NOT NULL,
             description        TEXT,
             status             TEXT NOT NULL DEFAULT 'open',
-            priority           TEXT NOT NULL DEFAULT 'medium',
+            urgent             INTEGER NOT NULL DEFAULT 0,
             parent_task_id     TEXT,
             assigned_agent     TEXT,
             blocked_by_task_id TEXT,
@@ -344,7 +358,7 @@ class Task:
     title: str
     description: Optional[str]
     status: str
-    priority: str
+    urgent: bool
     parent_task_id: Optional[str]
     assigned_agent: Optional[str]
     blocked_by_task_id: Optional[str]
@@ -457,9 +471,10 @@ def _row_to_summary(row: sqlite3.Row) -> ProjectSummary:
 
 
 def _row_to_task(row: sqlite3.Row) -> Task:
+    urgent_val = bool(row["urgent"]) if "urgent" in row.keys() else False
     return Task(
         id=row["id"], project_id=row["project_id"], title=row["title"],
-        description=row["description"], status=row["status"], priority=row["priority"],
+        description=row["description"], status=row["status"], urgent=urgent_val,
         parent_task_id=row["parent_task_id"], assigned_agent=row["assigned_agent"],
         blocked_by_task_id=row["blocked_by_task_id"], next_action=row["next_action"],
         due_at=row["due_at"], created_at=row["created_at"], updated_at=row["updated_at"],
@@ -665,7 +680,7 @@ def create_task(
     title: str,
     description: Optional[str] = None,
     status: str = "open",
-    priority: str = "medium",
+    urgent: bool = False,
     parent_task_id: Optional[str] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
@@ -677,12 +692,12 @@ def create_task(
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO tasks (id, project_id, title, description, status, priority,
+            INSERT INTO tasks (id, project_id, title, description, status, urgent,
                 parent_task_id, assigned_agent, blocked_by_task_id,
                 next_action, due_at, created_at, updated_at, completed_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
             """,
-            (tid, project_id, title, description, status, priority,
+            (tid, project_id, title, description, status, 1 if urgent else 0,
              parent_task_id, assigned_agent, blocked_by_task_id, next_action, due_at, now, now),
         )
         _log_task_event_inner(conn, tid, "created", f"Task created: {title}")
@@ -732,7 +747,7 @@ def update_task(
     title: Optional[str] = None,
     description: Optional[str] = None,
     status: Optional[str] = None,
-    priority: Optional[str] = None,
+    urgent: Optional[bool] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
     next_action: Optional[str] = None,
@@ -755,9 +770,9 @@ def update_task(
     if status is not None:
         fields.append("status = ?")
         vals.append(status)
-    if priority is not None:
-        fields.append("priority = ?")
-        vals.append(priority)
+    if urgent is not None:
+        fields.append("urgent = ?")
+        vals.append(1 if urgent else 0)
     if assigned_agent is not None:
         fields.append("assigned_agent = ?")
         vals.append(assigned_agent)
@@ -1380,7 +1395,7 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
         "summary": summary.summary_text if summary else None,
         "active_tasks": [
             {"id": t.id, "title": t.title, "status": t.status,
-             "priority": t.priority, "next_action": t.next_action}
+             "urgent": t.urgent, "next_action": t.next_action}
             for t in active_tasks
         ],
         "linked_decisions": [

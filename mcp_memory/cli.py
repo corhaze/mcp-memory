@@ -87,7 +87,8 @@ def project_context(project):
     if ctx["active_tasks"]:
         click.echo(f"\nActive tasks ({len(ctx['active_tasks'])}):")
         for t in ctx["active_tasks"]:
-            click.echo(f"  [{t['status']}][{t['priority']}] {t['title']}")
+            urgent_flag = "[URGENT] " if t['urgent'] else ""
+            click.echo(f"  [{t['status']}] {urgent_flag}{t['title']}")
     if ctx["active_decisions"]:
         click.echo(f"\nActive decisions ({len(ctx['active_decisions'])}):")
         for d in ctx["active_decisions"]:
@@ -106,16 +107,16 @@ def task():
 @click.option("--project", "-p", required=True, help="Project name or ID")
 @click.option("--title", "-t", required=True, help="Task title")
 @click.option("--description", "-d", default="", help="Detailed description")
-@click.option("--priority", default="medium", help="low|medium|high")
+@click.option("--urgent", is_flag=True, help="Mark task as urgent")
 @click.option("--parent", help="Parent task UUID")
 @click.option("--next-action", help="Immediate next step")
-def task_create(project, title, description, priority, parent, next_action):
+def task_create(project, title, description, urgent, parent, next_action):
     """Create a new task."""
     proj = _db.get_project(project)
     if not proj:
         click.echo(f"Project '{project}' not found.")
         return
-    t = _db.create_task(proj.id, title, description, priority=priority,
+    t = _db.create_task(proj.id, title, description, urgent=urgent,
                         parent_task_id=parent, next_action=next_action)
     click.echo(f"OK: Task '{t.title}' (id: {t.id}, status: {t.status})")
 
@@ -135,13 +136,15 @@ def task_list(project, status):
         return
     for t in tasks:
         subtask_hint = f" [{len(t.subtasks)} sub]" if t.subtasks else ""
-        click.echo(f"  [{t.status}][{t.priority}] {t.title}{subtask_hint}  ({t.id[:8]})")
+        urgent_flag = "[URGENT] " if t.urgent else ""
+        click.echo(f"  [{t.status}] {urgent_flag}{t.title}{subtask_hint}  ({t.id[:8]})")
 
 
 @task.command("update")
 @click.option("--id", "task_id", required=True, help="Task UUID")
 @click.option("--status", "-s", help="New status")
-@click.option("--priority", help="New priority")
+@click.option("--urgent", is_flag=True, help="Set flag to True", default=None)
+@click.option("--not-urgent", is_flag=True, help="Set flag to False", default=None)
 @click.option("--next-action", help="New next action")
 @click.option("--description", "-d", help="New description")
 def task_update(task_id, status, priority, next_action, description):

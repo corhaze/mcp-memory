@@ -80,7 +80,7 @@ def _task_dict(task: _db.Task, depth: int = 0) -> Dict[str, Any]:
         "title": task.title,
         "description": task.description,
         "status": task.status,
-        "priority": task.priority,
+        "urgent": task.urgent,
         "parent_task_id": task.parent_task_id,
         "blocked_by_task_id": task.blocked_by_task_id,
         "next_action": task.next_action,
@@ -131,7 +131,7 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     status: str = "open"
-    priority: str = "medium"
+    urgent: bool = False
     parent_task_id: Optional[str] = None
     assigned_agent: Optional[str] = None
     blocked_by_task_id: Optional[str] = None
@@ -142,7 +142,7 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
-    priority: Optional[str] = None
+    urgent: Optional[bool] = None
     assigned_agent: Optional[str] = None
     blocked_by_task_id: Optional[str] = None
     next_action: Optional[str] = None
@@ -261,6 +261,26 @@ def get_timeline(project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     # Sort all events newest-first
     events.sort(key=lambda e: e["created_at"], reverse=True)
     return events[:limit]
+@app.get("/api/projects/{project_id}/semantic_search")
+def semantic_search(
+    project_id: str,
+    q: str,
+    limit: int = 5
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Perform semantic search across tasks, decisions, and notes."""
+    proj = _project_or_404(project_id)
+    if not q:
+        return {"tasks": [], "decisions": [], "notes": []}
+    
+    tasks = _db.semantic_search_tasks(q, proj.id, limit=limit)
+    decisions = _db.semantic_search_decisions(q, proj.id, limit=limit)
+    notes = _db.semantic_search_notes(q, proj.id, limit=limit)
+    
+    return {
+        "tasks": [_task_dict(t) for t in tasks],
+        "decisions": [_decision_dict(d) for d in decisions],
+        "notes": [_note_dict(n) for n in notes]
+    }
 
 
 @app.post("/api/projects")
@@ -288,7 +308,7 @@ def delete_project(project_id: str) -> Dict[str, str]:
 def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
     proj = _project_or_404(project_id)
     task = _db.create_task(
-        proj.id, req.title, req.description, req.status, req.priority,
+        proj.id, req.title, req.description, req.status, req.urgent,
         req.parent_task_id, req.assigned_agent, req.blocked_by_task_id,
         req.next_action, req.due_at
     )
@@ -297,7 +317,7 @@ def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
 @app.patch("/api/projects/{project_id}/tasks/{task_id}")
 def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any]:
     task = _db.update_task(
-        task_id, req.title, req.description, req.status, req.priority,
+        task_id, req.title, req.description, req.status, req.urgent,
         req.assigned_agent, req.blocked_by_task_id, req.next_action, req.due_at
     )
     if not task:
