@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Iterator
 
 def db_path() -> Path:
-    p = Path.home() / ".mcp-memory" / "memory.db"
+    import os
+    env_path = os.environ.get("MCP_MEMORY_DB_PATH")
+    if env_path:
+        p = Path(env_path)
+    else:
+        p = Path.home() / ".mcp-memory" / "memory.db"
+    
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
