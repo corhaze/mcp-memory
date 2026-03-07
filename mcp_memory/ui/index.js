@@ -1,208 +1,354 @@
-let currentProject = '';
-let currentTab = 'context';
-let projectToDelete = '';
+/* index.js — mcp-memory Explorer UI application logic */
 
-async function fetchProjects() {
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+const state = {
+    projects: [],
+    activeProjectId: null,
+    tasks: [],
+    decisions: [],
+    notes: [],
+    timeline: [],
+    taskFilter: '',
+    decisionFilter: '',
+    noteFilter: '',
+    expandedTasks: new Set(),
+};
+
+// ── API ────────────────────────────────────────────────────────────────────────
+const api = {
+    async get(path) {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
+        return res.json();
+    },
+};
+
+// ── DOM refs ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const projectList = $('project-list');
+const emptyState = $('empty-state');
+const projectView = $('project-view');
+const projectName = $('project-name');
+const projectStatus = $('project-status-badge');
+const projectDesc = $('project-description');
+const projectSummary = $('project-summary-text');
+const taskListEl = $('task-list');
+const decisionListEl = $('decision-list');
+const noteListEl = $('note-list');
+const timelineListEl = $('timeline-list');
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+async function init() {
     try {
-        const response = await fetch('/api/projects');
-        const projects = await response.json();
-        const list = document.getElementById('projectList');
-        list.innerHTML = '';
+        state.projects = await api.get('/api/projects');
+    } catch {
+        state.projects = [];
+    }
+    renderProjectNav();
+    bindTabs();
+    bindFilters();
+}
 
-        projects.forEach(p => {
-            const li = document.createElement('li');
-            li.className = 'project-item';
-            if (p === currentProject) li.classList.add('active');
+// ── Project nav ────────────────────────────────────────────────────────────────
+function renderProjectNav() {
+    if (!state.projects.length) {
+        projectList.innerHTML = '<p class="nav-hint">No projects found.</p>';
+        return;
+    }
+    projectList.innerHTML = state.projects.map(p => `
+    <button class="project-nav-item${state.activeProjectId === p.id ? ' active' : ''}"
+            data-id="${p.id}"
+            id="proj-nav-${p.id}">
+      <span class="proj-dot"></span>
+      <span>${esc(p.name)}</span>
+    </button>
+  `).join('');
 
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = p;
-            nameSpan.onclick = () => selectProject(p);
+    projectList.querySelectorAll('.project-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => selectProject(btn.dataset.id));
+    });
+}
 
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.title = 'Delete project';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                openDeleteModal(p);
-            };
+async function selectProject(id) {
+    state.activeProjectId = id;
+    state.expandedTasks.clear();
 
-            li.appendChild(nameSpan);
-            li.appendChild(deleteBtn);
-            list.appendChild(li);
+    // Update nav highlight
+    document.querySelectorAll('.project-nav-item').forEach(b => {
+        b.classList.toggle('active', b.dataset.id === id);
+    });
+
+    // Show project view, hide empty state
+    emptyState.classList.add('hidden');
+    projectView.classList.remove('hidden');
+
+    // Load all data in parallel
+    const [ctx, tasks, decisions, notes, timeline] = await Promise.all([
+        api.get(`/api/projects/${id}`),
+        api.get(`/api/projects/${id}/tasks?topo=true`),
+        api.get(`/api/projects/${id}/decisions`),
+        api.get(`/api/projects/${id}/notes`),
+        api.get(`/api/projects/${id}/timeline`),
+    ]);
+
+    state.tasks = tasks;
+    state.decisions = decisions;
+    state.notes = notes;
+    state.timeline = timeline;
+
+    // Render header
+    const proj = ctx.project || {};
+    projectName.textContent = proj.name || id;
+    projectDesc.textContent = proj.description || '';
+    projectStatus.textContent = proj.status || '';
+    projectStatus.className = `status-badge badge-${proj.status || 'active'}`;
+    projectSummary.textContent = ctx.summary || '';
+    projectSummary.classList.toggle('hidden', !ctx.summary);
+
+    // Render panels
+    renderTasks();
+    renderDecisions();
+    renderNotes();
+    renderTimeline();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────────
+function bindTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const name = tab.dataset.tab;
+            document.querySelectorAll('.panel').forEach(p => {
+                p.classList.toggle('hidden', p.id !== `panel-${name}`);
+            });
         });
-
-        if (projects.length > 0 && !currentProject) {
-            selectProject(projects[0]);
-        } else if (projects.length === 0) {
-            document.getElementById('contentViewer').innerHTML = '<div class="card">No projects found.</div>';
-            document.getElementById('currentProjectLabel').textContent = '';
-        }
-    } catch (err) {
-        console.error('Failed to fetch projects:', err);
-    }
+    });
 }
 
-function selectProject(projectName) {
-    currentProject = projectName;
-    document.getElementById('currentProjectLabel').textContent = projectName;
-
-    // Update active state in sidebar
-    const items = document.querySelectorAll('.project-item');
-    items.forEach(item => {
-        const span = item.querySelector('span');
-        item.classList.toggle('active', span.textContent === projectName);
+// ── Filters ────────────────────────────────────────────────────────────────────
+function bindFilters() {
+    // Task status filters
+    $('task-filters').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        $('task-filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.taskFilter = btn.dataset.status;
+        renderTasks();
     });
 
-    loadData();
-}
-
-function switchTab(tab) {
-    currentTab = tab;
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(t => {
-        t.classList.toggle('active', t.textContent.toLowerCase() === tab);
+    // Decision status filters
+    $('decision-filters').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        $('decision-filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.decisionFilter = btn.dataset.status;
+        renderDecisions();
     });
-    loadData();
+
+    // Note type filters
+    $('note-filters').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        $('note-filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.noteFilter = btn.dataset.type;
+        renderNotes();
+    });
 }
 
-async function loadData() {
-    if (!currentProject) return;
-    const viewer = document.getElementById('contentViewer');
-    viewer.innerHTML = '<div class="card">Loading...</div>';
+// ── Tasks ──────────────────────────────────────────────────────────────────────
+function renderTasks() {
+    const filtered = state.taskFilter
+        ? state.tasks.filter(t => t.status === state.taskFilter)
+        : state.tasks;
 
-    try {
-        let url = '';
-        if (currentTab === 'context') {
-            url = `/api/project/${currentProject}/context`;
-        } else if (currentTab === 'timeline') {
-            url = `/api/project/${currentProject}/timeline`;
-        } else if (currentTab === 'insights') {
-            url = `/api/insights?scope=${currentProject}`;
-        } else if (currentTab === 'todos') {
-            url = `/api/project/${currentProject}/todos`;
-        }
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        renderData(data);
-    } catch (err) {
-        viewer.innerHTML = `<div class="card" style="color: var(--accent-color)">Error loading data: ${err.message}</div>`;
-    }
-}
-
-function renderData(data) {
-    const viewer = document.getElementById('contentViewer');
-    viewer.innerHTML = '';
-
-    if (!data || data.length === 0) {
-        viewer.innerHTML = '<div class="card">No entries found.</div>';
+    if (!filtered.length) {
+        taskListEl.innerHTML = '<li class="list-empty">No tasks found.</li>';
         return;
     }
 
-    data.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'card';
+    taskListEl.innerHTML = filtered.map(task => renderTaskItem(task)).join('');
 
-        if (currentTab === 'context') {
-            card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem">
-                    <span class="badge">${item.category}</span>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary)">${item.key}</span>
-                </div>
-                <div style="font-size: 1.1rem; line-height: 1.6">${formatValue(item.value)}</div>
-                ${renderTags(item.tags)}
-            `;
-        } else if (currentTab === 'timeline') {
-            card.innerHTML = `
-                <div style="display: flex; align-items: center; margin-bottom: 0.5rem">
-                    <span class="event-type type-${item.event_type}">${item.event_type}</span>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary)">${new Date(item.timestamp).toLocaleString()}</span>
-                </div>
-                <div style="font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem">${item.summary}</div>
-                ${item.detail ? `<div style="color: var(--text-secondary); line-height: 1.5">${item.detail}</div>` : ''}
-            `;
-        } else if (currentTab === 'insights') {
-            card.innerHTML = `
-                <div style="font-weight: 600; font-size: 1.2rem; margin-bottom: 0.75rem">${item.title}</div>
-                <div style="line-height: 1.6; color: var(--text-secondary)">${item.body}</div>
-                ${renderTags(item.tags)}
-            `;
-        } else if (currentTab === 'todos') {
-            let priorityColor = 'var(--text-secondary)';
-            if (item.priority === 'high') priorityColor = '#ff5858';
-            if (item.priority === 'medium') priorityColor = '#ffb340';
-
-            let statusColor = 'var(--text-secondary)';
-            if (item.status === 'completed') statusColor = '#3fb950';
-            if (item.status === 'in_progress') statusColor = '#58a6ff';
-
-            card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem">
-                    <div style="font-weight: 600; font-size: 1.2rem;">${item.title}</div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <span class="badge" style="background: ${statusColor}22; color: ${statusColor}; border: 1px solid ${statusColor}44">${item.status}</span>
-                        <span class="badge" style="background: ${priorityColor}22; color: ${priorityColor}; border: 1px solid ${priorityColor}44">${item.priority}</span>
-                    </div>
-                </div>
-                <div style="line-height: 1.6; color: var(--text-secondary)">${formatValue(item.description)}</div>
-            `;
-        }
-
-        viewer.appendChild(card);
+    // Bind expand/collapse toggles
+    taskListEl.querySelectorAll('.task-toggle').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const id = btn.dataset.taskId;
+            const body = document.getElementById(`task-body-${id}`);
+            if (!body) return;
+            const isOpen = body.classList.toggle('hidden');
+            btn.classList.toggle('open', !isOpen);
+        });
     });
 }
 
-function renderTags(tags) {
-    if (!tags) return '';
-    const tagList = Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',') : []);
-    if (tagList.length === 0) return '';
+function renderTaskItem(task) {
+    const depth = Math.min(task.depth || 0, 3);
+    const hasBody = task.description || (task.subtasks && task.subtasks.length > 0);
+    const expanded = state.expandedTasks.has(task.id);
+    const statusIcon = statusEmoji(task.status);
 
-    return `<div style="margin-top: 1rem">${tagList.map(t => `<span class="badge" style="background: rgba(88, 166, 255, 0.1); color: var(--accent-color)">#${t.trim()}</span>`).join('')}</div>`;
+    // Build blocked-by badge if applicable
+    const blockedBadge = task.blocked_by_task_id
+        ? `<span class="blocked-by-badge" title="Blocked by task ${task.blocked_by_task_id.slice(0, 8)}">depends on</span>`
+        : '';
+
+    // Next action chip
+    const nextAction = task.next_action
+        ? `<div class="task-next-action">${esc(task.next_action)}</div>`
+        : '';
+
+    // Subtask list
+    const subtaskHtml = (task.subtasks && task.subtasks.length)
+        ? `<ul class="subtask-list">${task.subtasks.map(st => `
+        <li class="subtask-item ${st.status}">
+          <span class="subtask-status">${statusEmoji(st.status)}</span>
+          <span class="subtask-title">${esc(st.title)}</span>
+        </li>`).join('')}
+       </ul>`
+        : '';
+
+    const toggle = hasBody
+        ? `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`
+        : '';
+
+    const bodyHidden = expanded ? '' : ' hidden';
+    const descHtml = task.description
+        ? `<div class="task-description">${esc(task.description)}</div>`
+        : '';
+
+    return `
+    <li class="task-item ${task.status}" data-depth="${depth}" data-task-id="${task.id}">
+      <div class="task-header">
+        <span class="priority-dot priority-${task.priority || 'medium'}" title="Priority: ${task.priority}"></span>
+        <div class="task-title-area">
+          <div class="task-title">${statusIcon} ${esc(task.title)}</div>
+          <div class="task-meta">
+            <span class="status-badge badge-${task.status}">${task.status}</span>
+            ${blockedBadge}
+            ${task.assigned_agent ? `<span style="font-size:11px;color:var(--text-muted)">🤖 ${esc(task.assigned_agent)}</span>` : ''}
+          </div>
+          ${nextAction}
+        </div>
+        ${toggle}
+      </div>
+      ${hasBody ? `<div id="task-body-${task.id}" class="task-body${bodyHidden}">
+        ${descHtml}
+        ${subtaskHtml}
+      </div>` : ''}
+    </li>`;
 }
 
-function formatValue(val) {
-    if (typeof val === 'string' && val.includes('\n')) {
-        return `<pre>${val}</pre>`;
+// ── Decisions ──────────────────────────────────────────────────────────────────
+function renderDecisions() {
+    const filtered = state.decisionFilter
+        ? state.decisions.filter(d => d.status === state.decisionFilter)
+        : state.decisions;
+
+    if (!filtered.length) {
+        decisionListEl.innerHTML = '<li class="list-empty">No decisions found.</li>';
+        return;
     }
-    return val;
+
+    decisionListEl.innerHTML = filtered.map(d => `
+    <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
+      <div class="decision-header">
+        <span class="decision-title">${esc(d.title)}</span>
+        <span class="status-badge badge-${d.status}">${d.status}</span>
+      </div>
+      <div class="decision-text">${esc(d.decision_text)}</div>
+      ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
+      ${d.supersedes_decision_id ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">↳ Supersedes ${d.supersedes_decision_id.slice(0, 8)}</div>` : ''}
+    </li>
+  `).join('');
 }
 
-// Modal Functions
-function openDeleteModal(projectName) {
-    projectToDelete = projectName;
-    document.getElementById('deleteProjectName').textContent = projectName;
-    document.getElementById('deleteModal').style.display = 'block';
+// ── Notes ──────────────────────────────────────────────────────────────────────
+function renderNotes() {
+    const filtered = state.noteFilter
+        ? state.notes.filter(n => n.note_type === state.noteFilter)
+        : state.notes;
+
+    if (!filtered.length) {
+        noteListEl.innerHTML = '<li class="list-empty">No notes found.</li>';
+        return;
+    }
+
+    noteListEl.innerHTML = filtered.map(n => `
+    <li class="note-item">
+      <div class="note-header">
+        <span class="note-title">${esc(n.title)}</span>
+        <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+      </div>
+      <div class="note-text">${esc(n.note_text)}</div>
+    </li>
+  `).join('');
 }
 
-function closeModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-    projectToDelete = '';
+// ── Timeline ───────────────────────────────────────────────────────────────────
+function renderTimeline() {
+    if (!state.timeline.length) {
+        timelineListEl.innerHTML = '<li class="list-empty">No events yet.</li>';
+        return;
+    }
+
+    timelineListEl.innerHTML = state.timeline.map(ev => `
+    <li class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-event-type">${esc(ev.event_type)}</div>
+        <div class="timeline-task-title">${esc(ev.task_title)}</div>
+        ${ev.event_note ? `<div class="timeline-note">${esc(ev.event_note)}</div>` : ''}
+      </div>
+      <div class="timeline-time">${formatTime(ev.created_at)}</div>
+    </li>
+  `).join('');
 }
 
-async function confirmDelete() {
-    if (!projectToDelete) return;
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function esc(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
+function statusEmoji(status) {
+    const map = {
+        open: '○',
+        in_progress: '◑',
+        blocked: '⊗',
+        done: '✓',
+        cancelled: '✕',
+    };
+    return map[status] || '○';
+}
+
+function formatTime(iso) {
+    if (!iso) return '';
     try {
-        const response = await fetch(`/api/project/${projectToDelete}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            if (currentProject === projectToDelete) {
-                currentProject = '';
-            }
-            closeModal();
-            fetchProjects();
-        } else {
-            alert('Failed to delete project');
-        }
-    } catch (err) {
-        console.error('Delete error:', err);
-        alert('Error deleting project');
+        const d = new Date(iso);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+        return iso.slice(0, 10);
     }
 }
 
-// Initialize
-fetchProjects();
+// ── Boot ───────────────────────────────────────────────────────────────────────
+init();

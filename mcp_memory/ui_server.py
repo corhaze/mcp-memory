@@ -1,51 +1,226 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import mcp_memory.db as db
-from typing import List, Optional
-import os
+"""
+ui_server.py — FastAPI server for the mcp-memory Explorer UI.
 
-app = FastAPI(title="MCP Memory Explorer")
+Endpoints:
+  GET /api/projects                — list all projects
+  GET /api/projects/{project_id}   — project working context
+  GET /api/projects/{project_id}/tasks    — all tasks (with dependency order)
+  GET /api/projects/{project_id}/decisions — decisions
+  GET /api/projects/{project_id}/notes    — notes
+  GET /api/projects/{project_id}/timeline — task events (recent)
+  DELETE /api/projects/{project_id}       — delete project
+
+Run:
+    uvicorn mcp_memory.ui_server:app --reload --port 7878
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+import mcp_memory.db as _db
+
+app = FastAPI(title="mcp-memory Explorer", version="0.2.0")
+
+UI_DIR = Path(__file__).parent / "ui"
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _project_or_404(name_or_id: str) -> _db.Project:
+    proj = _db.get_project(name_or_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail=f"Project '{name_or_id}' not found.")
+    return proj
+
+
+def _topo_sort_tasks(tasks: List[_db.Task]) -> List[Dict[str, Any]]:
+    """
+    Topologically sort tasks by blocked_by_task_id so that blocking tasks
+    always appear before the tasks they block.
+
+    Returns dicts with an extra `depth` field (0 = root, 1 = blocked-by root, …)
+    used by the UI to visually indent dependency chains.
+    """
+    by_id = {t.id: t for t in tasks}
+    result: List[Dict[str, Any]] = []
+    visited: set = set()
+
+    def visit(task: _db.Task, depth: int) -> None:
+        if task.id in visited:
+            return
+        visited.add(task.id)
+        # Recurse into the blocker first so it appears above the blocked task
+        if task.blocked_by_task_id and task.blocked_by_task_id in by_id:
+            visit(by_id[task.blocked_by_task_id], max(0, depth - 1))
+        result.append(_task_dict(task, depth=depth))
+
+    # Visit tasks without a blocker (or whose blocker is outside this list) first
+    roots = [t for t in tasks if not t.blocked_by_task_id or t.blocked_by_task_id not in by_id]
+    blocked = [t for t in tasks if t.blocked_by_task_id and t.blocked_by_task_id in by_id]
+
+    for t in sorted(roots, key=lambda x: x.created_at):
+        visit(t, depth=0)
+    for t in sorted(blocked, key=lambda x: x.created_at):
+        visit(t, depth=1)
+
+    return result
+
+
+def _task_dict(task: _db.Task, depth: int = 0) -> Dict[str, Any]:
+    return {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "status": task.status,
+        "priority": task.priority,
+        "parent_task_id": task.parent_task_id,
+        "blocked_by_task_id": task.blocked_by_task_id,
+        "next_action": task.next_action,
+        "assigned_agent": task.assigned_agent,
+        "created_at": task.created_at,
+        "updated_at": task.updated_at,
+        "completed_at": task.completed_at,
+        "depth": depth,
+        "subtasks": [_task_dict(st) for st in task.subtasks],
+    }
+
+
+def _decision_dict(d: _db.Decision) -> Dict[str, Any]:
+    return {
+        "id": d.id,
+        "title": d.title,
+        "decision_text": d.decision_text,
+        "rationale": d.rationale,
+        "status": d.status,
+        "supersedes_decision_id": d.supersedes_decision_id,
+        "created_at": d.created_at,
+    }
+
+
+def _note_dict(n: _db.Note) -> Dict[str, Any]:
+    return {
+        "id": n.id,
+        "title": n.title,
+        "note_text": n.note_text,
+        "note_type": n.note_type,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+    }
+
+
+# ── API routes ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/projects")
-async def get_projects():
-    return db.list_all_projects()
+def list_projects() -> List[Dict[str, Any]]:
+    """List all projects."""
+    projects = _db.list_projects()
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "status": p.status,
+            "created_at": p.created_at,
+        }
+        for p in projects
+    ]
 
-@app.get("/api/project/{project_name}/context")
-async def get_project_context(project_name: str):
-    entries = db.list_contexts(project_name)
-    return [{"id": e.id, "category": e.category, "key": e.key, "value": e.value, "tags": e.tags, "updated": e.updated} for e in entries]
 
-@app.get("/api/project/{project_name}/timeline")
-async def get_project_timeline(project_name: str, limit: int = 50):
-    events = db.get_timeline(project_name, limit)
-    return [{"id": e.id, "event_type": e.event_type, "summary": e.summary, "detail": e.detail, "timestamp": e.timestamp} for e in events]
+@app.get("/api/projects/{project_id}")
+def get_project_context(project_id: str) -> Dict[str, Any]:
+    """Working context for a project (summary + active tasks + decisions + notes)."""
+    proj = _project_or_404(project_id)
+    ctx = _db.get_working_context(proj.id)
+    return ctx
 
-@app.get("/api/project/{project_name}/todos")
-async def get_project_todos(project_name: str):
-    todos = db.list_todos(project_name)
-    return [{"id": t.id, "title": t.title, "description": t.description, "status": t.status, "priority": t.priority, "updated": t.updated} for t in todos]
 
-@app.delete("/api/project/{project_name}")
-async def delete_project(project_name: str):
-    db.delete_project(project_name)
-    return {"message": f"Project {project_name} deleted successfully."}
+@app.get("/api/projects/{project_id}/tasks")
+def get_tasks(
+    project_id: str,
+    status: Optional[str] = None,
+    topo: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Return tasks for a project.
 
-@app.get("/api/insights")
-async def get_insights(scope: Optional[str] = "global"):
-    insights = db.list_insights(scope=scope)
-    return [{"id": i.id, "scope": i.scope, "title": i.title, "body": i.body, "tags": i.tags, "updated": i.updated} for i in insights]
+    Pass topo=true (default) to get tasks ordered by their dependency chain
+    (blocking tasks first). Each task includes a `depth` field reflecting
+    how many blockers it has in the result set.
+    """
+    proj = _project_or_404(project_id)
+    # Load all top-level tasks with subtasks already attached
+    tree = _db.get_task_tree(proj.id)
+    if status:
+        tree = [t for t in tree if t.status == status]
+    if topo:
+        return _topo_sort_tasks(tree)
+    return [_task_dict(t) for t in tree]
 
-UI_DIR = os.path.join(os.path.dirname(__file__), "ui")
-if not os.path.exists(UI_DIR):
-    os.makedirs(UI_DIR)
+
+@app.get("/api/projects/{project_id}/decisions")
+def get_decisions(
+    project_id: str,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return decisions for a project, optionally filtered by status."""
+    proj = _project_or_404(project_id)
+    decisions = _db.list_decisions(proj.id, status)
+    return [_decision_dict(d) for d in decisions]
+
+
+@app.get("/api/projects/{project_id}/notes")
+def get_notes(
+    project_id: str,
+    note_type: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return notes for a project, optionally filtered by type."""
+    proj = _project_or_404(project_id)
+    notes = _db.list_notes(proj.id, note_type)
+    return [_note_dict(n) for n in notes]
+
+
+@app.get("/api/projects/{project_id}/timeline")
+def get_timeline(project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Recent task events for a project (acts as a worklog timeline)."""
+    proj = _project_or_404(project_id)
+    # Gather all top-level tasks and collect their recent events
+    tasks = _db.list_tasks(proj.id, parent_task_id=None)
+    events = []
+    for task in tasks:
+        for ev in _db.get_task_events(task.id, limit=20):
+            events.append({
+                "task_id": ev.task_id,
+                "task_title": task.title,
+                "event_type": ev.event_type,
+                "event_note": ev.event_note,
+                "created_at": ev.created_at,
+            })
+    # Sort all events newest-first
+    events.sort(key=lambda e: e["created_at"], reverse=True)
+    return events[:limit]
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: str) -> Dict[str, str]:
+    """Delete a project and all its data."""
+    proj = _project_or_404(project_id)
+    _db.delete_project(proj.id)
+    return {"deleted": proj.name}
+
+
+# ── Static UI ─────────────────────────────────────────────────────────────────
 
 @app.get("/")
-async def read_index():
-    index_path = os.path.join(UI_DIR, "index.html")
-    if not os.path.exists(index_path):
-        return {"message": "UI not built yet."}
-    return FileResponse(index_path)
+def root():
+    return FileResponse(str(UI_DIR / "index.html"))
 
-if os.path.exists(UI_DIR):
-    app.mount("/", StaticFiles(directory=UI_DIR), name="ui")
+
+if UI_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(UI_DIR)), name="ui")

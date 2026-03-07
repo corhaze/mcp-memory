@@ -1,51 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCP Memory Explorer</title>
-    <link rel="stylesheet" href="index.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mcp-memory Explorer</title>
+  <link rel="stylesheet" href="/index.css" />
 </head>
-
 <body>
-    <aside>
-        <h1>Memory Bank</h1>
-        <ul class="project-list" id="projectList">
-            <li class="project-item active">Loading projects...</li>
-        </ul>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">🧠 memory-2</h1>
+        <p class="logo-sub">Project Explorer</p>
+      </div>
+      <nav id="project-list" aria-label="Projects">
+        <p class="nav-hint">Loading projects…</p>
+      </nav>
     </aside>
 
-    <main>
-        <header>
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('context')">Context</div>
-                <div class="tab" onclick="switchTab('timeline')">Timeline</div>
-                <div class="tab" onclick="switchTab('insights')">Insights</div>
-                <div class="tab" onclick="switchTab('todos')">Todos</div>
-            </div>
-            <div id="currentProjectLabel" style="font-weight: 600; color: var(--accent-color)"></div>
+    <!-- Main content -->
+    <main id="main">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">📂</div>
+        <h2>Select a project</h2>
+        <p>Choose a project from the sidebar to view its tasks, decisions, and notes.</p>
+      </div>
+
+      <div id="project-view" class="hidden">
+        <!-- Project header -->
+        <header id="project-header">
+          <div class="project-title-row">
+            <h2 id="project-name"></h2>
+            <span id="project-status-badge" class="status-badge"></span>
+          </div>
+          <p id="project-description" class="project-description"></p>
+          <p id="project-summary-text" class="project-summary"></p>
         </header>
 
-        <section class="content-viewer" id="contentViewer">
-            <!-- Content will be injected here -->
-        </section>
-    </main>
-
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="modal">
-        <div class="modal-content">
-            <h2>Delete Project?</h2>
-            <p>This will permanently remove all memory bank data for <strong id="deleteProjectName"></strong>. This
-                action cannot be undone.</p>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-danger" onclick="confirmDelete()">Delete Project</button>
-            </div>
+        <!-- Tabs -->
+        <div class="tab-bar" role="tablist">
+          <button class="tab active" data-tab="tasks" role="tab" id="tab-tasks">Tasks</button>
+          <button class="tab" data-tab="decisions" role="tab" id="tab-decisions">Decisions</button>
+          <button class="tab" data-tab="notes" role="tab" id="tab-notes">Notes</button>
+          <button class="tab" data-tab="timeline" role="tab" id="tab-timeline">Timeline</button>
         </div>
-    </div>
 
-    <script src="index.js"></script>
+        <!-- Tasks panel -->
+        <section id="panel-tasks" class="panel">
+          <div class="panel-toolbar">
+            <span class="panel-label">Task dependency order</span>
+            <div class="filter-group" id="task-filters">
+              <button class="filter-btn active" data-status="">All</button>
+              <button class="filter-btn" data-status="open">Open</button>
+              <button class="filter-btn" data-status="in_progress">In Progress</button>
+              <button class="filter-btn" data-status="blocked">Blocked</button>
+              <button class="filter-btn" data-status="done">Done</button>
+            </div>
+          </div>
+          <ul id="task-list" class="task-list" aria-live="polite"></ul>
+        </section>
+
+        <!-- Decisions panel -->
+        <section id="panel-decisions" class="panel hidden">
+          <div class="panel-toolbar">
+            <span class="panel-label">Architecture decisions</span>
+            <div class="filter-group" id="decision-filters">
+              <button class="filter-btn active" data-status="">All</button>
+              <button class="filter-btn" data-status="active">Active</button>
+              <button class="filter-btn" data-status="draft">Draft</button>
+              <button class="filter-btn" data-status="superseded">Superseded</button>
+            </div>
+          </div>
+          <ul id="decision-list" class="entity-list" aria-live="polite"></ul>
+        </section>
+
+        <!-- Notes panel -->
+        <section id="panel-notes" class="panel hidden">
+          <div class="panel-toolbar">
+            <span class="panel-label">Operational notes</span>
+            <div class="filter-group" id="note-filters">
+              <button class="filter-btn active" data-type="">All</button>
+              <button class="filter-btn" data-type="investigation">Investigation</button>
+              <button class="filter-btn" data-type="implementation">Implementation</button>
+              <button class="filter-btn" data-type="bug">Bug</button>
+              <button class="filter-btn" data-type="context">Context</button>
+              <button class="filter-btn" data-type="handover">Handover</button>
+            </div>
+          </div>
+          <ul id="note-list" class="entity-list" aria-live="polite"></ul>
+        </section>
+
+        <!-- Timeline panel -->
+        <section id="panel-timeline" class="panel hidden">
+          <div class="panel-toolbar">
+            <span class="panel-label">Task event log</span>
+          </div>
+          <ul id="timeline-list" class="timeline-list" aria-live="polite"></ul>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="/index.js"></script>
 </body>
-
 </html>
