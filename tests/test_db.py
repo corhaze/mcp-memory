@@ -13,7 +13,7 @@ from unittest.mock import patch
 @pytest.fixture(autouse=True)
 def tmp_db(tmp_path, monkeypatch):
     db_file = tmp_path / "test.db"
-    monkeypatch.setattr("mcp_memory.db.db_path", lambda: db_file)
+    monkeypatch.setattr("mcp_memory.repository.connection.db_path", lambda: db_file)
     yield db_file
 
 
