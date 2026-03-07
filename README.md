@@ -96,8 +96,10 @@ The migration is safe to run multiple times — existing projects in the new sch
 Start the local web UI to browse projects, tasks, decisions, and notes:
 
 ```bash
-uvicorn mcp_memory.ui_server:app --port 7878
+uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 7878
 ```
+
+> **Note:** Always use `--reload-dir mcp_memory` when running with `--reload`. Without it, uvicorn watches the entire project including the SQLite DB file (`~/.mcp-memory/`), causing rapid module reloads on every DB write, ONNX thread pool accumulation, and severe CPU/memory pressure.
 
 Then open http://localhost:7878.
 

@@ -51,6 +51,33 @@ def get_conn() -> Iterator[sqlite3.Connection]:
         pass  # Ignore if running in a read-only sandbox
 
     try:
+        # Migration: make embeddings.project_id nullable (needed for global notes)
+        col_info = {r["name"]: r for r in conn.execute("PRAGMA table_info(embeddings)").fetchall()}
+        if col_info.get("project_id") and col_info["project_id"]["notnull"]:
+            conn.execute("PRAGMA foreign_keys = OFF")
+            conn.execute("""
+                CREATE TABLE embeddings_new (
+                    id               TEXT PRIMARY KEY,
+                    project_id       TEXT,
+                    entity_type      TEXT NOT NULL,
+                    entity_id        TEXT NOT NULL,
+                    embedding_model  TEXT NOT NULL,
+                    embedding_vector BLOB NOT NULL,
+                    created_at       TEXT NOT NULL,
+                    UNIQUE(entity_type, entity_id),
+                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("INSERT INTO embeddings_new SELECT * FROM embeddings")
+            conn.execute("DROP TABLE embeddings")
+            conn.execute("ALTER TABLE embeddings_new RENAME TO embeddings")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_entity ON embeddings(entity_type, entity_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_project ON embeddings(project_id)")
+            conn.execute("PRAGMA foreign_keys = ON")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
         # sqlite3.Connection can act as its own context manager for transactions
         with conn:
             yield conn
@@ -194,7 +221,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         -- ── Embeddings (unified, polymorphic) ─────────────────────────────
         CREATE TABLE IF NOT EXISTS embeddings (
             id               TEXT PRIMARY KEY,
-            project_id       TEXT NOT NULL,
+            project_id       TEXT,
             entity_type      TEXT NOT NULL,
             entity_id        TEXT NOT NULL,
             embedding_model  TEXT NOT NULL,
@@ -312,6 +339,67 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             UPDATE chunks_fts SET chunk_text = new.chunk_text WHERE id = old.id;
         END;
 
+        -- ── Global notes (cross-project, no project_id) ───────────────────
+        CREATE TABLE IF NOT EXISTS global_notes (
+            id         TEXT PRIMARY KEY,
+            title      TEXT NOT NULL,
+            note_text  TEXT NOT NULL,
+            note_type  TEXT NOT NULL DEFAULT 'context',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_global_notes_type ON global_notes(note_type);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS global_notes_fts USING fts5(
+            id UNINDEXED, title, note_text
+        );
+        CREATE TRIGGER IF NOT EXISTS tai_global_notes AFTER INSERT ON global_notes BEGIN
+            INSERT INTO global_notes_fts(id, title, note_text)
+            VALUES (new.id, new.title, new.note_text);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes AFTER DELETE ON global_notes BEGIN
+            DELETE FROM global_notes_fts WHERE id = old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tau_global_notes AFTER UPDATE ON global_notes BEGIN
+            UPDATE global_notes_fts SET title = new.title, note_text = new.note_text
+            WHERE id = old.id;
+        END;
+
+        -- ── Task notes ─────────────────────────────────────────────────────
+        CREATE TABLE IF NOT EXISTS task_notes (
+            id         TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            task_id    TEXT NOT NULL,
+            title      TEXT NOT NULL,
+            note_text  TEXT NOT NULL,
+            note_type  TEXT NOT NULL DEFAULT 'context',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            FOREIGN KEY(task_id)    REFERENCES tasks(id)    ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_task_notes_task    ON task_notes(task_id);
+        CREATE INDEX IF NOT EXISTS idx_task_notes_project ON task_notes(project_id);
+        CREATE INDEX IF NOT EXISTS idx_task_notes_type    ON task_notes(task_id, note_type);
+
+        -- ── FTS5: task_notes ───────────────────────────────────────────────
+        CREATE VIRTUAL TABLE IF NOT EXISTS task_notes_fts USING fts5(
+            id UNINDEXED, project_id UNINDEXED, task_id UNINDEXED, title, note_text
+        );
+        CREATE TRIGGER IF NOT EXISTS tai_task_notes AFTER INSERT ON task_notes BEGIN
+            INSERT INTO task_notes_fts(id, project_id, task_id, title, note_text)
+            VALUES (new.id, new.project_id, new.task_id, new.title, new.note_text);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes AFTER DELETE ON task_notes BEGIN
+            DELETE FROM task_notes_fts WHERE id = old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tau_task_notes AFTER UPDATE ON task_notes BEGIN
+            UPDATE task_notes_fts SET title = new.title, note_text = new.note_text
+            WHERE id = old.id;
+        END;
+
         -- ── FTS5: project_summaries ────────────────────────────────────────
         CREATE VIRTUAL TABLE IF NOT EXISTS summaries_fts USING fts5(
             id UNINDEXED, project_id UNINDEXED, summary_text
@@ -396,6 +484,28 @@ class Decision:
 class Note:
     id: str
     project_id: str
+    title: str
+    note_text: str
+    note_type: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass
+class GlobalNote:
+    id: str
+    title: str
+    note_text: str
+    note_type: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass
+class TaskNote:
+    id: str
+    project_id: str
+    task_id: str
     title: str
     note_text: str
     note_type: str
@@ -506,6 +616,21 @@ def _row_to_note(row: sqlite3.Row) -> Note:
     )
 
 
+def _row_to_global_note(row: sqlite3.Row) -> GlobalNote:
+    return GlobalNote(
+        id=row["id"], title=row["title"], note_text=row["note_text"],
+        note_type=row["note_type"], created_at=row["created_at"], updated_at=row["updated_at"],
+    )
+
+
+def _row_to_task_note(row: sqlite3.Row) -> TaskNote:
+    return TaskNote(
+        id=row["id"], project_id=row["project_id"], task_id=row["task_id"],
+        title=row["title"], note_text=row["note_text"], note_type=row["note_type"],
+        created_at=row["created_at"], updated_at=row["updated_at"],
+    )
+
+
 def _row_to_document(row: sqlite3.Row) -> Document:
     return Document(
         id=row["id"], project_id=row["project_id"], source_type=row["source_type"],
@@ -538,7 +663,7 @@ def _row_to_tag(row: sqlite3.Row) -> Tag:
 
 # ── Embedding helpers ──────────────────────────────────────────────────────────
 
-def _store_embedding(conn: sqlite3.Connection, project_id: str, entity_type: str,
+def _store_embedding(conn: sqlite3.Connection, project_id: Optional[str], entity_type: str,
                      entity_id: str, text: str) -> None:
     """Generate and upsert an embedding for any entity."""
     vector = _emb.generate_embedding(text)
@@ -587,10 +712,10 @@ def list_projects(status: Optional[str] = None) -> List[Project]:
     with get_conn() as conn:
         if status:
             rows = conn.execute(
-                "SELECT * FROM projects WHERE status=? ORDER BY name", (status,)
+                "SELECT * FROM projects WHERE status=? ORDER BY created_at DESC", (status,)
             ).fetchall()
         else:
-            rows = conn.execute("SELECT * FROM projects ORDER BY name").fetchall()
+            rows = conn.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
     return [_row_to_project(r) for r in rows]
 
 
@@ -981,12 +1106,12 @@ def list_notes(project_id: str, note_type: Optional[str] = None) -> List[Note]:
     with get_conn() as conn:
         if note_type:
             rows = conn.execute(
-                "SELECT * FROM notes WHERE project_id=? AND note_type=? ORDER BY updated_at DESC",
+                "SELECT * FROM notes WHERE project_id=? AND note_type=? ORDER BY created_at DESC",
                 (project_id, note_type),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM notes WHERE project_id=? ORDER BY updated_at DESC",
+                "SELECT * FROM notes WHERE project_id=? ORDER BY created_at DESC",
                 (project_id,),
             ).fetchall()
     return [_row_to_note(r) for r in rows]
@@ -1018,6 +1143,208 @@ def delete_note(note_id: str) -> bool:
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
     return cur.rowcount > 0
+
+
+# ── Task Notes ─────────────────────────────────────────────────────────────────
+
+def create_task_note(project_id: str, task_id: str, title: str,
+                     note_text: str, note_type: str = "context") -> TaskNote:
+    now = _now()
+    nid = str(uuid4())
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO task_notes (id, project_id, task_id, title, note_text, note_type, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (nid, project_id, task_id, title, note_text, note_type, now, now),
+        )
+        _store_embedding(conn, project_id, "task_note", nid, f"{title}\n{note_text}")
+    return TaskNote(id=nid, project_id=project_id, task_id=task_id, title=title,
+                    note_text=note_text, note_type=note_type, created_at=now, updated_at=now)
+
+
+def get_task_note(note_id: str) -> Optional[TaskNote]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM task_notes WHERE id=?", (note_id,)).fetchone()
+    return _row_to_task_note(row) if row else None
+
+
+def list_task_notes(task_id: str, note_type: Optional[str] = None) -> List[TaskNote]:
+    with get_conn() as conn:
+        if note_type:
+            rows = conn.execute(
+                "SELECT * FROM task_notes WHERE task_id=? AND note_type=? ORDER BY created_at DESC",
+                (task_id, note_type),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM task_notes WHERE task_id=? ORDER BY created_at DESC",
+                (task_id,),
+            ).fetchall()
+    return [_row_to_task_note(r) for r in rows]
+
+
+def update_task_note(note_id: str, title: Optional[str] = None,
+                     note_text: Optional[str] = None,
+                     note_type: Optional[str] = None) -> Optional[TaskNote]:
+    note = get_task_note(note_id)
+    if not note:
+        return None
+    now = _now()
+    updates: List[Tuple] = []
+    if title is not None:     updates.append(("title", title))
+    if note_text is not None: updates.append(("note_text", note_text))
+    if note_type is not None: updates.append(("note_type", note_type))
+    if not updates:
+        return note
+    set_clause = ", ".join(f"{k}=?" for k, _ in updates) + ", updated_at=?"
+    vals = [v for _, v in updates] + [now, note_id]
+    with get_conn() as conn:
+        conn.execute(f"UPDATE task_notes SET {set_clause} WHERE id=?", vals)
+        new_title = title or note.title
+        new_text = note_text or note.note_text
+        _store_embedding(conn, note.project_id, "task_note", note_id, f"{new_title}\n{new_text}")
+    return get_task_note(note_id)
+
+
+def delete_task_note(note_id: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM task_notes WHERE id=?", (note_id,))
+    return cur.rowcount > 0
+
+
+def search_task_notes(query: str, project_id: Optional[str] = None,
+                      task_id: Optional[str] = None) -> List[TaskNote]:
+    with get_conn() as conn:
+        if project_id and task_id:
+            rows = conn.execute(
+                "SELECT tn.* FROM task_notes tn "
+                "JOIN task_notes_fts fts ON fts.id = tn.id "
+                "WHERE task_notes_fts MATCH ? AND tn.project_id=? AND tn.task_id=? "
+                "ORDER BY rank",
+                (query, project_id, task_id),
+            ).fetchall()
+        elif project_id:
+            rows = conn.execute(
+                "SELECT tn.* FROM task_notes tn "
+                "JOIN task_notes_fts fts ON fts.id = tn.id "
+                "WHERE task_notes_fts MATCH ? AND tn.project_id=? ORDER BY rank",
+                (query, project_id),
+            ).fetchall()
+        elif task_id:
+            rows = conn.execute(
+                "SELECT tn.* FROM task_notes tn "
+                "JOIN task_notes_fts fts ON fts.id = tn.id "
+                "WHERE task_notes_fts MATCH ? AND tn.task_id=? ORDER BY rank",
+                (query, task_id),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT tn.* FROM task_notes tn "
+                "JOIN task_notes_fts fts ON fts.id = tn.id "
+                "WHERE task_notes_fts MATCH ? ORDER BY rank",
+                (query,),
+            ).fetchall()
+    return [_row_to_task_note(r) for r in rows]
+
+
+def semantic_search_task_notes(query: str, project_id: Optional[str] = None,
+                                task_id: Optional[str] = None,
+                                limit: int = 5) -> List[TaskNote]:
+    results = _semantic_search_raw(query, "task_note", project_id, limit * 3)
+    notes = []
+    for _score, eid in results:
+        n = get_task_note(eid)
+        if n and (task_id is None or n.task_id == task_id):
+            notes.append(n)
+            if len(notes) >= limit:
+                break
+    return notes
+
+
+# ── Global Notes ───────────────────────────────────────────────────────────────
+
+def create_global_note(title: str, note_text: str, note_type: str = "context") -> GlobalNote:
+    now = _now()
+    nid = str(uuid4())
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO global_notes (id, title, note_text, note_type, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (nid, title, note_text, note_type, now, now),
+        )
+        _store_embedding(conn, None, "global_note", nid, f"{title}\n{note_text}")
+    return GlobalNote(id=nid, title=title, note_text=note_text, note_type=note_type,
+                      created_at=now, updated_at=now)
+
+
+def get_global_note(note_id: str) -> Optional[GlobalNote]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM global_notes WHERE id=?", (note_id,)).fetchone()
+    return _row_to_global_note(row) if row else None
+
+
+def list_global_notes(note_type: Optional[str] = None) -> List[GlobalNote]:
+    with get_conn() as conn:
+        if note_type:
+            rows = conn.execute(
+                "SELECT * FROM global_notes WHERE note_type=? ORDER BY created_at DESC",
+                (note_type,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM global_notes ORDER BY created_at DESC"
+            ).fetchall()
+    return [_row_to_global_note(r) for r in rows]
+
+
+def update_global_note(note_id: str, title: Optional[str] = None,
+                       note_text: Optional[str] = None,
+                       note_type: Optional[str] = None) -> Optional[GlobalNote]:
+    note = get_global_note(note_id)
+    if not note:
+        return None
+    now = _now()
+    updates: List[Tuple] = []
+    if title is not None:     updates.append(("title", title))
+    if note_text is not None: updates.append(("note_text", note_text))
+    if note_type is not None: updates.append(("note_type", note_type))
+    if not updates:
+        return note
+    set_clause = ", ".join(f"{k}=?" for k, _ in updates) + ", updated_at=?"
+    vals = [v for _, v in updates] + [now, note_id]
+    with get_conn() as conn:
+        conn.execute(f"UPDATE global_notes SET {set_clause} WHERE id=?", vals)
+        new_title = title or note.title
+        new_text = note_text or note.note_text
+        _store_embedding(conn, None, "global_note", note_id, f"{new_title}\n{new_text}")
+    return get_global_note(note_id)
+
+
+def delete_global_note(note_id: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM global_notes WHERE id=?", (note_id,))
+    return cur.rowcount > 0
+
+
+def search_global_notes(query: str) -> List[GlobalNote]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT gn.* FROM global_notes gn "
+            "JOIN global_notes_fts fts ON fts.id = gn.id "
+            "WHERE global_notes_fts MATCH ? ORDER BY rank",
+            (query,),
+        ).fetchall()
+    return [_row_to_global_note(r) for r in rows]
+
+
+def semantic_search_global_notes(query: str, limit: int = 5) -> List[GlobalNote]:
+    results = _semantic_search_raw(query, "global_note", None, limit)
+    notes = []
+    for _score, eid in results:
+        n = get_global_note(eid)
+        if n:
+            notes.append(n)
+    return notes
 
 
 # ── Documents ──────────────────────────────────────────────────────────────────
@@ -1364,9 +1691,9 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
     # 1. Current summary
     summary = get_current_summary(project_id)
 
-    # 2. Open tasks
-    open_tasks = list_tasks(project_id, status="open", parent_task_id=None)
-    in_progress = list_tasks(project_id, status="in_progress", parent_task_id=None)
+    # 2. Open tasks (top-level only — subtasks are reachable via get_task)
+    open_tasks = list_tasks(project_id, status="open", parent_task_id="_root_")
+    in_progress = list_tasks(project_id, status="in_progress", parent_task_id="_root_")
     active_tasks = open_tasks + in_progress
 
     # 3. Decisions linked to active tasks
@@ -1378,7 +1705,7 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
                 linked_decision_ids.add(lnk.to_entity_id)
 
     linked_decisions = []
-    for did in linked_decision_ids:
+    for did in list(linked_decision_ids)[:5]:
         d = get_decision(did)
         if d:
             linked_decisions.append(d)
@@ -1388,6 +1715,9 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
 
     # 5. Recent notes
     recent_notes = list_notes(project_id)[:5]
+
+    # 6. Global notes (titles only — fetch full text via get_global_note)
+    global_notes = list_global_notes()
 
     return {
         "project": {"id": proj.id, "name": proj.name, "status": proj.status,
@@ -1409,5 +1739,9 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
         "recent_notes": [
             {"id": n.id, "title": n.title, "note_type": n.note_type}
             for n in recent_notes
+        ],
+        "global_notes": [
+            {"id": n.id, "title": n.title, "note_type": n.note_type}
+            for n in global_notes
         ],
     }

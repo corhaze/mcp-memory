@@ -11,7 +11,12 @@ Endpoints:
   DELETE /api/projects/{project_id}       — delete project
 
 Run:
-    uvicorn mcp_memory.ui_server:app --reload --port 7878
+    uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 7878
+
+    IMPORTANT: always pass --reload-dir mcp_memory when using --reload.
+    Without it, uvicorn watches ~/.mcp-memory/memory.db and its WAL/SHM files.
+    Every DB write triggers a module reload → new ONNX InferenceSession →
+    new thread pool. Threads accumulate rapidly (observed: 742 threads, 78% kernel CPU).
 """
 
 from __future__ import annotations
@@ -66,9 +71,9 @@ def _topo_sort_tasks(tasks: List[_db.Task]) -> List[Dict[str, Any]]:
     roots = [t for t in tasks if not t.blocked_by_task_id or t.blocked_by_task_id not in by_id]
     blocked = [t for t in tasks if t.blocked_by_task_id and t.blocked_by_task_id in by_id]
 
-    for t in sorted(roots, key=lambda x: x.created_at):
+    for t in sorted(roots, key=lambda x: x.created_at, reverse=True):
         visit(t, depth=0)
-    for t in sorted(blocked, key=lambda x: x.created_at):
+    for t in sorted(blocked, key=lambda x: x.created_at, reverse=True):
         visit(t, depth=1)
 
     return result
@@ -108,6 +113,29 @@ def _decision_dict(d: _db.Decision) -> Dict[str, Any]:
 def _note_dict(n: _db.Note) -> Dict[str, Any]:
     return {
         "id": n.id,
+        "title": n.title,
+        "note_text": n.note_text,
+        "note_type": n.note_type,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+    }
+
+
+def _global_note_dict(n: _db.GlobalNote) -> Dict[str, Any]:
+    return {
+        "id": n.id,
+        "title": n.title,
+        "note_text": n.note_text,
+        "note_type": n.note_type,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+    }
+
+
+def _task_note_dict(n: _db.TaskNote) -> Dict[str, Any]:
+    return {
+        "id": n.id,
+        "task_id": n.task_id,
         "title": n.title,
         "note_text": n.note_text,
         "note_type": n.note_type,
@@ -167,6 +195,21 @@ class NoteCreate(BaseModel):
     note_type: str = "context"
 
 class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    note_text: Optional[str] = None
+    note_type: Optional[str] = None
+
+class TaskNoteCreate(BaseModel):
+    title: str
+    note_text: str
+    note_type: str = "context"
+
+class GlobalNoteCreate(BaseModel):
+    title: str
+    note_text: str
+    note_type: str = "context"
+
+class GlobalNoteUpdate(BaseModel):
     title: Optional[str] = None
     note_text: Optional[str] = None
     note_type: Optional[str] = None
@@ -375,6 +418,62 @@ def update_note(project_id: str, note_id: str, req: NoteUpdate) -> Dict[str, Any
 def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
     if not _db.delete_note(note_id):
         raise HTTPException(status_code=404, detail="Note not found")
+    return {"deleted": note_id}
+
+
+# ── Task Notes ────────────────────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}/notes")
+def get_task_notes(task_id: str) -> List[Dict[str, Any]]:
+    """Return all notes attached to a task."""
+    notes = _db.list_task_notes(task_id)
+    return [_task_note_dict(n) for n in notes]
+
+
+@app.post("/api/tasks/{task_id}/notes")
+def create_task_note(task_id: str, req: TaskNoteCreate) -> Dict[str, Any]:
+    """Add a note to a task."""
+    task = _db.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    note = _db.create_task_note(task.project_id, task_id, req.title, req.note_text, req.note_type)
+    return _task_note_dict(note)
+
+
+@app.delete("/api/task-notes/{note_id}")
+def delete_task_note(note_id: str) -> Dict[str, str]:
+    """Delete a task note."""
+    if not _db.delete_task_note(note_id):
+        raise HTTPException(status_code=404, detail="Task note not found")
+    return {"deleted": note_id}
+
+
+# ── Global Notes ──────────────────────────────────────────────────────────────
+
+@app.get("/api/global-notes")
+def get_global_notes(note_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return all global notes, optionally filtered by type."""
+    return [_global_note_dict(n) for n in _db.list_global_notes(note_type)]
+
+
+@app.post("/api/global-notes")
+def create_global_note(req: GlobalNoteCreate) -> Dict[str, Any]:
+    note = _db.create_global_note(req.title, req.note_text, req.note_type)
+    return _global_note_dict(note)
+
+
+@app.patch("/api/global-notes/{note_id}")
+def update_global_note(note_id: str, req: GlobalNoteUpdate) -> Dict[str, Any]:
+    note = _db.update_global_note(note_id, req.title, req.note_text, req.note_type)
+    if not note:
+        raise HTTPException(status_code=404, detail="Global note not found")
+    return _global_note_dict(note)
+
+
+@app.delete("/api/global-notes/{note_id}")
+def delete_global_note(note_id: str) -> Dict[str, str]:
+    if not _db.delete_global_note(note_id):
+        raise HTTPException(status_code=404, detail="Global note not found")
     return {"deleted": note_id}
 
 

@@ -14,6 +14,8 @@ const state = {
     decisionFilter: '',
     noteFilter: '',
     expandedTasks: new Set(),
+    taskNotes: {},
+    globalNotes: [],
     searchResults: null,
 };
 
@@ -52,6 +54,7 @@ const decisionListEl = $('decision-list');
 const noteListEl = $('note-list');
 const timelineListEl = $('timeline-list');
 
+const globalNoteListEl = $('global-note-list');
 const searchInput = $('global-search-input');
 const searchTab = $('tab-search');
 const clearSearchBtn = $('clear-search-btn');
@@ -88,9 +91,11 @@ async function init() {
     } catch {
         state.projects = [];
     }
+    await loadGlobalNotes();
     renderProjectNav();
     bindTabs();
     bindFilters();
+    $('add-global-note-btn').addEventListener('click', () => showGlobalNoteForm());
 
     // Search events
     searchInput.addEventListener('keyup', e => {
@@ -338,6 +343,16 @@ async function handleModalSave() {
             if (id) await api.patch(`/api/projects/${state.activeProjectId}/notes/${id}`, data);
             else await api.post(`/api/projects/${state.activeProjectId}/notes`, data);
             await selectProject(state.activeProjectId);
+        } else if (type === 'task_note') {
+            const taskId = form.dataset.taskId;
+            await api.post(`/api/tasks/${taskId}/notes`, data);
+            delete state.taskNotes[taskId];
+            await loadTaskNotes(taskId);
+        } else if (type === 'global_note') {
+            const id = form.dataset.id;
+            if (id) await api.patch(`/api/global-notes/${id}`, data);
+            else await api.post('/api/global-notes', data);
+            await loadGlobalNotes();
         }
         hideModal();
     } catch (err) {
@@ -561,6 +576,13 @@ function renderSearch() {
                 const isExpanded = btn.classList.contains('open');
                 if (body) body.classList.toggle('hidden', isExpanded);
                 btn.classList.toggle('open', !isExpanded);
+                if (!isExpanded && !state.taskNotes[id]) loadTaskNotes(id);
+            });
+        });
+        searchTasksList.querySelectorAll('.add-task-note-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                showTaskNoteForm(btn.dataset.taskId);
             });
         });
         searchTasksList.querySelectorAll('.edit-task').forEach(btn => {
@@ -696,6 +718,14 @@ function renderTasks() {
             if (body) body.classList.toggle('hidden', !nowExpanded);
             if (subs) subs.classList.toggle('hidden', !nowExpanded);
             btn.classList.toggle('open', nowExpanded);
+            if (nowExpanded && !state.taskNotes[id]) loadTaskNotes(id);
+        });
+    });
+
+    taskListEl.querySelectorAll('.add-task-note-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            showTaskNoteForm(btn.dataset.taskId);
         });
     });
 
@@ -731,7 +761,6 @@ function renderTaskItem(task, depth = 0) {
     const MAX_DEPTH = 5;
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
     const hasDesc = Boolean(task.description);
-    const hasToggle = hasDesc || hasSubtasks;
     const expanded = state.expandedTasks.has(task.id);
     const statusIcon = statusEmoji(task.status);
 
@@ -743,16 +772,24 @@ function renderTaskItem(task, depth = 0) {
         ? `<div class="task-next-action">${esc(task.next_action)}</div>`
         : '';
 
-    const toggle = hasToggle
-        ? `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`
-        : '';
+    // Always expandable — body includes description + notes section
+    const toggle = `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`;
 
-    // Description-only body (no subtasks here — they appear as siblings below the card)
-    const bodyHtml = hasDesc
-        ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
-             <div class="task-description markdown-body">${marked.parse(task.description)}</div>
-           </div>`
-        : '';
+    const cachedNotes = state.taskNotes[task.id];
+    const notesHtml = cachedNotes
+        ? renderTaskNotesHtml(task.id, cachedNotes)
+        : '<ul class="task-notes-list"><li class="list-empty task-notes-loading" style="font-size:11px;color:var(--text-dim)">—</li></ul>';
+
+    const bodyHtml = `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
+             ${hasDesc ? `<div class="task-description markdown-body">${marked.parse(task.description)}</div>` : ''}
+             <div class="task-notes-section">
+               <div class="task-notes-header">
+                 <span class="task-notes-label">Notes</span>
+                 <button class="add-task-note-btn" data-task-id="${task.id}">+ add note</button>
+               </div>
+               <div id="task-notes-${task.id}">${notesHtml}</div>
+             </div>
+           </div>`;
 
     // Subtasks rendered as a sibling list below the card, not inside the body
     const subtasksHtml = (hasSubtasks && depth < MAX_DEPTH)
@@ -776,6 +813,7 @@ function renderTaskItem(task, depth = 0) {
               <span class="status-badge badge-${task.status}">${task.status}</span>
               ${blockedBadge}
               ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
+              ${depth === 0 ? `<span class="task-date" title="${task.created_at ? new Date(task.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto">${formatTime(task.created_at)}</span>` : ''}
             </div>
             ${nextAction}
           </div>
@@ -806,11 +844,11 @@ function renderDecisions() {
     <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
       <div class="decision-header">
         <span class="decision-title">${esc(d.title)}</span>
-        <div class="header-actions">
-          <button class="icon-btn edit-decision" data-id="${d.id}">✎</button>
-          <button class="icon-btn danger delete-decision" data-id="${d.id}">🗑</button>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+          <span class="decision-date" title="${d.created_at ? new Date(d.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim)">${formatTime(d.created_at)}</span>
+          <span class="status-badge badge-${d.status}">${d.status}</span>
         </div>
-        <span class="status-badge badge-${d.status}">${d.status}</span>
+        <div class="header-actions">
       </div>
       <div class="decision-text markdown-body">${marked.parse(d.decision_text)}</div>
       ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
@@ -839,6 +877,150 @@ async function deleteDecision(id) {
     }
 }
 
+// ── Global Notes ───────────────────────────────────────────────────────────────
+async function loadGlobalNotes() {
+    try {
+        state.globalNotes = await api.get('/api/global-notes');
+        renderGlobalNotes();
+    } catch (err) {
+        console.error('Failed to load global notes:', err);
+    }
+}
+
+function renderGlobalNotes() {
+    if (!state.globalNotes.length) {
+        globalNoteListEl.innerHTML = '<li class="nav-hint" style="font-size:10px;padding:4px 0">No global notes yet.</li>';
+        return;
+    }
+    globalNoteListEl.innerHTML = state.globalNotes.map(n => `
+        <li class="global-note-item">
+          <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+          <button class="global-note-title" data-id="${n.id}">${esc(n.title)}</button>
+          <button class="icon-btn danger delete-global-note" data-id="${n.id}">✕</button>
+        </li>`).join('');
+
+    globalNoteListEl.querySelectorAll('.global-note-title').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const note = state.globalNotes.find(n => n.id === btn.dataset.id);
+            if (note) showGlobalNoteForm(note);
+        });
+    });
+    globalNoteListEl.querySelectorAll('.delete-global-note').forEach(btn => {
+        btn.addEventListener('click', () => deleteGlobalNote(btn.dataset.id));
+    });
+}
+
+function showGlobalNoteForm(note = null) {
+    const html = `
+    <form data-type="global_note" data-id="${note ? note.id : ''}">
+        <div class="form-group">
+            <label>Title</label>
+            <input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required>
+        </div>
+        <div class="form-group">
+            <label>Note</label>
+            <textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Type</label>
+            <select name="note_type" class="form-control">
+                <option value="context" ${note?.note_type === 'context' || !note ? 'selected' : ''}>Context</option>
+                <option value="investigation" ${note?.note_type === 'investigation' ? 'selected' : ''}>Investigation</option>
+                <option value="implementation" ${note?.note_type === 'implementation' ? 'selected' : ''}>Implementation</option>
+                <option value="bug" ${note?.note_type === 'bug' ? 'selected' : ''}>Bug</option>
+                <option value="handover" ${note?.note_type === 'handover' ? 'selected' : ''}>Handover</option>
+            </select>
+        </div>
+    </form>`;
+    showModal(note ? 'Edit Global Note' : 'New Global Note', html);
+}
+
+async function deleteGlobalNote(id) {
+    if (!confirm('Delete this global note?')) return;
+    try {
+        await api.delete(`/api/global-notes/${id}`);
+        await loadGlobalNotes();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Task Notes ─────────────────────────────────────────────────────────────────
+async function loadTaskNotes(taskId) {
+    try {
+        const notes = await api.get(`/api/tasks/${taskId}/notes`);
+        state.taskNotes[taskId] = notes;
+        const container = document.getElementById(`task-notes-${taskId}`);
+        if (container) container.innerHTML = renderTaskNotesHtml(taskId, notes);
+        bindTaskNoteButtons(taskId);
+    } catch (err) {
+        console.error('Failed to load task notes:', err);
+    }
+}
+
+function renderTaskNotesHtml(taskId, notes) {
+    if (!notes.length) {
+        return '<ul class="task-notes-list"><li class="list-empty" style="font-size:11px;color:var(--text-dim)">No notes yet.</li></ul>';
+    }
+    const items = notes.map(n => `
+        <li class="task-note-item">
+          <div class="task-note-header">
+            <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+            <span class="task-note-title">${esc(n.title)}</span>
+            <button class="icon-btn danger delete-task-note" data-note-id="${n.id}" data-task-id="${taskId}">✕</button>
+          </div>
+          <div class="task-note-text markdown-body">${marked.parse(n.note_text)}</div>
+        </li>`).join('');
+    return `<ul class="task-notes-list">${items}</ul>`;
+}
+
+function bindTaskNoteButtons(taskId) {
+    const container = document.getElementById(`task-notes-${taskId}`);
+    if (!container) return;
+    container.querySelectorAll('.delete-task-note').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            deleteTaskNote(btn.dataset.noteId, btn.dataset.taskId);
+        });
+    });
+}
+
+async function deleteTaskNote(noteId, taskId) {
+    if (!confirm('Delete this note?')) return;
+    try {
+        await api.delete(`/api/task-notes/${noteId}`);
+        delete state.taskNotes[taskId];
+        await loadTaskNotes(taskId);
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function showTaskNoteForm(taskId) {
+    const html = `
+    <form data-type="task_note" data-task-id="${taskId}">
+        <div class="form-group">
+            <label>Title</label>
+            <input name="title" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Note</label>
+            <textarea name="note_text" class="form-control" required></textarea>
+        </div>
+        <div class="form-group">
+            <label>Type</label>
+            <select name="note_type" class="form-control">
+                <option value="context">Context</option>
+                <option value="investigation">Investigation</option>
+                <option value="implementation">Implementation</option>
+                <option value="bug">Bug</option>
+                <option value="handover">Handover</option>
+            </select>
+        </div>
+    </form>`;
+    showModal('Add Task Note', html);
+}
+
 // ── Notes ──────────────────────────────────────────────────────────────────────
 function renderNotes() {
     const notes = state.notes || [];
@@ -855,6 +1037,7 @@ function renderNotes() {
     <li class="note-item">
       <div class="note-header">
         <span class="note-title">${esc(n.title)}</span>
+        <span class="note-date" title="${n.created_at ? new Date(n.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:10px">${formatTime(n.created_at)}</span>
         <div class="header-actions">
           <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
           <button class="icon-btn danger delete-note" data-id="${n.id}">🗑</button>
