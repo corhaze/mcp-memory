@@ -786,11 +786,13 @@ def delete_task(task_id: str) -> bool:
 
 
 def get_task_tree(project_id: str) -> List[Task]:
-    """Return top-level tasks with subtasks eagerly loaded."""
-    top_tasks = list_tasks(project_id, parent_task_id="_root_")
-    for task in top_tasks:
-        task.subtasks = list_tasks(project_id, parent_task_id=task.id)
-    return top_tasks
+    """Return top-level tasks with subtasks eagerly loaded at all depths."""
+    all_tasks = list_tasks(project_id, parent_task_id=None)
+    by_id = {t.id: t for t in all_tasks}
+    for task in all_tasks:
+        if task.parent_task_id and task.parent_task_id in by_id:
+            by_id[task.parent_task_id].subtasks.append(task)
+    return [t for t in all_tasks if not t.parent_task_id]
 
 
 # ── Task Events ────────────────────────────────────────────────────────────────

@@ -251,37 +251,29 @@ function renderTasks() {
     });
 }
 
-function renderTaskItem(task) {
-    const depth = Math.min(task.depth || 0, 3);
-    const hasBody = task.description || (task.subtasks && task.subtasks.length > 0);
+function renderTaskItem(task, depth = 0) {
+    const MAX_DEPTH = 5;
+    const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+    const hasBody = task.description || hasSubtasks;
     const expanded = state.expandedTasks.has(task.id);
     const statusIcon = statusEmoji(task.status);
 
-    // Build blocked-by badge if applicable
     const blockedBadge = task.blocked_by_task_id
-        ? `<span class="blocked-by-badge" title="Blocked by task ${task.blocked_by_task_id.slice(0, 8)}">depends on</span>`
+        ? `<span class="blocked-by-badge" title="Blocked by: ${task.blocked_by_task_id}">depends on</span>`
         : '';
 
-    // Next action chip
     const nextAction = task.next_action
         ? `<div class="task-next-action">${esc(task.next_action)}</div>`
         : '';
 
-    // Subtask list
-    const subtaskHtml = (task.subtasks && task.subtasks.length)
-        ? `<ul class="subtask-list">${task.subtasks.map(st => `
-        <li class="subtask-item ${st.status}">
-          <span class="subtask-status">${statusEmoji(st.status)}</span>
-          <span class="subtask-title">${esc(st.title)}</span>
-        </li>`).join('')}
-       </ul>`
+    const subtaskHtml = (hasSubtasks && depth < MAX_DEPTH)
+        ? `<ul class="subtask-list">${task.subtasks.map(st => renderTaskItem(st, depth + 1)).join('')}</ul>`
         : '';
 
     const toggle = hasBody
         ? `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`
         : '';
 
-    const bodyHidden = expanded ? '' : ' hidden';
     const descHtml = task.description
         ? `<div class="task-description">${esc(task.description)}</div>`
         : '';
@@ -289,19 +281,19 @@ function renderTaskItem(task) {
     return `
     <li class="task-item ${task.status}" data-depth="${depth}" data-task-id="${task.id}">
       <div class="task-header">
-        <span class="priority-dot priority-${task.priority || 'medium'}" title="Priority: ${task.priority}"></span>
+        <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
         <div class="task-title-area">
           <div class="task-title">${statusIcon} ${esc(task.title)}</div>
           <div class="task-meta">
             <span class="status-badge badge-${task.status}">${task.status}</span>
             ${blockedBadge}
-            ${task.assigned_agent ? `<span style="font-size:11px;color:var(--text-muted)">🤖 ${esc(task.assigned_agent)}</span>` : ''}
+            ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
           </div>
           ${nextAction}
         </div>
         ${toggle}
       </div>
-      ${hasBody ? `<div id="task-body-${task.id}" class="task-body${bodyHidden}">
+      ${hasBody ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
         ${descHtml}
         ${subtaskHtml}
       </div>` : ''}
