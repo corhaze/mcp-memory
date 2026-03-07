@@ -211,8 +211,13 @@ function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
     projectDesc.textContent = proj.description || '';
     projectStatus.textContent = proj.status || '';
     projectStatus.className = `status-badge badge-${proj.status || 'active'}`;
-    projectSummary.textContent = ctx.summary || '';
-    projectSummary.classList.toggle('hidden', !ctx.summary);
+    if (ctx.summary) {
+        projectSummary.innerHTML = marked.parse(ctx.summary);
+        projectSummary.classList.remove('hidden');
+    } else {
+        projectSummary.innerHTML = '';
+        projectSummary.classList.add('hidden');
+    }
 
     // Render panels
     renderTasks();
@@ -691,7 +696,7 @@ function renderTaskItem(task, depth = 0) {
     // Description-only body (no subtasks here — they appear as siblings below the card)
     const bodyHtml = hasDesc
         ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
-             <div class="task-description">${esc(task.description)}</div>
+             <div class="task-description markdown-body">${marked.parse(task.description)}</div>
            </div>`
         : '';
 
@@ -749,7 +754,7 @@ function renderDecisions() {
         </div>
         <span class="status-badge badge-${d.status}">${d.status}</span>
       </div>
-      <div class="decision-text">${esc(d.decision_text)}</div>
+      <div class="decision-text markdown-body">${marked.parse(d.decision_text)}</div>
       ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
       ${d.supersedes_decision_id ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">↳ Supersedes ${d.supersedes_decision_id.slice(0, 8)}</div>` : ''}
     </li>
@@ -798,7 +803,7 @@ function renderNotes() {
         </div>
         <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
       </div>
-      <div class="note-text">${esc(n.note_text)}</div>
+      <div class="note-text markdown-body">${marked.parse(n.note_text)}</div>
     </li>
   `).join('');
 
