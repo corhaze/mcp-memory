@@ -62,13 +62,13 @@ const searchEmptyState = $('search-empty-state');
 
 // ── Routing ────────────────────────────────────────────────────────────────────
 // URL format: /{project-name}/{tab}  e.g. /mcp-memory/decisions
-const VALID_TABS = ['tasks', 'decisions', 'notes', 'timeline', 'search'];
+const VALID_TABS = ['summary', 'tasks', 'decisions', 'notes', 'timeline', 'search'];
 
 function parsePath() {
     const parts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
     if (!parts.length) return null;
     const projectName = decodeURIComponent(parts[0]);
-    const tab = VALID_TABS.includes(parts[1]) ? parts[1] : 'tasks';
+    const tab = VALID_TABS.includes(parts[1]) ? parts[1] : 'summary';
     return { projectName, tab };
 }
 
@@ -104,7 +104,7 @@ async function init() {
         searchInput.value = '';
         state.searchResults = null;
         searchTab.classList.add('hidden');
-        activateTab('tasks');
+        activateTab('summary');
     });
 
     // Event Listeners for CRUD
@@ -141,7 +141,7 @@ async function init() {
         if (s && s.projectName) {
             const proj = state.projects.find(p => p.name === s.projectName);
             if (proj) {
-                await selectProject(proj.id, s.tab || 'tasks', { updatePath: false });
+                await selectProject(proj.id, s.tab || 'summary', { updatePath: false });
             }
         } else {
             // Navigated back to no-project state
@@ -173,7 +173,7 @@ function renderProjectNav() {
     });
 }
 
-async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
+async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     state.activeProjectId = id;
     state.expandedTasks.clear();
 
@@ -204,7 +204,7 @@ async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
     renderProjectView(ctx, tab, updatePath);
 }
 
-function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
+function renderProjectView(ctx, tab = 'summary', updatePath = true) {
     const id = state.activeProjectId;
     const proj = ctx.project || {};
     projectName.textContent = proj.name || id;
@@ -213,10 +213,8 @@ function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
     projectStatus.className = `status-badge badge-${proj.status || 'active'}`;
     if (ctx.summary) {
         projectSummary.innerHTML = marked.parse(ctx.summary);
-        projectSummary.classList.remove('hidden');
     } else {
-        projectSummary.innerHTML = '';
-        projectSummary.classList.add('hidden');
+        projectSummary.innerHTML = '<p class="nav-hint">No project summary available. Be sure to call add_project_summary.</p>';
     }
 
     // Render panels

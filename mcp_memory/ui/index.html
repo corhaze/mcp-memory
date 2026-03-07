@@ -56,20 +56,25 @@
             </div>
           </div>
           <p id="project-description" class="project-description"></p>
-          <p id="project-summary-text" class="project-summary"></p>
         </header>
 
         <!-- Tabs -->
         <div class="tab-bar" role="tablist">
-          <button class="tab active" data-tab="tasks" role="tab" id="tab-tasks">Tasks</button>
+          <button class="tab active" data-tab="summary" role="tab" id="tab-summary">Summary</button>
+          <button class="tab" data-tab="tasks" role="tab" id="tab-tasks">Tasks</button>
           <button class="tab" data-tab="decisions" role="tab" id="tab-decisions">Decisions</button>
           <button class="tab" data-tab="notes" role="tab" id="tab-notes">Notes</button>
           <button class="tab" data-tab="timeline" role="tab" id="tab-timeline">Timeline</button>
           <button class="tab hidden" data-tab="search" role="tab" id="tab-search">Search</button>
         </div>
 
+        <!-- Summary panel -->
+        <section id="panel-summary" class="panel">
+          <div id="project-summary-text" class="project-summary" style="padding: 1rem 1.5rem;"></div>
+        </section>
+
         <!-- Tasks panel -->
-        <section id="panel-tasks" class="panel">
+        <section id="panel-tasks" class="panel hidden">
           <div class="panel-toolbar">
             <div class="panel-info">
               <span class="panel-label">Task dependency order</span>
