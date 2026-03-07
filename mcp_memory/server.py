@@ -27,8 +27,11 @@ mcp = FastMCP(
         "category='orientation' and key='GET_STARTED' to understand core patterns. "
         "PROACTIVE LOGGING: As you finish milestones, fix bugs, or make architectural decisions, "
         "ALWAYS call `log_event` to record the change. Do not wait for user prompts. "
-        "SEARCH BEFORE ACTING: When starting a new task, always call `search_insights` with relevant keywords "
-        "to discover past lessons, patterns, or 'gotchas'. "
+        "GIT WORKFLOW: Once a feature is complete and verified with tests, ALWAYS perform a git commit "
+        "with a descriptive message and push to the remote repository. "
+        "SEARCH BEFORE ACTING: When starting a new task, always call `search_insights` and "
+        "`semantic_search_insights` with relevant keywords/natural language to discover past "
+        "lessons, patterns, or 'gotchas'. "
         "TODO TRACKING: Use `add_todo`, `update_todo`, and `list_todos` to track future work. "
         "Each todo can store a detailed implementation plan in its `description` field. "
         "Use add_insight to save reusable lessons, skills, or patterns."
@@ -281,6 +284,25 @@ def search_insights(query: str) -> str:
 
 
 @mcp.tool()
+def semantic_search_insights(query: str, scope: Optional[str] = None) -> str:
+    """Search for insights using semantic similarity (vector search).
+    
+    Excellent for finding related concepts even if exact keywords don't match.
+
+    Args:
+        query: Search query (natural language).
+        scope: Optional project name or 'global'.
+    """
+    insights = _db.semantic_search_insights(query, scope)
+    if not insights:
+        return f"No insights found semantically related to '{query}'."
+    lines = [f"Semantic search results for '{query}':"]
+    for i in insights:
+        lines.append(f"[{i.scope}] {i.title}\n  {i.body[:150]}...")
+    return "\n".join(lines)
+
+
+@mcp.tool()
 def search_contexts(query: str) -> str:
     """Search for context entries (facts, config, etc.) by keyword.
 
@@ -291,6 +313,23 @@ def search_contexts(query: str) -> str:
     if not entries:
         return f"No context entries matching '{query}' found."
     lines = [f"Search results for '{query}':"]
+    for e in entries:
+        lines.append(f"[{e.project}/{e.category}] {e.key}: {e.value}")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def semantic_search_contexts(query: str, project: Optional[str] = None) -> str:
+    """Search for context entries using semantic similarity (vector search).
+
+    Args:
+        query:   Search query.
+        project: Optional project filter.
+    """
+    entries = _db.semantic_search_contexts(query, project)
+    if not entries:
+        return f"No context entries found semantically related to '{query}'."
+    lines = [f"Semantic search results for '{query}':"]
     for e in entries:
         lines.append(f"[{e.project}/{e.category}] {e.key}: {e.value}")
     return "\n".join(lines)
@@ -407,6 +446,23 @@ def search_todos(query: str) -> str:
     lines = [f"Search results for todos matching '{query}':"]
     for t in todos:
         lines.append(f"[{t.project}/{t.status}] {t.title} (ID: {t.id[:8]})")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def semantic_search_todos(query: str, project: Optional[str] = None) -> str:
+    """Search for todos using semantic similarity (vector search).
+
+    Args:
+        query:   Search query.
+        project: Optional project filter.
+    """
+    todos = _db.semantic_search_todos(query, project)
+    if not todos:
+        return f"No todos found semantically related to '{query}'."
+    lines = [f"Semantic search results for '{query}':"]
+    for t in todos:
+        lines.append(f"[{t.project}/{t.status}] {t.title} ({t.id[:8]})")
     return "\n".join(lines)
 
 

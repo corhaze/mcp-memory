@@ -65,5 +65,41 @@ def projects():
         for n in names:
             click.echo(f"  - {n}")
 
+@main.command()
+@click.argument("query")
+@click.option("--project", "-p", help="Filter by project")
+@click.option("--semantic", "-s", is_flag=True, help="Use semantic search instead of keyword")
+@click.option("--limit", "-l", default=5, help="Limit results")
+def search(query, project, semantic, limit):
+    """Search across context, insights, and todos."""
+    if semantic:
+        click.echo(f"Searching semantically for '{query}'...")
+        contexts = _db.semantic_search_contexts(query, project, limit=limit)
+        insights = _db.semantic_search_insights(query, project, limit=limit) # project maps to scope here
+        todos = _db.semantic_search_todos(query, project, limit=limit)
+    else:
+        click.echo(f"Searching keywords for '{query}'...")
+        contexts = _db.search_contexts(query)
+        insights = _db.search_insights(query)
+        todos = _db.search_todos(query)
+    
+    if contexts:
+        click.echo("\n--- Context ---")
+        for e in contexts:
+            click.echo(f"[{e.project}/{e.category}] {e.key}: {e.value}")
+            
+    if insights:
+        click.echo("\n--- Insights ---")
+        for i in insights:
+            click.echo(f"[{i.scope}] {i.title}")
+            
+    if todos:
+        click.echo("\n--- Todos ---")
+        for t in todos:
+            click.echo(f"[{t.project}/{t.status}] {t.title} ({t.id[:8]})")
+
+    if not (contexts or insights or todos):
+        click.echo("No results found.")
+
 if __name__ == "__main__":
     main()

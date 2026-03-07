@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 from uuid import uuid4
+import pickle
+from . import embeddings as _emb
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -177,7 +179,27 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         INSERT INTO todos_fts(id, project, title, description)
             SELECT id, project, title, description FROM todos
             WHERE NOT EXISTS (SELECT 1 FROM todos_fts WHERE id = todos.id);
+
+        -- Embedding Storage
+        CREATE TABLE IF NOT EXISTS contexts_embeddings (
+            id        TEXT PRIMARY KEY,
+            embedding BLOB NOT NULL,
+            FOREIGN KEY(id) REFERENCES contexts(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS insights_embeddings (
+            id        TEXT PRIMARY KEY,
+            embedding BLOB NOT NULL,
+            FOREIGN KEY(id) REFERENCES insights(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS todos_embeddings (
+            id        TEXT PRIMARY KEY,
+            embedding BLOB NOT NULL,
+            FOREIGN KEY(id) REFERENCES todos(id) ON DELETE CASCADE
+        );
     """)
+    conn.execute("PRAGMA foreign_keys = ON;")
     conn.commit()
 
 
@@ -276,6 +298,15 @@ def upsert_context(
             "SELECT * FROM contexts WHERE project=? AND category=? AND key=?",
             (project, category, key),
         ).fetchone()
+        
+        # Update embedding
+        emb_vector = _emb.generate_embedding(value)
+        conn.execute(
+            "INSERT INTO contexts_embeddings (id, embedding) VALUES (?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET embedding=excluded.embedding",
+            (row["id"], pickle.dumps(emb_vector)),
+        )
+        
     return _row_to_context(row)
 
 
@@ -379,6 +410,15 @@ def add_insight(
             "SELECT * FROM insights WHERE scope=? AND title=?",
             (scope, title),
         ).fetchone()
+
+        # Update embedding (title + body)
+        emb_vector = _emb.generate_embedding(f"{title}\n{body}")
+        conn.execute(
+            "INSERT INTO insights_embeddings (id, embedding) VALUES (?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET embedding=excluded.embedding",
+            (row["id"], pickle.dumps(emb_vector)),
+        )
+
     return _row_to_insight(row)
 
 
@@ -497,6 +537,15 @@ def upsert_todo(
         row = conn.execute(
             "SELECT * FROM todos WHERE id=?", (entry_id,)
         ).fetchone()
+
+        # Update embedding (title + description)
+        emb_vector = _emb.generate_embedding(f"{title}\n{description}")
+        conn.execute(
+            "INSERT INTO todos_embeddings (id, embedding) VALUES (?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET embedding=excluded.embedding",
+            (row["id"], pickle.dumps(emb_vector)),
+        )
+
     return _row_to_todo(row)
 
 
@@ -598,3 +647,83 @@ def get_timeline(project: str, limit: int = 20) -> List[EventEntry]:
         )
         for r in rows
     ]
+
+
+# ── Semantic Search ───────────────────────────────────────────────────────────
+
+def semantic_search_contexts(query: str, project: Optional[str] = None, limit: int = 5) -> List[ContextEntry]:
+    """Perform semantic search for context entries."""
+    query_emb = _emb.generate_embedding(query)
+    with get_conn() as conn:
+        if project:
+            rows = conn.execute(
+                "SELECT c.*, e.embedding FROM contexts c "
+                "JOIN contexts_embeddings e ON c.id = e.id "
+                "WHERE c.project = ?", (project,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT c.*, e.embedding FROM contexts c "
+                "JOIN contexts_embeddings e ON c.id = e.id"
+            ).fetchall()
+
+    results = []
+    for r in rows:
+        emb = pickle.loads(r["embedding"])
+        score = _emb.cosine_similarity(query_emb, emb)
+        results.append((score, _row_to_context(r)))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [item[1] for item in results[:limit]]
+
+
+def semantic_search_insights(query: str, scope: Optional[str] = None, limit: int = 5) -> List[InsightEntry]:
+    """Perform semantic search for insights."""
+    query_emb = _emb.generate_embedding(query)
+    with get_conn() as conn:
+        if scope:
+            rows = conn.execute(
+                "SELECT i.*, e.embedding FROM insights i "
+                "JOIN insights_embeddings e ON i.id = e.id "
+                "WHERE i.scope = ? OR i.scope = 'global'", (scope,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT i.*, e.embedding FROM insights i "
+                "JOIN insights_embeddings e ON i.id = e.id"
+            ).fetchall()
+
+    results = []
+    for r in rows:
+        emb = pickle.loads(r["embedding"])
+        score = _emb.cosine_similarity(query_emb, emb)
+        results.append((score, _row_to_insight(r)))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [item[1] for item in results[:limit]]
+
+
+def semantic_search_todos(query: str, project: Optional[str] = None, limit: int = 5) -> List[TodoEntry]:
+    """Perform semantic search for todos."""
+    query_emb = _emb.generate_embedding(query)
+    with get_conn() as conn:
+        if project:
+            rows = conn.execute(
+                "SELECT t.*, e.embedding FROM todos t "
+                "JOIN todos_embeddings e ON t.id = e.id "
+                "WHERE t.project = ?", (project,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT t.*, e.embedding FROM todos t "
+                "JOIN todos_embeddings e ON t.id = e.id"
+            ).fetchall()
+
+    results = []
+    for r in rows:
+        emb = pickle.loads(r["embedding"])
+        score = _emb.cosine_similarity(query_emb, emb)
+        results.append((score, _row_to_todo(r)))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [item[1] for item in results[:limit]]
