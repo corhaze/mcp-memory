@@ -215,12 +215,13 @@ def delete_project(project_id: str) -> Dict[str, str]:
     return {"deleted": proj.name}
 
 
-# ── Static UI ─────────────────────────────────────────────────────────────────
+# ── Static UI + SPA catch-all ─────────────────────────────────────────────────
+# Catch-all: serve static files if they exist, otherwise serve index.html so
+# that client-side routes like /mcp-memory or /blog/decisions work on refresh.
 
-@app.get("/")
-def root():
+@app.get("/{full_path:path}")
+def spa_catch_all(full_path: str):
+    candidate = UI_DIR / full_path
+    if candidate.exists() and candidate.is_file():
+        return FileResponse(str(candidate))
     return FileResponse(str(UI_DIR / "index.html"))
-
-
-if UI_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(UI_DIR)), name="ui")

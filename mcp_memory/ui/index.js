@@ -40,23 +40,23 @@ const noteListEl = $('note-list');
 const timelineListEl = $('timeline-list');
 
 // ── Routing ────────────────────────────────────────────────────────────────────
+// URL format: /{project-name}/{tab}  e.g. /mcp-memory/decisions
 const VALID_TABS = ['tasks', 'decisions', 'notes', 'timeline'];
 
-function parseHash() {
-    // Expects: /#/projects/{projectId}/{tab}
-    const match = location.hash.match(/^#\/projects\/([^/]+)(?:\/([^/]+))?/);
-    if (!match) return null;
-    const projectId = match[1];
-    const tab = VALID_TABS.includes(match[2]) ? match[2] : 'tasks';
-    return { projectId, tab };
+function parsePath() {
+    const parts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
+    if (!parts.length) return null;
+    const projectName = decodeURIComponent(parts[0]);
+    const tab = VALID_TABS.includes(parts[1]) ? parts[1] : 'tasks';
+    return { projectName, tab };
 }
 
-function setHash(projectId, tab, replace = false) {
-    const url = `/#/projects/${projectId}/${tab}`;
+function setPath(projectName, tab, replace = false) {
+    const url = `/${encodeURIComponent(projectName)}/${tab}`;
     if (replace) {
-        history.replaceState({ projectId, tab }, '', url);
+        history.replaceState({ projectName, tab }, '', url);
     } else {
-        history.pushState({ projectId, tab }, '', url);
+        history.pushState({ projectName, tab }, '', url);
     }
 }
 
@@ -72,16 +72,24 @@ async function init() {
     bindFilters();
 
     // Restore state from URL on load
-    const route = parseHash();
-    if (route && state.projects.find(p => p.id === route.projectId)) {
-        await selectProject(route.projectId, route.tab);
+    const route = parsePath();
+    if (route) {
+        const proj = state.projects.find(p => p.name === route.projectName);
+        if (proj) {
+            // replaceState so init doesn't add a spurious history entry
+            history.replaceState({ projectName: proj.name, tab: route.tab }, '', location.pathname);
+            await selectProject(proj.id, route.tab, { updatePath: false });
+        }
     }
 
     // Handle back/forward
     window.addEventListener('popstate', async e => {
         const s = e.state;
-        if (s && s.projectId) {
-            await selectProject(s.projectId, s.tab || 'tasks', { updateHash: false });
+        if (s && s.projectName) {
+            const proj = state.projects.find(p => p.name === s.projectName);
+            if (proj) {
+                await selectProject(proj.id, s.tab || 'tasks', { updatePath: false });
+            }
         } else {
             // Navigated back to no-project state
             state.activeProjectId = null;
@@ -112,7 +120,7 @@ function renderProjectNav() {
     });
 }
 
-async function selectProject(id, tab = 'tasks', { updateHash = true } = {}) {
+async function selectProject(id, tab = 'tasks', { updatePath = true } = {}) {
     state.activeProjectId = id;
     state.expandedTasks.clear();
 
@@ -158,8 +166,9 @@ async function selectProject(id, tab = 'tasks', { updateHash = true } = {}) {
     activateTab(tab);
 
     // Update URL (push new entry unless we're restoring from popstate)
-    if (updateHash) {
-        setHash(id, tab);
+    if (updatePath) {
+        const proj = state.projects.find(p => p.id === id);
+        if (proj) setPath(proj.name, tab);
     }
 }
 
@@ -176,7 +185,8 @@ function bindTabs() {
             activateTab(name);
             // replaceState so tab switches don't pollute history
             if (state.activeProjectId) {
-                setHash(state.activeProjectId, name, true);
+                const proj = state.projects.find(p => p.id === state.activeProjectId);
+                if (proj) setPath(proj.name, name, true);
             }
         });
     });
