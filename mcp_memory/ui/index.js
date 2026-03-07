@@ -10,7 +10,7 @@ const state = {
     decisions: [],
     notes: [],
     timeline: [],
-    taskFilter: '',
+    taskFilter: 'open',
     decisionFilter: '',
     noteFilter: '',
     expandedTasks: new Set(),
