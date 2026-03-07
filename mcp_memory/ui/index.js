@@ -243,10 +243,18 @@ function renderTasks() {
         btn.addEventListener('click', e => {
             e.stopPropagation();
             const id = btn.dataset.taskId;
+            const isExpanded = state.expandedTasks.has(id);
+            if (isExpanded) {
+                state.expandedTasks.delete(id);
+            } else {
+                state.expandedTasks.add(id);
+            }
+            const nowExpanded = !isExpanded;
             const body = document.getElementById(`task-body-${id}`);
-            if (!body) return;
-            const isOpen = body.classList.toggle('hidden');
-            btn.classList.toggle('open', !isOpen);
+            const subs = document.getElementById(`subtasks-${id}`);
+            if (body) body.classList.toggle('hidden', !nowExpanded);
+            if (subs) subs.classList.toggle('hidden', !nowExpanded);
+            btn.classList.toggle('open', nowExpanded);
         });
     });
 }
@@ -254,7 +262,8 @@ function renderTasks() {
 function renderTaskItem(task, depth = 0) {
     const MAX_DEPTH = 5;
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-    const hasBody = task.description || hasSubtasks;
+    const hasDesc = Boolean(task.description);
+    const hasToggle = hasDesc || hasSubtasks;
     const expanded = state.expandedTasks.has(task.id);
     const statusIcon = statusEmoji(task.status);
 
@@ -266,37 +275,43 @@ function renderTaskItem(task, depth = 0) {
         ? `<div class="task-next-action">${esc(task.next_action)}</div>`
         : '';
 
-    const subtaskHtml = (hasSubtasks && depth < MAX_DEPTH)
-        ? `<ul class="subtask-list">${task.subtasks.map(st => renderTaskItem(st, depth + 1)).join('')}</ul>`
-        : '';
-
-    const toggle = hasBody
+    const toggle = hasToggle
         ? `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`
         : '';
 
-    const descHtml = task.description
-        ? `<div class="task-description">${esc(task.description)}</div>`
+    // Description-only body (no subtasks here — they appear as siblings below the card)
+    const bodyHtml = hasDesc
+        ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
+             <div class="task-description">${esc(task.description)}</div>
+           </div>`
+        : '';
+
+    // Subtasks rendered as a sibling list below the card, not inside the body
+    const subtasksHtml = (hasSubtasks && depth < MAX_DEPTH)
+        ? `<ul id="subtasks-${task.id}" class="subtask-list${expanded ? '' : ' hidden'}">
+             ${task.subtasks.map(st => renderTaskItem(st, depth + 1)).join('')}
+           </ul>`
         : '';
 
     return `
-    <li class="task-item ${task.status}" data-depth="${depth}" data-task-id="${task.id}">
-      <div class="task-header">
-        <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
-        <div class="task-title-area">
-          <div class="task-title">${statusIcon} ${esc(task.title)}</div>
-          <div class="task-meta">
-            <span class="status-badge badge-${task.status}">${task.status}</span>
-            ${blockedBadge}
-            ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
+    <li class="task-group" data-depth="${depth}">
+      <div class="task-item ${task.status}">
+        <div class="task-header">
+          <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
+          <div class="task-title-area">
+            <div class="task-title">${statusIcon} ${esc(task.title)}</div>
+            <div class="task-meta">
+              <span class="status-badge badge-${task.status}">${task.status}</span>
+              ${blockedBadge}
+              ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
+            </div>
+            ${nextAction}
           </div>
-          ${nextAction}
+          ${toggle}
         </div>
-        ${toggle}
+        ${bodyHtml}
       </div>
-      ${hasBody ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
-        ${descHtml}
-        ${subtaskHtml}
-      </div>` : ''}
+      ${subtasksHtml}
     </li>`;
 }
 

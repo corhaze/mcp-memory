@@ -329,6 +329,15 @@ body {
   gap: 2px;
 }
 
+/* task-group is the <li> wrapper — no visual styling */
+.task-group {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* task-item is the card <div> */
 .task-item {
   border: 1px solid var(--border);
   background: var(--bg-surface);
@@ -339,15 +348,15 @@ body {
 .task-item.done      { opacity: 0.4; }
 .task-item.cancelled { opacity: 0.25; }
 
-/* Subtask nesting */
+/* Subtask list appears below the card, indented with a left-border guide */
 .subtask-list {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px 0 4px 16px;
+  padding-left: 20px;
   border-left: 1px solid var(--border);
-  margin: 0 0 4px 8px;
+  margin-left: 12px;
 }
 
 /* Priority dot */
