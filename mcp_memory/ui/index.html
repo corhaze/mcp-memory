@@ -21,6 +21,9 @@
         </div>
         <p class="logo-sub">// project explorer</p>
       </div>
+      <div class="sidebar-search">
+        <input type="text" id="global-search-input" placeholder="Semantic search..." aria-label="Search" disabled />
+      </div>
       <nav id="project-list" aria-label="Projects">
         <p class="nav-hint">Loading projects…</p>
       </nav>
@@ -61,6 +64,7 @@
           <button class="tab" data-tab="decisions" role="tab" id="tab-decisions">Decisions</button>
           <button class="tab" data-tab="notes" role="tab" id="tab-notes">Notes</button>
           <button class="tab" data-tab="timeline" role="tab" id="tab-timeline">Timeline</button>
+          <button class="tab hidden" data-tab="search" role="tab" id="tab-search">Search</button>
         </div>
 
         <!-- Tasks panel -->
@@ -96,6 +100,33 @@
             </div>
           </div>
           <ul id="decision-list" class="entity-list" aria-live="polite"></ul>
+        </section>
+
+        <!-- Search results panel -->
+        <section id="panel-search" class="panel hidden">
+          <div class="panel-toolbar">
+            <div class="panel-info">
+              <span class="panel-label">Semantic Search Results</span>
+            </div>
+            <div class="filter-group">
+              <button class="filter-btn" id="clear-search-btn">Clear Search</button>
+            </div>
+          </div>
+          <div id="search-results-container" class="search-results">
+            <div id="search-tasks-section" class="search-section hidden">
+              <h3>Tasks</h3>
+              <ul id="search-tasks-list" class="task-list" aria-live="polite"></ul>
+            </div>
+            <div id="search-decisions-section" class="search-section hidden">
+              <h3>Decisions</h3>
+              <ul id="search-decisions-list" class="entity-list" aria-live="polite"></ul>
+            </div>
+            <div id="search-notes-section" class="search-section hidden">
+              <h3>Notes</h3>
+              <ul id="search-notes-list" class="entity-list" aria-live="polite"></ul>
+            </div>
+            <p id="search-empty-state" class="nav-hint hidden" style="padding: 1rem;">No results found.</p>
+          </div>
         </section>
 
         <!-- Notes panel -->
