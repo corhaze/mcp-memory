@@ -243,68 +243,75 @@ function renderTasks() {
         btn.addEventListener('click', e => {
             e.stopPropagation();
             const id = btn.dataset.taskId;
+            const isExpanded = state.expandedTasks.has(id);
+            if (isExpanded) {
+                state.expandedTasks.delete(id);
+            } else {
+                state.expandedTasks.add(id);
+            }
+            const nowExpanded = !isExpanded;
             const body = document.getElementById(`task-body-${id}`);
-            if (!body) return;
-            const isOpen = body.classList.toggle('hidden');
-            btn.classList.toggle('open', !isOpen);
+            const subs = document.getElementById(`subtasks-${id}`);
+            if (body) body.classList.toggle('hidden', !nowExpanded);
+            if (subs) subs.classList.toggle('hidden', !nowExpanded);
+            btn.classList.toggle('open', nowExpanded);
         });
     });
 }
 
-function renderTaskItem(task) {
-    const depth = Math.min(task.depth || 0, 3);
-    const hasBody = task.description || (task.subtasks && task.subtasks.length > 0);
+function renderTaskItem(task, depth = 0) {
+    const MAX_DEPTH = 5;
+    const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+    const hasDesc = Boolean(task.description);
+    const hasToggle = hasDesc || hasSubtasks;
     const expanded = state.expandedTasks.has(task.id);
     const statusIcon = statusEmoji(task.status);
 
-    // Build blocked-by badge if applicable
     const blockedBadge = task.blocked_by_task_id
-        ? `<span class="blocked-by-badge" title="Blocked by task ${task.blocked_by_task_id.slice(0, 8)}">depends on</span>`
+        ? `<span class="blocked-by-badge" title="Blocked by: ${task.blocked_by_task_id}">depends on</span>`
         : '';
 
-    // Next action chip
     const nextAction = task.next_action
         ? `<div class="task-next-action">${esc(task.next_action)}</div>`
         : '';
 
-    // Subtask list
-    const subtaskHtml = (task.subtasks && task.subtasks.length)
-        ? `<ul class="subtask-list">${task.subtasks.map(st => `
-        <li class="subtask-item ${st.status}">
-          <span class="subtask-status">${statusEmoji(st.status)}</span>
-          <span class="subtask-title">${esc(st.title)}</span>
-        </li>`).join('')}
-       </ul>`
-        : '';
-
-    const toggle = hasBody
+    const toggle = hasToggle
         ? `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`
         : '';
 
-    const bodyHidden = expanded ? '' : ' hidden';
-    const descHtml = task.description
-        ? `<div class="task-description">${esc(task.description)}</div>`
+    // Description-only body (no subtasks here — they appear as siblings below the card)
+    const bodyHtml = hasDesc
+        ? `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
+             <div class="task-description">${esc(task.description)}</div>
+           </div>`
+        : '';
+
+    // Subtasks rendered as a sibling list below the card, not inside the body
+    const subtasksHtml = (hasSubtasks && depth < MAX_DEPTH)
+        ? `<ul id="subtasks-${task.id}" class="subtask-list${expanded ? '' : ' hidden'}">
+             ${task.subtasks.map(st => renderTaskItem(st, depth + 1)).join('')}
+           </ul>`
         : '';
 
     return `
-    <li class="task-item ${task.status}" data-depth="${depth}" data-task-id="${task.id}">
-      <div class="task-header">
-        <span class="priority-dot priority-${task.priority || 'medium'}" title="Priority: ${task.priority}"></span>
-        <div class="task-title-area">
-          <div class="task-title">${statusIcon} ${esc(task.title)}</div>
-          <div class="task-meta">
-            <span class="status-badge badge-${task.status}">${task.status}</span>
-            ${blockedBadge}
-            ${task.assigned_agent ? `<span style="font-size:11px;color:var(--text-muted)">🤖 ${esc(task.assigned_agent)}</span>` : ''}
+    <li class="task-group" data-depth="${depth}">
+      <div class="task-item ${task.status}">
+        <div class="task-header">
+          <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
+          <div class="task-title-area">
+            <div class="task-title">${statusIcon} ${esc(task.title)}</div>
+            <div class="task-meta">
+              <span class="status-badge badge-${task.status}">${task.status}</span>
+              ${blockedBadge}
+              ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
+            </div>
+            ${nextAction}
           </div>
-          ${nextAction}
+          ${toggle}
         </div>
-        ${toggle}
+        ${bodyHtml}
       </div>
-      ${hasBody ? `<div id="task-body-${task.id}" class="task-body${bodyHidden}">
-        ${descHtml}
-        ${subtaskHtml}
-      </div>` : ''}
+      ${subtasksHtml}
     </li>`;
 }
 
