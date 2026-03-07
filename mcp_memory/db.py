@@ -742,31 +742,54 @@ def update_task(
     if not task:
         return None
     now = _now()
-    updates: List[Tuple] = []
-    if title is not None:          updates.append(("title", title))
-    if description is not None:    updates.append(("description", description))
-    if status is not None:         updates.append(("status", status))
-    if priority is not None:       updates.append(("priority", priority))
-    if assigned_agent is not None: updates.append(("assigned_agent", assigned_agent))
-    if blocked_by_task_id is not None: updates.append(("blocked_by_task_id", blocked_by_task_id))
-    if next_action is not None:    updates.append(("next_action", next_action))
-    if due_at is not None:         updates.append(("due_at", due_at))
+    # Build SQL update query dynamically
+    fields = []
+    vals = []
+    
+    if title is not None:
+        fields.append("title = ?")
+        vals.append(title)
+    if description is not None:
+        fields.append("description = ?")
+        vals.append(description)
+    if status is not None:
+        fields.append("status = ?")
+        vals.append(status)
+    if priority is not None:
+        fields.append("priority = ?")
+        vals.append(priority)
+    if assigned_agent is not None:
+        fields.append("assigned_agent = ?")
+        vals.append(assigned_agent)
+    if blocked_by_task_id is not None:
+        fields.append("blocked_by_task_id = ?")
+        vals.append(blocked_by_task_id)
+    if next_action is not None:
+        fields.append("next_action = ?")
+        vals.append(next_action)
+    if due_at is not None:
+        fields.append("due_at = ?")
+        vals.append(due_at)
 
-    completed_at_update = ""
-    if status == "done":
-        completed_at_update = ", completed_at=?"
-    elif status in ("open", "in_progress", "blocked"):
-        completed_at_update = ", completed_at=NULL"
+    # Always update updated_at
+    fields.append("updated_at = ?")
+    vals.append(now)
 
-    set_clause = (", ".join(f"{k}=?" for k, _ in updates)
-                  + (", " if updates else "") + "updated_at=?" + completed_at_update)
-    vals: List[Any] = [v for _, v in updates] + [now]
+    # Handle completed_at logic
     if status == "done":
+        fields.append("completed_at = ?")
         vals.append(now)
+    elif status in ("open", "in_progress", "blocked"):
+        fields.append("completed_at = NULL")
+
+    # Final ID parameter
     vals.append(task_id)
+    
+    set_clause = ", ".join(fields)
+    query = f"UPDATE tasks SET {set_clause} WHERE id = ?"
 
     with get_conn() as conn:
-        conn.execute(f"UPDATE tasks SET {set_clause} WHERE id=?", vals)
+        conn.execute(query, vals)
         event_note = f"Status → {status}" if status else "Updated"
         _log_task_event_inner(conn, task_id, "updated", event_note)
         if status == "done":
