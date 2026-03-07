@@ -405,7 +405,7 @@ def list_todos(
 
     lines = [f"Found {len(todos)} todo(s) for project '{project}':"]
     for t in todos:
-        lines.append(f"[{t.status}] ({t.id[:8]}) {t.title} - Priority: {t.priority}")
+        lines.append(f"[{t.status}] ({t.id}) {t.title} - Priority: {t.priority}")
     return "\n".join(lines)
 
 
@@ -445,7 +445,7 @@ def search_todos(query: str) -> str:
     
     lines = [f"Search results for todos matching '{query}':"]
     for t in todos:
-        lines.append(f"[{t.project}/{t.status}] {t.title} (ID: {t.id[:8]})")
+        lines.append(f"[{t.project}/{t.status}] {t.title} (ID: {t.id})")
     return "\n".join(lines)
 
 
@@ -462,7 +462,7 @@ def semantic_search_todos(query: str, project: Optional[str] = None) -> str:
         return f"No todos found semantically related to '{query}'."
     lines = [f"Semantic search results for '{query}':"]
     for t in todos:
-        lines.append(f"[{t.project}/{t.status}] {t.title} ({t.id[:8]})")
+        lines.append(f"[{t.project}/{t.status}] {t.title} ({t.id})")
     return "\n".join(lines)
 
 

@@ -7,6 +7,8 @@ dependencies = [
     "mcp[cli]>=1.4.0",
     "click>=8.1.0",
     "fastembed>=0.2.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
 ]
 
 [build-system]

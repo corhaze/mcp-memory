@@ -359,10 +359,28 @@ def delete_context(
 def list_all_projects() -> List[str]:
     """Return a sorted list of all distinct project names in the DB."""
     with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT DISTINCT project FROM contexts ORDER BY project"
-        ).fetchall()
+        # Combine from contexts, events, and todos
+        query = """
+            SELECT project FROM contexts
+            UNION
+            SELECT project FROM events
+            UNION
+            SELECT project FROM todos
+            ORDER BY project
+        """
+        rows = conn.execute(query).fetchall()
     return [r["project"] for r in rows]
+
+
+def delete_project(project: str) -> None:
+    """Delete all data associated with a project."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM contexts WHERE project = ?", (project,))
+        conn.execute("DELETE FROM events WHERE project = ?", (project,))
+        conn.execute("DELETE FROM todos WHERE project = ?", (project,))
+        # Insights use 'scope'
+        conn.execute("DELETE FROM insights WHERE scope = ?", (project,))
+        conn.commit()
 
 
 
