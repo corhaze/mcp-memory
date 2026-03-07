@@ -39,6 +39,27 @@ const decisionListEl = $('decision-list');
 const noteListEl = $('note-list');
 const timelineListEl = $('timeline-list');
 
+// ── Routing ────────────────────────────────────────────────────────────────────
+const VALID_TABS = ['tasks', 'decisions', 'notes', 'timeline'];
+
+function parseHash() {
+    // Expects: /#/projects/{projectId}/{tab}
+    const match = location.hash.match(/^#\/projects\/([^/]+)(?:\/([^/]+))?/);
+    if (!match) return null;
+    const projectId = match[1];
+    const tab = VALID_TABS.includes(match[2]) ? match[2] : 'tasks';
+    return { projectId, tab };
+}
+
+function setHash(projectId, tab, replace = false) {
+    const url = `/#/projects/${projectId}/${tab}`;
+    if (replace) {
+        history.replaceState({ projectId, tab }, '', url);
+    } else {
+        history.pushState({ projectId, tab }, '', url);
+    }
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 async function init() {
     try {
@@ -49,6 +70,26 @@ async function init() {
     renderProjectNav();
     bindTabs();
     bindFilters();
+
+    // Restore state from URL on load
+    const route = parseHash();
+    if (route && state.projects.find(p => p.id === route.projectId)) {
+        await selectProject(route.projectId, route.tab);
+    }
+
+    // Handle back/forward
+    window.addEventListener('popstate', async e => {
+        const s = e.state;
+        if (s && s.projectId) {
+            await selectProject(s.projectId, s.tab || 'tasks', { updateHash: false });
+        } else {
+            // Navigated back to no-project state
+            state.activeProjectId = null;
+            emptyState.classList.remove('hidden');
+            projectView.classList.add('hidden');
+            document.querySelectorAll('.project-nav-item').forEach(b => b.classList.remove('active'));
+        }
+    });
 }
 
 // ── Project nav ────────────────────────────────────────────────────────────────
@@ -71,7 +112,7 @@ function renderProjectNav() {
     });
 }
 
-async function selectProject(id) {
+async function selectProject(id, tab = 'tasks', { updateHash = true } = {}) {
     state.activeProjectId = id;
     state.expandedTasks.clear();
 
@@ -112,18 +153,31 @@ async function selectProject(id) {
     renderDecisions();
     renderNotes();
     renderTimeline();
+
+    // Activate the correct tab
+    activateTab(tab);
+
+    // Update URL (push new entry unless we're restoring from popstate)
+    if (updateHash) {
+        setHash(id, tab);
+    }
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
+function activateTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('hidden', p.id !== `panel-${name}`));
+}
+
 function bindTabs() {
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
             const name = tab.dataset.tab;
-            document.querySelectorAll('.panel').forEach(p => {
-                p.classList.toggle('hidden', p.id !== `panel-${name}`);
-            });
+            activateTab(name);
+            // replaceState so tab switches don't pollute history
+            if (state.activeProjectId) {
+                setHash(state.activeProjectId, name, true);
+            }
         });
     });
 }
