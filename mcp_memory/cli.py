@@ -147,9 +147,10 @@ def task_list(project, status):
 @click.option("--not-urgent", is_flag=True, help="Set flag to False", default=None)
 @click.option("--next-action", help="New next action")
 @click.option("--description", "-d", help="New description")
-def task_update(task_id, status, priority, next_action, description):
+def task_update(task_id, status, urgent, not_urgent, next_action, description):
     """Update a task."""
-    t = _db.update_task(task_id, status=status, priority=priority,
+    urgent_val = True if urgent else (False if not_urgent else None)
+    t = _db.update_task(task_id, status=status, urgent=urgent_val,
                         next_action=next_action, description=description)
     if not t:
         click.echo(f"Task '{task_id}' not found.")

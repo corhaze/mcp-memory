@@ -25,14 +25,18 @@ mcp = FastMCP(
         "Use this server to persist and recall project context across sessions. "
 
         "SESSION START (MANDATORY): Always call `get_working_context` at the start of every "
-        "session. It returns the current summary, open tasks, and linked decisions in one call. "
+        "session. It returns the current summary, open tasks, linked decisions, and global notes "
+        "in one call. Global notes contain cross-project coding philosophy and style rules — "
+        "read them before making any implementation decisions. "
         "Never begin work without orienting yourself first. "
 
         "PROJECT SETUP (MANDATORY): When creating a new project, you MUST immediately: "
         "(1) call `create_project`, "
         "(2) create tasks for all known work with `create_task`, "
-        "(3) call `add_project_summary` with a prose summary covering the goal, tech stack, "
-        "key decisions, and current state. A project without a summary is incomplete. "
+        "(3) call `add_project_summary` with a stable prose overview covering the goal, "
+        "tech stack, and key architectural decisions. Write it as an introduction to the project, "
+        "not a status update — it should remain accurate for the lifetime of the project. "
+        "A project without a summary is incomplete. "
 
         "KEEPING RECORDS CURRENT (MANDATORY): You MUST update records as you work — do not "
         "batch updates to the end of a session. Specifically: "
@@ -40,8 +44,7 @@ mcp = FastMCP(
         "- Call `log_task_event` after each meaningful step on a task. "
         "- Call `create_decision` immediately when any architecture or design choice is made. "
         "- Call `create_note` when you discover something non-obvious (bugs, gotchas, findings). "
-        "- Call `add_project_summary` at the END of every session to capture current state "
-        "so the next agent can orient itself instantly. "
+        "Current project state is expressed through tasks, not the summary. "
         "Failing to update records defeats the purpose of this server. "
 
         "RETRIEVAL ORDER: (1) get_working_context for relational state, "
@@ -51,6 +54,9 @@ mcp = FastMCP(
 
         "TASKS: Status flow: open → in_progress → blocked/done/cancelled. "
         "Use parent_task_id for subtasks. Use blocked_by_task_id to express dependencies. "
+        "When inspecting a task, always call `list_task_notes` to retrieve task-scoped notes — "
+        "these are separate from project notes and will not appear in get_working_context. "
+        "Use `create_task_note` to record task-specific findings, attempts, and observations. "
 
         "DECISIONS: Use create_decision for durable architecture choices with rationale. "
         "Use supersede_decision when a decision is replaced — never silently overwrite. "
@@ -83,9 +89,10 @@ def create_project(
     """
     Create or update a project workspace.
 
-    Always provide a summary when creating a new project. It should cover the
-    goal, tech stack, key decisions, and current state so the next agent can
-    orient itself instantly via get_working_context.
+    Always provide a summary when creating a new project. It should be a stable
+    high-level overview — goal, tech stack, and key architectural decisions.
+    Write it as an introduction, not a status update. Current state is tracked
+    through tasks, not the summary.
 
     Args:
         name:        Unique project name.
@@ -168,10 +175,15 @@ def add_project_summary(
     summary_kind: str = "current",
 ) -> str:
     """
-    Add a rolling summary for a project.
+    Set the summary for a project.
 
-    Use this to capture the current state of a project for cheap rehydration
-    at the start of the next session.
+    The summary is a stable, high-level introduction to the project — what it
+    is, what it aims to achieve, the tech stack, and key architectural decisions.
+    It should not be updated every session. Current project state is expressed
+    through tasks, not the summary.
+
+    Only update the summary when the project's fundamental nature or architecture
+    changes, not when tasks are completed or work progresses.
 
     Args:
         project_id:   Project UUID or name.
@@ -297,6 +309,11 @@ def get_task(task_id: str) -> str:
         lines.append(f"\nRecent events ({len(events)}):")
         for ev in events:
             lines.append(f"  [{ev.created_at[:10]}] {ev.event_type}: {ev.event_note or ''}")
+    notes = _db.list_task_notes(task_id)
+    if notes:
+        lines.append(f"\nNotes ({len(notes)}):")
+        for n in notes:
+            lines.append(f"  [{n.note_type}] {n.title} ({n.id})")
     return "\n".join(lines)
 
 
@@ -325,7 +342,8 @@ def list_tasks(
     lines = []
     for t in tasks:
         child_hint = f"  [{len(t.subtasks)} subtask(s)]" if t.subtasks else ""
-        lines.append(f"[{t.status}][{t.priority}] {t.title} ({t.id}){child_hint}")
+        urgent_flag = "[!] " if t.urgent else ""
+        lines.append(f"[{t.status}] {urgent_flag}{t.title} ({t.id}){child_hint}")
     return f"{len(tasks)} task(s):\n" + "\n".join(lines)
 
 
@@ -648,6 +666,235 @@ def delete_note(note_id: str) -> str:
     return "Note deleted." if ok else f"Note '{note_id}' not found."
 
 
+# ── Global Notes ──────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def create_global_note(
+    title: str,
+    note_text: str,
+    note_type: str = "context",
+) -> str:
+    """
+    Create a global note — not tied to any project.
+
+    Global notes capture cross-project coding philosophy, universal style rules,
+    and development standards that apply to all work. Keep them sparse and
+    high-value. They are included in every get_working_context response.
+
+    Note types: investigation, implementation, bug, context (default), handover.
+
+    Args:
+        title:     Short note title.
+        note_text: The note content.
+        note_type: investigation, implementation, bug, context, handover.
+    """
+    note = _db.create_global_note(title, note_text, note_type)
+    return f"Global note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
+
+
+@mcp.tool()
+def get_global_note(note_id: str) -> str:
+    """
+    Retrieve a specific global note.
+
+    Args:
+        note_id: UUID of the global note.
+    """
+    note = _db.get_global_note(note_id)
+    if not note:
+        return f"Global note '{note_id}' not found."
+    return f"[{note.note_type}] {note.title}\n\n{note.note_text}"
+
+
+@mcp.tool()
+def list_global_notes(note_type: Optional[str] = None) -> str:
+    """
+    List all global notes (cross-project development philosophy and style rules).
+
+    Call this at the start of every session alongside get_working_context.
+
+    Args:
+        note_type: Optional filter — investigation, implementation, bug, context, handover.
+    """
+    notes = _db.list_global_notes(note_type)
+    if not notes:
+        return "No global notes found."
+    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    return f"{len(notes)} global note(s):\n" + "\n".join(lines)
+
+
+@mcp.tool()
+def update_global_note(
+    note_id: str,
+    title: Optional[str] = None,
+    note_text: Optional[str] = None,
+    note_type: Optional[str] = None,
+) -> str:
+    """
+    Update a global note's content or type.
+
+    Args:
+        note_id:   UUID of the global note.
+        title:     New title.
+        note_text: New content.
+        note_type: New type.
+    """
+    note = _db.update_global_note(note_id, title, note_text, note_type)
+    if not note:
+        return f"Global note '{note_id}' not found."
+    return f"Updated global note '{note.title}'."
+
+
+@mcp.tool()
+def delete_global_note(note_id: str) -> str:
+    """
+    Delete a global note.
+
+    Args:
+        note_id: UUID of the global note.
+    """
+    ok = _db.delete_global_note(note_id)
+    return "Global note deleted." if ok else f"Global note '{note_id}' not found."
+
+
+@mcp.tool()
+def semantic_search_global_notes(query: str, limit: int = 5) -> str:
+    """
+    Search global notes using semantic similarity (vector search).
+
+    Args:
+        query: Natural language query.
+        limit: Max results (default 5).
+    """
+    notes = _db.semantic_search_global_notes(query, limit)
+    if not notes:
+        return "No results found."
+    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    return f"{len(notes)} result(s):\n" + "\n".join(lines)
+
+
+# ── Task Notes ────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def create_task_note(
+    task_id: str,
+    title: str,
+    note_text: str,
+    note_type: str = "context",
+) -> str:
+    """
+    Create a note scoped to a specific task.
+
+    Task notes are distinct from project-level notes — they capture
+    task-specific findings, attempts, and context rather than project-wide
+    observations.
+
+    Note types: investigation, implementation, bug, context (default), handover.
+
+    Args:
+        task_id:   UUID of the task.
+        title:     Short note title.
+        note_text: The note content.
+        note_type: investigation, implementation, bug, context, handover.
+    """
+    task = _db.get_task(task_id)
+    if not task:
+        return f"Task '{task_id}' not found."
+    note = _db.create_task_note(task.project_id, task_id, title, note_text, note_type)
+    return f"Task note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
+
+
+@mcp.tool()
+def get_task_note(note_id: str) -> str:
+    """
+    Retrieve a specific task note.
+
+    Args:
+        note_id: UUID of the task note.
+    """
+    note = _db.get_task_note(note_id)
+    if not note:
+        return f"Task note '{note_id}' not found."
+    return f"[{note.note_type}] {note.title}\n\n{note.note_text}"
+
+
+@mcp.tool()
+def list_task_notes(task_id: str, note_type: Optional[str] = None) -> str:
+    """
+    List all notes attached to a task.
+
+    Args:
+        task_id:   UUID of the task.
+        note_type: Optional filter — investigation, implementation, bug, context, handover.
+    """
+    notes = _db.list_task_notes(task_id, note_type)
+    if not notes:
+        return "No task notes found."
+    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    return f"{len(notes)} note(s):\n" + "\n".join(lines)
+
+
+@mcp.tool()
+def update_task_note(
+    note_id: str,
+    title: Optional[str] = None,
+    note_text: Optional[str] = None,
+    note_type: Optional[str] = None,
+) -> str:
+    """
+    Update a task note's content or type.
+
+    Args:
+        note_id:   UUID of the task note.
+        title:     New title.
+        note_text: New content.
+        note_type: New type.
+    """
+    note = _db.update_task_note(note_id, title, note_text, note_type)
+    if not note:
+        return f"Task note '{note_id}' not found."
+    return f"Updated task note '{note.title}'."
+
+
+@mcp.tool()
+def delete_task_note(note_id: str) -> str:
+    """
+    Delete a task note.
+
+    Args:
+        note_id: UUID of the task note.
+    """
+    ok = _db.delete_task_note(note_id)
+    return "Task note deleted." if ok else f"Task note '{note_id}' not found."
+
+
+@mcp.tool()
+def semantic_search_task_notes(
+    query: str,
+    project_id: Optional[str] = None,
+    task_id: Optional[str] = None,
+    limit: int = 5,
+) -> str:
+    """
+    Search task notes using semantic similarity (vector search).
+
+    Args:
+        query:      Natural language query.
+        project_id: Optional project filter.
+        task_id:    Optional task filter — restrict results to one task.
+        limit:      Max results (default 5).
+    """
+    pid = None
+    if project_id:
+        proj = _db.get_project(project_id)
+        pid = proj.id if proj else None
+    notes = _db.semantic_search_task_notes(query, pid, task_id, limit)
+    if not notes:
+        return "No results found."
+    lines = [f"[{n.note_type}] {n.title} (task: {n.task_id[:8]}, id: {n.id})" for n in notes]
+    return f"{len(notes)} result(s):\n" + "\n".join(lines)
+
+
 # ── Documents ─────────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -846,7 +1093,7 @@ def search(
         proj = _db.get_project(project_id)
         pid = proj.id if proj else None
 
-    types = entity_types or ["tasks", "decisions", "notes", "chunks"]
+    types = entity_types or ["tasks", "decisions", "notes", "task_notes", "global_notes", "chunks"]
     sections = []
 
     if "tasks" in types:
@@ -866,6 +1113,19 @@ def search(
         if results:
             lines = [f"  [{n.note_type}] {n.title} ({n.id})" for n in results]
             sections.append("Notes:\n" + "\n".join(lines))
+
+    if "task_notes" in types:
+        results = _db.search_task_notes(query, pid)
+        if results:
+            lines = [f"  [{n.note_type}] {n.title} (task: {n.task_id[:8]}, id: {n.id})"
+                     for n in results]
+            sections.append("Task notes:\n" + "\n".join(lines))
+
+    if "global_notes" in types:
+        results = _db.search_global_notes(query)
+        if results:
+            lines = [f"  [{n.note_type}] {n.title} ({n.id})" for n in results]
+            sections.append("Global notes:\n" + "\n".join(lines))
 
     if "chunks" in types:
         results = _db.search_chunks(query, pid)
@@ -1037,6 +1297,12 @@ def get_working_context(project_id: str) -> str:
     if ctx["recent_notes"]:
         lines.append("## Recent Notes")
         for n in ctx["recent_notes"]:
+            lines.append(f"  [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+        lines.append("")
+
+    if ctx.get("global_notes"):
+        lines.append("## Global Notes (cross-project philosophy — read before implementing)")
+        for n in ctx["global_notes"]:
             lines.append(f"  [{n['note_type']}] {n['title']} ({n['id'][:8]})")
         lines.append("")
 

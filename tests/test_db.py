@@ -30,6 +30,10 @@ from mcp_memory.db import (
     create_decision, get_decision, list_decisions, update_decision, supersede_decision,
     # Notes
     create_note, get_note, list_notes, update_note, delete_note,
+    # Task Notes
+    create_task_note, get_task_note, list_task_notes, update_task_note, delete_task_note,
+    # Global Notes
+    create_global_note, get_global_note, list_global_notes, update_global_note, delete_global_note,
     # Documents
     create_document, get_document, list_documents, add_chunks, get_chunks,
     # Links
@@ -148,7 +152,7 @@ class TestTasks:
         t = create_task(self.proj.id, "Write tests")
         assert t.title == "Write tests"
         assert t.status == "open"
-        assert t.priority == "medium"
+        assert t.urgent is False
         assert t.parent_task_id is None
 
     def test_create_task_with_all_fields(self):
@@ -156,11 +160,11 @@ class TestTasks:
             self.proj.id, "Complex task",
             description="Do many things",
             status="in_progress",
-            priority="high",
+            urgent=True,
             next_action="Start with step 1",
         )
         assert t.status == "in_progress"
-        assert t.priority == "high"
+        assert t.urgent is True
         assert t.next_action == "Start with step 1"
 
     def test_get_task(self):
@@ -573,3 +577,123 @@ class TestWorkingContext:
         assert ctx["active_tasks"] == []
         assert ctx["active_decisions"] == []
         assert ctx["recent_notes"] == []
+
+
+# ── Task Notes ─────────────────────────────────────────────────────────────────
+
+class TestTaskNotes:
+    def setup_method(self):
+        self.proj = create_project("task-notes-proj")
+        self.task = create_task(self.proj.id, "Task with notes")
+
+    def test_create_and_get(self):
+        note = create_task_note(self.proj.id, self.task.id, "Finding", "Important observation")
+        assert note.task_id == self.task.id
+        assert note.note_type == "context"
+        fetched = get_task_note(note.id)
+        assert fetched.title == "Finding"
+
+    def test_create_with_type(self):
+        note = create_task_note(self.proj.id, self.task.id, "Bug found", "NPE here", note_type="bug")
+        assert note.note_type == "bug"
+
+    def test_list_task_notes(self):
+        create_task_note(self.proj.id, self.task.id, "N1", "text1")
+        create_task_note(self.proj.id, self.task.id, "N2", "text2", note_type="investigation")
+        notes = list_task_notes(self.task.id)
+        assert len(notes) == 2
+
+    def test_list_task_notes_filter_type(self):
+        create_task_note(self.proj.id, self.task.id, "Context", "ctx")
+        create_task_note(self.proj.id, self.task.id, "Bug", "bug", note_type="bug")
+        bugs = list_task_notes(self.task.id, note_type="bug")
+        assert len(bugs) == 1
+        assert bugs[0].title == "Bug"
+
+    def test_task_notes_isolated_from_other_tasks(self):
+        other_task = create_task(self.proj.id, "Other task")
+        create_task_note(self.proj.id, self.task.id, "Mine", "text")
+        create_task_note(self.proj.id, other_task.id, "Theirs", "text")
+        assert len(list_task_notes(self.task.id)) == 1
+        assert len(list_task_notes(other_task.id)) == 1
+
+    def test_update_task_note(self):
+        note = create_task_note(self.proj.id, self.task.id, "Old title", "old text")
+        updated = update_task_note(note.id, title="New title", note_text="new text")
+        assert updated.title == "New title"
+        assert updated.note_text == "new text"
+
+    def test_delete_task_note(self):
+        note = create_task_note(self.proj.id, self.task.id, "Bye", "gone")
+        assert delete_task_note(note.id) is True
+        assert get_task_note(note.id) is None
+
+    def test_delete_missing_task_note_returns_false(self):
+        assert delete_task_note("nonexistent") is False
+
+    def test_task_deleted_cascades_to_task_notes(self):
+        note = create_task_note(self.proj.id, self.task.id, "Cascade test", "should vanish")
+        nid = note.id
+        delete_task(self.task.id)
+        assert get_task_note(nid) is None
+
+
+# ── Global Notes ───────────────────────────────────────────────────────────────
+
+class TestGlobalNotes:
+    def test_create_and_get(self):
+        note = create_global_note("Style guide", "Always use type hints.")
+        assert note.note_type == "context"
+        fetched = get_global_note(note.id)
+        assert fetched.title == "Style guide"
+        assert fetched.note_text == "Always use type hints."
+
+    def test_create_with_type(self):
+        note = create_global_note("Coding standard", "PEP 8.", note_type="implementation")
+        assert note.note_type == "implementation"
+
+    def test_list_global_notes(self):
+        create_global_note("Note A", "text A")
+        create_global_note("Note B", "text B")
+        notes = list_global_notes()
+        assert len(notes) == 2
+
+    def test_list_global_notes_filter_type(self):
+        create_global_note("Philosophy", "Keep it simple.", note_type="context")
+        create_global_note("Bug pattern", "Check nulls.", note_type="bug")
+        bugs = list_global_notes(note_type="bug")
+        assert len(bugs) == 1
+        assert bugs[0].title == "Bug pattern"
+
+    def test_global_notes_not_project_scoped(self):
+        """Global notes are visible regardless of active project."""
+        create_global_note("Cross-project rule", "Always write tests.")
+        notes = list_global_notes()
+        assert any(n.title == "Cross-project rule" for n in notes)
+
+    def test_update_global_note(self):
+        note = create_global_note("Draft rule", "Initial text.")
+        updated = update_global_note(note.id, note_text="Refined text.")
+        assert updated.note_text == "Refined text."
+
+    def test_update_global_note_type(self):
+        note = create_global_note("Reclassify", "content")
+        updated = update_global_note(note.id, note_type="handover")
+        assert updated.note_type == "handover"
+
+    def test_delete_global_note(self):
+        note = create_global_note("Temporary", "Will be removed.")
+        assert delete_global_note(note.id) is True
+        assert get_global_note(note.id) is None
+
+    def test_delete_missing_global_note_returns_false(self):
+        assert delete_global_note("no-such-note") is False
+
+    def test_working_context_includes_global_notes(self):
+        """Global notes appear in get_working_context regardless of project."""
+        proj = create_project("ctx-global-proj")
+        create_global_note("Global standard", "Write clean code.")
+        ctx = get_working_context(proj.id)
+        assert len(ctx["global_notes"]) >= 1
+        titles = [n["title"] for n in ctx["global_notes"]]
+        assert "Global standard" in titles
