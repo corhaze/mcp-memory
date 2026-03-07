@@ -239,6 +239,7 @@ function renderProjectView(ctx, tab = 'tasks', updatePath = true) {
 function showModal(title, contentHtml) {
     $('modal-title').textContent = title;
     $('modal-body').innerHTML = contentHtml;
+    initCustomSelects($('modal-body'));
     $('modal-overlay').classList.remove('hidden');
 }
 
@@ -246,6 +247,60 @@ function hideModal() {
     $('modal-overlay').classList.add('hidden');
     $('modal-body').innerHTML = '';
 }
+
+function initCustomSelects(container) {
+    container.querySelectorAll('select.form-control').forEach(select => {
+        select.style.display = 'none'; // Hide native dropdown
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger form-control';
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'custom-select-options hidden';
+
+        const updateTrigger = () => {
+            const selectedOpt = select.options[select.selectedIndex];
+            trigger.textContent = selectedOpt ? selectedOpt.textContent : '';
+        };
+        updateTrigger();
+
+        Array.from(select.options).forEach(opt => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'custom-select-option';
+            optionEl.textContent = opt.textContent;
+            optionEl.dataset.value = opt.value;
+            if (opt.selected || opt.value === select.value) optionEl.classList.add('selected');
+
+            optionEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                select.value = opt.value;
+                updateTrigger();
+                optionsDiv.classList.add('hidden');
+                Array.from(optionsDiv.children).forEach(c => c.classList.remove('selected'));
+                optionEl.classList.add('selected');
+            });
+            optionsDiv.appendChild(optionEl);
+        });
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = optionsDiv.classList.contains('hidden');
+            document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
+            if (isHidden) optionsDiv.classList.remove('hidden');
+        });
+
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(optionsDiv);
+        select.parentNode.insertBefore(wrapper, select.nextSibling);
+    });
+}
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
+});
 
 async function handleModalSave() {
     const form = $('modal-body').querySelector('form');
@@ -259,6 +314,11 @@ async function handleModalSave() {
         if (data[key] === '' && key.endsWith('_id')) {
             data[key] = null;
         }
+    }
+
+    // Handle checkbox for urgent field (FormData won't include it if unchecked)
+    if (type === 'task') {
+        data['urgent'] = !!data['urgent'];
     }
 
     try {
@@ -345,12 +405,8 @@ function showTaskForm(task = null) {
             </select>
         </div>
         <div class="form-group">
-            <label>Priority</label>
-            <select name="priority" class="form-control">
-                <option value="low" ${task?.priority === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${task?.priority === 'medium' || !task ? 'selected' : ''}>Medium</option>
-                <option value="high" ${task?.priority === 'high' ? 'selected' : ''}>High</option>
-            </select>
+            <label>Urgent</label>
+            <input type="checkbox" name="urgent" ${task?.urgent ? 'checked' : ''} />
         </div>
         <div class="form-group">
             <label>Assigned Agent</label>
@@ -707,11 +763,15 @@ function renderTaskItem(task, depth = 0) {
            </ul>`
         : '';
 
+    const urgentBadge = task.urgent
+        ? `<span class="urgent-dot" title="Urgent"></span>`
+        : '';
+
     return `
     <li class="task-group" data-depth="${depth}">
       <div class="task-item ${task.status}">
         <div class="task-header">
-          <span class="priority-dot priority-${task.priority || 'medium'}" title="${task.priority}"></span>
+          ${urgentBadge}
           <div class="task-title-area">
             <div class="task-title">${statusIcon} ${esc(task.title)}</div>
             <div class="task-meta">

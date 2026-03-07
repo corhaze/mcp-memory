@@ -48,7 +48,10 @@ def export_to_markdown(project_name: str, project_id: str) -> Path:
     if open_tasks:
         lines += ["## Active Tasks", ""]
         for t in open_tasks:
-            bullet = f"- **[{t.status}]** [{t.priority}] {t.title}"
+            if t.urgent:
+                bullet = f"- **[URGENT]** [{t.status}] {t.title}"
+            else:
+                bullet = f"- **[{t.status}]** {t.title}"
             if t.next_action:
                 bullet += f" → _{t.next_action}_"
             lines.append(bullet)
