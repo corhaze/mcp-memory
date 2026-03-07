@@ -59,7 +59,14 @@ mcp = FastMCP(
         "bug, context, handover. Prefer notes over comments in code for cross-session findings. "
 
         "LINKS: Use create_link to connect related records (task→decision, note→task, etc). "
-        "Link types: relates_to, implements, blocks, derived_from, explains, supersedes."
+        "Link types: relates_to, implements, blocks, derived_from, explains, supersedes. "
+
+        "CODE QUALITY (MANDATORY): Always prioritise clean, modular, idiomatic code. "
+        "Write small, well-defined functions — one clear purpose per function. "
+        "Follow language conventions: Python (PEP 8, type hints, dataclasses/Pydantic), "
+        "JavaScript (const/let, async/await, descriptive names, no var). "
+        "No premature abstraction — wait for a pattern to repeat before extracting. "
+        "Readable over clever. If in doubt, keep it simple."
     ),
 )
 
