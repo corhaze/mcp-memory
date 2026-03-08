@@ -48,7 +48,7 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
     # 5. Recent notes
     recent_notes_objs = list_notes(proj.id)[:10]
     
-    # 6. Global notes
+    # 6. Global notes — include full text so agents don't need a second call
     global_notes_objs = list_global_notes()[:5]
 
     return {
@@ -61,11 +61,11 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
         "summary": summary.summary_text if summary else None,
         "active_tasks": [
             {
-                "id": t.id, 
-                "title": t.title, 
-                "status": t.status, 
+                "id": t.id,
+                "title": t.title,
+                "status": t.status,
                 "urgent": t.urgent,
-                "next_action": t.next_action
+                "next_action": t.next_action,
             }
             for t in active_tasks_objs
         ],
@@ -75,11 +75,16 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
             for d in active_decisions_objs
         ],
         "recent_notes": [
-            {"id": n.id, "title": n.title, "type": n.note_type}
+            {"id": n.id, "title": n.title, "note_type": n.note_type}
             for n in recent_notes_objs
         ],
         "global_notes": [
-            {"id": n.id, "title": n.title, "type": n.note_type}
+            {
+                "id": n.id,
+                "title": n.title,
+                "note_type": n.note_type,
+                "note_text": n.note_text,
+            }
             for n in global_notes_objs
         ],
     }

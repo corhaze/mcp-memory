@@ -7,10 +7,8 @@ mcp = FastMCP(
 
         "SESSION START (MANDATORY): Always call `get_working_context` at the start of every "
         "session. It returns the current summary, open tasks, linked decisions, and global notes "
-        "in one call. Then call `list_global_notes` to retrieve the full text of all global notes "
-        "— these are your north star for all development work on this project. They contain "
-        "cross-project coding philosophy, quality standards, and process rules that govern every "
-        "decision you make. Read them in full before taking any action. "
+        "(with full text) in one call. Global notes contain cross-project coding philosophy, "
+        "quality standards, and process rules — read them before taking any action. "
         "Never begin work without orienting yourself first. "
 
         "PROJECT SETUP (MANDATORY): When creating a new project, you MUST immediately: "
@@ -55,11 +53,6 @@ mcp = FastMCP(
         "LINKS: Use create_link to connect related records (task→decision, note→task, etc). "
         "Link types: relates_to, implements, blocks, derived_from, explains, supersedes. "
 
-        "CODE QUALITY (MANDATORY): Always prioritise clean, modular, idiomatic code. "
-        "Write small, well-defined functions — one clear purpose per function. "
-        "Follow language conventions: Python (PEP 8, type hints, dataclasses/Pydantic), "
-        "JavaScript (const/let, async/await, descriptive names, no var). "
-        "No premature abstraction — wait for a pattern to repeat before extracting. "
-        "Readable over clever. If in doubt, keep it simple."
+        "CODE QUALITY: See the 'Code quality standards' global note loaded by get_working_context."
     ),
 )

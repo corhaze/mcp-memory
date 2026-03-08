@@ -149,7 +149,8 @@ def list_global_notes(note_type: Optional[str] = None) -> str:
     """
     List all global notes (cross-project development philosophy and style rules).
 
-    Call this at the start of every session alongside get_working_context.
+    get_working_context already includes global note text at session start.
+    Use this tool for on-demand lookup or to filter by type.
 
     Args:
         note_type: Optional filter — investigation, implementation, bug, context, handover.

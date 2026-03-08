@@ -47,7 +47,7 @@ def get_working_context(project_id: str) -> str:
     if ctx["linked_decisions"]:
         lines.append("## Linked Decisions (from active tasks)")
         for d in ctx["linked_decisions"]:
-            lines.append(f"  {d['title']}: {d['decision_text'][:100]}")
+            lines.append(f"  [{d['status']}] {d['title']} ({d['id'][:8]})")
         lines.append("")
 
     if ctx["active_decisions"]:
@@ -65,7 +65,8 @@ def get_working_context(project_id: str) -> str:
     if ctx.get("global_notes"):
         lines.append("## Global Notes (cross-project philosophy — read before implementing)")
         for n in ctx["global_notes"]:
-            lines.append(f"  [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            lines.append(f"\n### [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            lines.append(n["note_text"])
         lines.append("")
 
     return "\n".join(lines)
