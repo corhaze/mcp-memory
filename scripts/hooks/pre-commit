@@ -10,7 +10,7 @@
 set -e
 
 echo "🧪 Running pytest tests/"
-.venv-mcp/bin/pytest tests/ -q
+uv run pytest tests/ -q
 
 echo "✅ All tests passed! Commit proceeding."
 exit 0
