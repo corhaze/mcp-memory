@@ -314,11 +314,24 @@ function handleTaskToggle(e, btn) {
 }
 
 function bindTaskEvents() {
-    els.taskListEl.querySelectorAll('.task-status-select').forEach(sel => {
-        sel.addEventListener('change', async e => {
+    els.taskListEl.querySelectorAll('.task-status-trigger').forEach(btn => {
+        btn.addEventListener('click', e => {
             e.stopPropagation();
-            const taskId = sel.dataset.taskId;
-            const newStatus = sel.value;
+            const dropdown = btn.closest('.task-status-dropdown');
+            const options = dropdown.querySelector('.task-status-options');
+            const isOpen = !options.classList.contains('hidden');
+            document.querySelectorAll('.task-status-options').forEach(o => o.classList.add('hidden'));
+            if (!isOpen) options.classList.remove('hidden');
+        });
+    });
+
+    els.taskListEl.querySelectorAll('.task-status-options .status-option').forEach(opt => {
+        opt.addEventListener('click', async e => {
+            e.stopPropagation();
+            const dropdown = opt.closest('.task-status-dropdown');
+            const taskId = dropdown.dataset.taskId;
+            const newStatus = opt.dataset.value;
+            dropdown.querySelector('.task-status-options').classList.add('hidden');
             try {
                 await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, { status: newStatus });
                 await selectProject(state.activeProjectId, getActiveTab());
@@ -539,6 +552,9 @@ async function init() {
     document.addEventListener('click', (e) => {
         if (e.target.closest('#global-workspace-btn')) {
             selectGlobalWorkspace('notes');
+        }
+        if (!e.target.closest('.task-status-dropdown')) {
+            document.querySelectorAll('.task-status-options').forEach(o => o.classList.add('hidden'));
         }
     });
 

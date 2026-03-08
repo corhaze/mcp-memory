@@ -73,9 +73,15 @@ export function renderTaskItem(task, depth = 0) {
     ? `<span class="complex-badge" title="Complex Task">COMPLEX</span>`
     : '';
 
-  const statusOptions = ['open', 'in_progress', 'blocked', 'done', 'cancelled']
-    .map(s => `<option value="${s}"${task.status === s ? ' selected' : ''}>${s}</option>`)
+  const statusDropdownOptions = ['open', 'in_progress', 'blocked', 'done', 'cancelled']
+    .map(s => `<div class="status-option badge-${s}" data-value="${s}">${s}</div>`)
     .join('');
+
+  const statusDropdown = `
+    <div class="task-status-dropdown" data-task-id="${task.id}">
+      <button class="status-badge badge-${task.status} task-status-trigger" data-task-id="${task.id}">${task.status}</button>
+      <div class="task-status-options hidden">${statusDropdownOptions}</div>
+    </div>`;
 
   return `
     <li class="task-group" data-depth="${depth}">
@@ -94,7 +100,7 @@ export function renderTaskItem(task, depth = 0) {
             ${nextAction}
           </div>
           <div class="header-actions">
-            <select class="task-status-select badge-${task.status}" data-task-id="${task.id}" title="Change status">${statusOptions}</select>
+            ${statusDropdown}
             <button class="icon-btn edit-task" data-id="${task.id}">✎</button>
             <button class="icon-btn danger delete-task" data-id="${task.id}">✗</button>
           </div>

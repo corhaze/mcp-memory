@@ -453,17 +453,54 @@ body {
   white-space: nowrap;
 }
 
-.task-status-select {
-  font-size: 10px;
-  font-family: var(--font);
-  padding: 1px 4px;
+.task-status-dropdown {
+  position: relative;
+}
+
+.task-status-trigger {
+  background: none;
   border: 1px solid currentColor;
+  font-family: var(--font);
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: var(--bg);
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.task-status-trigger:hover {
+  box-shadow: 0 0 4px currentColor;
+}
+
+.task-status-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 3px);
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-status-options.hidden {
+  display: none;
+}
+
+.status-option {
+  font-family: var(--font);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.status-option:hover {
+  background: var(--bg-raised);
 }
 
 .badge-active,
