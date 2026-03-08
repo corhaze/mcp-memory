@@ -73,6 +73,10 @@ export function renderTaskItem(task, depth = 0) {
     ? `<span class="complex-badge" title="Complex Task">COMPLEX</span>`
     : '';
 
+  const statusOptions = ['open', 'in_progress', 'blocked', 'done', 'cancelled']
+    .map(s => `<option value="${s}"${task.status === s ? ' selected' : ''}>${s}</option>`)
+    .join('');
+
   return `
     <li class="task-group" data-depth="${depth}">
       <div class="task-item ${task.status}">
@@ -81,7 +85,6 @@ export function renderTaskItem(task, depth = 0) {
           <div class="task-title-area">
             <div class="task-title">${statusIcon} ${esc(task.title)}</div>
             <div class="task-meta">
-              <span class="status-badge badge-${task.status}">${task.status}</span>
               ${complexBadge}
               ${subtaskSummary(task)}
               ${blockedBadge}
@@ -91,6 +94,7 @@ export function renderTaskItem(task, depth = 0) {
             ${nextAction}
           </div>
           <div class="header-actions">
+            <select class="task-status-select badge-${task.status}" data-task-id="${task.id}" title="Change status">${statusOptions}</select>
             <button class="icon-btn edit-task" data-id="${task.id}">✎</button>
             <button class="icon-btn danger delete-task" data-id="${task.id}">✗</button>
           </div>

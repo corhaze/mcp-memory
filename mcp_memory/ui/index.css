@@ -453,6 +453,19 @@ body {
   white-space: nowrap;
 }
 
+.task-status-select {
+  font-size: 10px;
+  font-family: var(--font);
+  padding: 1px 4px;
+  border: 1px solid currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .badge-active,
 .badge-open {
   color: var(--green-dim);

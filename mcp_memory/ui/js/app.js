@@ -314,6 +314,20 @@ function handleTaskToggle(e, btn) {
 }
 
 function bindTaskEvents() {
+    els.taskListEl.querySelectorAll('.task-status-select').forEach(sel => {
+        sel.addEventListener('change', async e => {
+            e.stopPropagation();
+            const taskId = sel.dataset.taskId;
+            const newStatus = sel.value;
+            try {
+                await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, { status: newStatus });
+                await selectProject(state.activeProjectId, getActiveTab());
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+    });
+
     els.taskListEl.querySelectorAll('.task-toggle').forEach(btn => {
         btn.addEventListener('click', e => handleTaskToggle(e, btn));
     });
