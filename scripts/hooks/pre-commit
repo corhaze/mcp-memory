@@ -1,0 +1,16 @@
+#!/bin/bash
+# Pre-commit hook: run Python tests before committing
+#
+# This hook runs pytest on the tests/ directory to ensure no breaking changes
+# are committed. If tests fail, the commit is blocked.
+#
+# To bypass this hook (use with caution):
+#   git commit --no-verify
+
+set -e
+
+echo "🧪 Running pytest tests/"
+.venv-mcp/bin/pytest tests/ -q
+
+echo "✅ All tests passed! Commit proceeding."
+exit 0
