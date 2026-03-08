@@ -96,6 +96,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     status: str = "open"
     urgent: bool = False
+    complex: bool = False
     parent_task_id: Optional[str] = None
     assigned_agent: Optional[str] = None
     blocked_by_task_id: Optional[str] = None
@@ -107,6 +108,7 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
     urgent: Optional[bool] = None
+    complex: Optional[bool] = None
     assigned_agent: Optional[str] = None
     blocked_by_task_id: Optional[str] = None
     next_action: Optional[str] = None
@@ -287,7 +289,7 @@ def delete_project(project_id: str) -> Dict[str, str]:
 def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
     proj = _project_or_404(project_id)
     task = _db.create_task(
-        proj.id, req.title, req.description, req.status, req.urgent,
+        proj.id, req.title, req.description, req.status, req.urgent, req.complex,
         req.parent_task_id, req.assigned_agent, req.blocked_by_task_id,
         req.next_action, req.due_at
     )
@@ -296,7 +298,7 @@ def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
 @app.patch("/api/projects/{project_id}/tasks/{task_id}")
 def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any]:
     task = _db.update_task(
-        task_id, req.title, req.description, req.status, req.urgent,
+        task_id, req.title, req.description, req.status, req.urgent, req.complex,
         req.assigned_agent, req.blocked_by_task_id, req.next_action, req.due_at
     )
     if not task:

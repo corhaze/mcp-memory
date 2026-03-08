@@ -13,6 +13,7 @@ def create_task(
     description: Optional[str] = None,
     status: str = "open",
     urgent: bool = False,
+    complex: bool = False,
     parent_task_id: Optional[str] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
@@ -24,12 +25,12 @@ def create_task(
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO tasks (id, project_id, title, description, status, urgent,
+            INSERT INTO tasks (id, project_id, title, description, status, urgent, complex,
                 parent_task_id, assigned_agent, blocked_by_task_id,
                 next_action, due_at, created_at, updated_at, completed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
             """,
-            (tid, project_id, title, description, status, 1 if urgent else 0,
+            (tid, project_id, title, description, status, 1 if urgent else 0, 1 if complex else 0,
              parent_task_id, assigned_agent, blocked_by_task_id, next_action, due_at, now, now),
         )
         _log_task_event_inner(conn, tid, "created", f"Task created: {title}")
@@ -77,6 +78,7 @@ def update_task(
     description: Optional[str] = None,
     status: Optional[str] = None,
     urgent: Optional[bool] = None,
+    complex: Optional[bool] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
     next_action: Optional[str] = None,
@@ -102,6 +104,9 @@ def update_task(
     if urgent is not None:
         fields.append("urgent = ?")
         vals.append(1 if urgent else 0)
+    if complex is not None:
+        fields.append("complex = ?")
+        vals.append(1 if complex else 0)
     if assigned_agent is not None:
         fields.append("assigned_agent = ?")
         vals.append(assigned_agent)

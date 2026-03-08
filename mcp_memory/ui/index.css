@@ -641,6 +641,21 @@ body {
   box-shadow: 0 0 4px var(--red-dim);
 }
 
+/* Complex badge */
+.complex-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 1px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px var(--red-dim);
+}
+
 .task-header {
   display: flex;
   align-items: flex-start;

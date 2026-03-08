@@ -100,6 +100,7 @@ export async function handleModalSave({
 
     if (type === 'task') {
         data['urgent'] = !!data['urgent'];
+        data['complex'] = !!data['complex'];
     }
 
     try {

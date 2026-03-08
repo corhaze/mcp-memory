@@ -161,10 +161,12 @@ class TestTasks:
             description="Do many things",
             status="in_progress",
             urgent=True,
+            complex=True,
             next_action="Start with step 1",
         )
         assert t.status == "in_progress"
         assert t.urgent is True
+        assert t.complex is True
         assert t.next_action == "Start with step 1"
 
     def test_get_task(self):

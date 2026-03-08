@@ -237,13 +237,50 @@ async function performSearch(query) {
                 container.querySelectorAll('.add-task-note-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => { e.stopPropagation(); showTaskNoteForm(btn.dataset.taskId); });
                 });
-                // ... other search task bindings
+                container.querySelectorAll('.edit-task').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Search in both project tasks and search result tasks to find the item
+                        const task = findTask(btn.dataset.id, state.tasks) || findTask(btn.dataset.id, state.searchResults.tasks);
+                        if (task) showTaskForm(task);
+                    });
+                });
+                container.querySelectorAll('.delete-task').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteTask(btn.dataset.id);
+                    });
+                });
             },
             onDecisionsRender: (container) => {
-                // ... decision bindings
+                container.querySelectorAll('.edit-decision').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const dec = state.searchResults.decisions.find(d => d.id === btn.dataset.id);
+                        if (dec) showDecisionForm(dec);
+                    });
+                });
+                container.querySelectorAll('.delete-decision').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteDecision(btn.dataset.id);
+                    });
+                });
             },
             onNotesRender: (container) => {
-                // ... note bindings
+                container.querySelectorAll('.edit-note').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const note = state.searchResults.notes.find(n => n.id === btn.dataset.id);
+                        if (note) showNoteForm(note);
+                    });
+                });
+                container.querySelectorAll('.delete-note').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteNote(btn.dataset.id);
+                    });
+                });
             }
         });
     } catch (err) {
@@ -359,6 +396,7 @@ function showTaskForm(task = null) {
             <option value="cancelled" ${task?.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
         </select></div>
         <div class="form-group"><label>Urgent</label><input type="checkbox" name="urgent" ${task?.urgent ? 'checked' : ''} /></div>
+        <div class="form-group"><label>Complex</label><input type="checkbox" name="complex" ${task?.complex ? 'checked' : ''} /></div>
         <div class="form-group"><label>Assigned Agent</label><input name="assigned_agent" class="form-control" value="${task ? esc(task.assigned_agent) : ''}"></div>
         <div class="form-group"><label>Parent Task ID</label><input name="parent_task_id" class="form-control" value="${task ? esc(task.parent_task_id) : ''}"></div>
         <div class="form-group"><label>Blocked By Task ID</label><input name="blocked_by_task_id" class="form-control" value="${task ? esc(task.blocked_by_task_id) : ''}"></div>

@@ -48,11 +48,18 @@ def _m2_make_embeddings_project_id_nullable(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_project ON embeddings(project_id)")
     conn.execute("PRAGMA foreign_keys = ON")
 
+def _m3_add_complex_column(conn: sqlite3.Connection) -> None:
+    """Add complex column to tasks."""
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+    if "complex" not in columns:
+        conn.execute("ALTER TABLE tasks ADD COLUMN complex BOOLEAN NOT NULL DEFAULT 0")
+
 
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
     ("Make embeddings.project_id nullable",         _m2_make_embeddings_project_id_nullable),
+    ("Add complex column to tasks",                 _m3_add_complex_column),
 ]
 
 

@@ -11,6 +11,7 @@ def create_task(
     description: Optional[str] = None,
     status: str = "open",
     urgent: bool = False,
+    complex: bool = False,
     parent_task_id: Optional[str] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
@@ -31,6 +32,7 @@ def create_task(
         description:        Detailed plan or context.
         status:             open (default), in_progress, blocked, done, cancelled.
         urgent:             Boolean flag indicating high urgency.
+        complex:            Boolean flag indicating a complex task.
         parent_task_id:     UUID of parent task (for subtasks).
         assigned_agent:     Agent identifier.
         blocked_by_task_id: UUID of blocking task.
@@ -41,7 +43,7 @@ def create_task(
     if not proj:
         return f"Project '{project_id}' not found."
     task = _db.create_task(
-        proj.id, title, description, status, urgent,
+        proj.id, title, description, status, urgent, complex,
         parent_task_id, assigned_agent, blocked_by_task_id, next_action, due_at,
     )
     return f"Task created: '{task.title}' (id: {task.id}, status: {task.status})"
@@ -63,7 +65,7 @@ def get_task(task_id: str) -> str:
     lines = [
         f"Task: {task.title}",
         f"ID: {task.id}",
-        f"Status: {task.status}  Urgent: {'Yes' if task.urgent else 'No'}",
+        f"Status: {task.status}  Urgent: {'Yes' if task.urgent else 'No'}  Complex: {'Yes' if task.complex else 'No'}",
         f"Description: {task.description or '—'}",
     ]
     if task.next_action:
@@ -115,7 +117,8 @@ def list_tasks(
     for t in tasks:
         child_hint = f"  [{len(t.subtasks)} subtask(s)]" if t.subtasks else ""
         urgent_flag = "[!] " if t.urgent else ""
-        lines.append(f"[{t.status}] {urgent_flag}{t.title} ({t.id}){child_hint}")
+        complex_flag = "[*] " if t.complex else ""
+        lines.append(f"[{t.status}] {urgent_flag}{complex_flag}{t.title} ({t.id}){child_hint}")
     return f"{len(tasks)} task(s):\n" + "\n".join(lines)
 
 
@@ -126,6 +129,7 @@ def update_task(
     description: Optional[str] = None,
     status: Optional[str] = None,
     urgent: Optional[bool] = None,
+    complex: Optional[bool] = None,
     assigned_agent: Optional[str] = None,
     blocked_by_task_id: Optional[str] = None,
     next_action: Optional[str] = None,
@@ -144,12 +148,13 @@ def update_task(
         description:        New description.
         status:             open, in_progress, blocked, done, cancelled.
         urgent:             Boolean flag indicating high urgency.
+        complex:            Boolean flag indicating a complex task.
         assigned_agent:     Agent identifier.
         blocked_by_task_id: Blocking task UUID.
         next_action:        Next immediate step.
         due_at:             ISO 8601 datetime.
     """
-    task = _db.update_task(task_id, title, description, status, urgent,
+    task = _db.update_task(task_id, title, description, status, urgent, complex,
                            assigned_agent, blocked_by_task_id, next_action, due_at)
     if not task:
         return f"Task '{task_id}' not found."

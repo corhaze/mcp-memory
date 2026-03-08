@@ -38,6 +38,7 @@ class Task:
     description: Optional[str]
     status: str
     urgent: bool
+    complex: bool
     parent_task_id: Optional[str]
     assigned_agent: Optional[str]
     blocked_by_task_id: Optional[str]
@@ -55,6 +56,7 @@ class Task:
             "description": self.description,
             "status": self.status,
             "urgent": self.urgent,
+            "complex": self.complex,
             "parent_task_id": self.parent_task_id,
             "blocked_by_task_id": self.blocked_by_task_id,
             "next_action": self.next_action,
@@ -220,9 +222,11 @@ def _row_to_summary(row: sqlite3.Row) -> ProjectSummary:
 
 def _row_to_task(row: sqlite3.Row) -> Task:
     urgent_val = bool(row["urgent"]) if "urgent" in row.keys() else False
+    complex_val = bool(row["complex"]) if "complex" in row.keys() else False
     return Task(
         id=row["id"], project_id=row["project_id"], title=row["title"],
         description=row["description"], status=row["status"], urgent=urgent_val,
+        complex=complex_val,
         parent_task_id=row["parent_task_id"], assigned_agent=row["assigned_agent"],
         blocked_by_task_id=row["blocked_by_task_id"], next_action=row["next_action"],
         due_at=row["due_at"], created_at=row["created_at"], updated_at=row["updated_at"],
