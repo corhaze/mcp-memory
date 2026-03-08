@@ -52,6 +52,7 @@ class Task:
     def to_dict(self, depth: int = 0) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "title": self.title,
             "description": self.description,
             "status": self.status,
@@ -91,6 +92,7 @@ class Decision:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "title": self.title,
             "decision_text": self.decision_text,
             "rationale": self.rationale,
@@ -112,6 +114,7 @@ class Note:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "title": self.title,
             "note_text": self.note_text,
             "note_type": self.note_type,
