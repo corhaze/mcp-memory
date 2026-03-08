@@ -310,6 +310,117 @@ function handleTaskToggle(e, btn) {
     if (nowExpanded && !state.taskNotes[id]) loadTaskNotes(id);
 }
 
+// ── Add Subtask Form Handlers ─────────────────────────────────────────────
+
+function toggleAddSubtaskForm(btn) {
+    const parentTaskId = btn.dataset.parentId;
+    const section = btn.closest('.add-subtask-section');
+    const form = section.querySelector('.add-subtask-form');
+
+    const isCurrentlyShown = state.showAddSubtaskForm.has(parentTaskId);
+
+    if (isCurrentlyShown) {
+        // Close form
+        state.showAddSubtaskForm.delete(parentTaskId);
+        form.classList.add('hidden');
+        btn.textContent = '+ Add subtask';
+    } else {
+        // Open form
+        state.showAddSubtaskForm.add(parentTaskId);
+        form.classList.remove('hidden');
+        btn.textContent = '− Close form';
+        // Focus the title input for better UX
+        const titleInput = form.querySelector('.subtask-title-input');
+        if (titleInput) titleInput.focus();
+    }
+}
+
+async function submitAddSubtaskForm(form) {
+    const parentTaskId = form.dataset.parentId;
+    const errorDiv = form.querySelector('.form-error');
+
+    // Clear previous error
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    // Get form values and trim
+    const title = form.querySelector('.subtask-title-input').value.trim();
+    const description = form.querySelector('.subtask-desc-input').value.trim();
+    const status = form.querySelector('.subtask-status-select').value;
+    const urgent = form.querySelector('.subtask-urgent-checkbox').checked;
+
+    // Validate title
+    if (!title) {
+        errorDiv.textContent = 'Title is required';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Get parent task to extract project_id
+    const parentTask = findTask(parentTaskId, state.tasks);
+    if (!parentTask) {
+        errorDiv.textContent = 'Parent task not found';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    try {
+        // Create the subtask
+        await api.post(`/api/projects/${parentTask.project_id}/tasks`, {
+            title,
+            description: description || null,
+            status,
+            urgent,
+            parent_task_id: parentTaskId
+        });
+
+        // Close form and clear inputs
+        state.showAddSubtaskForm.delete(parentTaskId);
+        form.classList.add('hidden');
+        form.querySelector('.subtask-title-input').value = '';
+        form.querySelector('.subtask-desc-input').value = '';
+        form.querySelector('.subtask-status-select').value = 'open';
+        form.querySelector('.subtask-urgent-checkbox').checked = false;
+
+        // Reset button text
+        const btn = form.closest('.add-subtask-section').querySelector('.add-subtask-btn');
+        if (btn) btn.textContent = '+ Add subtask';
+
+        // Refresh the project view to show the new subtask
+        await selectProject(state.activeProjectId, getActiveTab());
+    } catch (err) {
+        errorDiv.textContent = err.message || 'Failed to create subtask';
+        errorDiv.style.display = 'block';
+    }
+}
+
+function cancelAddSubtaskForm(btn) {
+    const form = btn.closest('.add-subtask-form');
+    const parentTaskId = form.dataset.parentId;
+    const section = form.closest('.add-subtask-section');
+    const toggleBtn = section.querySelector('.add-subtask-btn');
+
+    // Remove from state
+    state.showAddSubtaskForm.delete(parentTaskId);
+
+    // Hide form and reset button text
+    form.classList.add('hidden');
+    if (toggleBtn) toggleBtn.textContent = '+ Add subtask';
+
+    // Clear all inputs
+    form.querySelector('.subtask-title-input').value = '';
+    form.querySelector('.subtask-desc-input').value = '';
+    form.querySelector('.subtask-status-select').value = 'open';
+    form.querySelector('.subtask-urgent-checkbox').checked = false;
+
+    // Clear error message
+    const errorDiv = form.querySelector('.form-error');
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+    }
+}
+
 function bindTaskEvents() {
     els.taskListEl.querySelectorAll('.task-status-trigger').forEach(btn => {
         btn.addEventListener('click', e => {
@@ -361,6 +472,35 @@ function bindTaskEvents() {
         btn.addEventListener('click', e => {
             e.stopPropagation();
             deleteTask(btn.dataset.id);
+        });
+    });
+
+    // Add subtask form toggle handler
+    els.taskListEl.querySelectorAll('.add-subtask-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            toggleAddSubtaskForm(btn);
+        });
+    });
+
+    // Add subtask form submit handler
+    els.taskListEl.querySelectorAll('.add-subtask-form').forEach(form => {
+        const submitBtn = form.querySelector('.btn-submit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async e => {
+                e.preventDefault();
+                e.stopPropagation();
+                await submitAddSubtaskForm(form);
+            });
+        }
+    });
+
+    // Cancel subtask form handler
+    els.taskListEl.querySelectorAll('.btn-cancel').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelAddSubtaskForm(btn);
         });
     });
 }
