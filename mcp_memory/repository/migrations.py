@@ -55,11 +55,22 @@ def _m3_add_complex_column(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE tasks ADD COLUMN complex BOOLEAN NOT NULL DEFAULT 0")
 
 
+def _m4_migrate_completed_to_done(conn: sqlite3.Connection) -> None:
+    """Standardize task completion status: migrate 'completed' to 'done'.
+
+    Per decision 3e0fcdb2 ("Mandatory status sync for completed tasks"), the standard
+    status for completed tasks should be 'done', not 'completed'. This migration
+    ensures consistency.
+    """
+    conn.execute("UPDATE tasks SET status='done' WHERE status='completed'")
+
+
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
     ("Make embeddings.project_id nullable",         _m2_make_embeddings_project_id_nullable),
     ("Add complex column to tasks",                 _m3_add_complex_column),
+    ("Migrate 'completed' status to 'done'",        _m4_migrate_completed_to_done),
 ]
 
 
