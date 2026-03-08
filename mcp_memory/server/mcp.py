@@ -7,8 +7,10 @@ mcp = FastMCP(
 
         "SESSION START (MANDATORY): Always call `get_working_context` at the start of every "
         "session. It returns the current summary, open tasks, linked decisions, and global notes "
-        "in one call. Global notes contain cross-project coding philosophy and style rules — "
-        "read them before making any implementation decisions. "
+        "in one call. Then call `list_global_notes` to retrieve the full text of all global notes "
+        "— these are your north star for all development work on this project. They contain "
+        "cross-project coding philosophy, quality standards, and process rules that govern every "
+        "decision you make. Read them in full before taking any action. "
         "Never begin work without orienting yourself first. "
 
         "PROJECT SETUP (MANDATORY): When creating a new project, you MUST immediately: "
