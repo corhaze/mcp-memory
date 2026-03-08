@@ -18,4 +18,5 @@ export const state = {
     expandedGlobalNotes: new Set(),
     globalNoteFilter: '',
     searchResults: null,
+    searchMode: 'current', // 'current' | 'all'
 };

@@ -790,6 +790,23 @@ async function init() {
     });
     els.modalOverlay.addEventListener('click', e => { if (e.target === els.modalOverlay) hideModal(); });
 
+    // Search mode toggle
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const mode = btn.dataset.mode;
+            state.searchMode = mode;
+
+            // Update active state
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update search input placeholder
+            const placeholder = mode === 'current' ? 'Search current project...' : 'Search all projects...';
+            els.searchInput.placeholder = placeholder;
+        });
+    });
+
     els.searchInput.addEventListener('keyup', e => {
         if (e.key === 'Enter') {
             const query = els.searchInput.value.trim();
