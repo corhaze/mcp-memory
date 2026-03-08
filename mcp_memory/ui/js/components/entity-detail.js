@@ -3,7 +3,7 @@
 import { esc } from '../utils.js';
 
 export function renderEntityDetail(config) {
-    const { entityId, entity, fields } = config;
+    const { entityId, entity, fields, showDelete = true } = config;
 
     // View mode HTML
     const viewHtml = fields.map(f => {
@@ -51,7 +51,7 @@ export function renderEntityDetail(config) {
                 ${viewHtml}
                 <div class="entity-detail-actions">
                     <button class="btn-secondary btn-edit-entity" data-id="${entityId}">Edit</button>
-                    <button class="btn-secondary danger btn-delete-entity" data-id="${entityId}">Delete</button>
+                    ${showDelete ? `<button class="btn-secondary danger btn-delete-entity" data-id="${entityId}">Delete</button>` : ''}
                 </div>
             </div>
 
@@ -77,6 +77,7 @@ export function bindEntityDetailEvents(container, config) {
 
     const editBtn = viewEl.querySelector('.btn-edit-entity');
     const deleteBtn = viewEl.querySelector('.btn-delete-entity');
+
     const cancelBtn = formEl.querySelector('.btn-cancel-edit');
 
     editBtn.addEventListener('click', (e) => {
@@ -85,12 +86,14 @@ export function bindEntityDetailEvents(container, config) {
         formEl.classList.remove('hidden');
     });
 
-    deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm('Are you sure you want to delete this?')) {
-            if (onDelete) await onDelete(entityId);
-        }
-    });
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (confirm('Are you sure you want to delete this?')) {
+                if (onDelete) await onDelete(entityId);
+            }
+        });
+    }
 
     cancelBtn.addEventListener('click', (e) => {
         e.stopPropagation();

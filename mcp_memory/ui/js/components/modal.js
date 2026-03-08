@@ -129,9 +129,6 @@ export async function handleModalSave({
             if (id) await api.patch(`/api/global-notes/${id}`, data);
             else await api.post('/api/global-notes', data);
             if (onGlobalNoteUpdate) await onGlobalNoteUpdate();
-        } else if (type === 'project_summary') {
-            await api.post(`/api/projects/${state.activeProjectId}/summary`, data);
-            if (onProjectUpdate) await onProjectUpdate(state.activeProjectId);
         }
         hideModal();
     } catch (err) {

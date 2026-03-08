@@ -12,6 +12,7 @@ import { renderNotes } from './components/notes.js';
 import { renderGlobalNotes } from './components/global-notes.js';
 import { renderTimeline } from './components/timeline.js';
 import { renderSearch } from './components/search.js';
+import { renderEntityDetail, bindEntityDetailEvents } from './components/entity-detail.js';
 import { esc } from './utils.js';
 
 // ── Shared Loaders ─────────────────────────────────────────────────────────────
@@ -144,12 +145,23 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
 
     renderProjectHeader(proj);
 
-    if (ctx.summary) {
-        els.projectSummary.dataset.rawSummary = ctx.summary;
-        els.projectSummary.innerHTML = marked.parse(ctx.summary);
-    } else {
-        els.projectSummary.dataset.rawSummary = '';
-        els.projectSummary.innerHTML = '<p class="nav-hint">No project summary yet.</p>';
+    const summaryFields = [{ name: 'summary_text', label: 'Summary', type: 'textarea', required: true }];
+    const summaryEntity = { summary_text: ctx.summary || '' };
+    els.projectSummary.innerHTML = renderEntityDetail({
+        entityId: 'project-summary',
+        entity: summaryEntity,
+        fields: summaryFields,
+        showDelete: false,
+    });
+    const summaryContainer = els.projectSummary.querySelector('#entity-detail-project-summary');
+    if (summaryContainer) {
+        bindEntityDetailEvents(summaryContainer, {
+            entityId: 'project-summary',
+            onSave: async (_id, data) => {
+                await api.post(`/api/projects/${state.activeProjectId}/summary`, data);
+                await selectProject(state.activeProjectId, 'summary', { updatePath: false });
+            },
+        });
     }
 
     renderTasks();
@@ -409,14 +421,6 @@ function showProjectForm(proj = null) {
     showModal(proj ? 'Edit Project' : 'New Project', html);
 }
 
-function showSummaryForm() {
-    const current = els.projectSummary.dataset.rawSummary || '';
-    const html = `
-    <form data-type="project_summary">
-        <div class="form-group"><label>Summary (markdown)</label><textarea name="summary_text" class="form-control" rows="12">${esc(current)}</textarea></div>
-    </form>`;
-    showModal('Edit Project Summary', html);
-}
 
 async function deleteProject(id) {
     if (!confirm('Are you sure you want to delete this project?')) return;
@@ -596,7 +600,6 @@ async function init() {
     });
     els.deleteProjectBtn.addEventListener('click', () => deleteProject(state.activeProjectId));
 
-    els.editSummaryBtn.addEventListener('click', () => showSummaryForm());
     els.addTaskBtn.addEventListener('click', () => showTaskForm());
     els.addDecisionBtn.addEventListener('click', () => showDecisionForm());
     els.addNoteBtn.addEventListener('click', () => showNoteForm());
