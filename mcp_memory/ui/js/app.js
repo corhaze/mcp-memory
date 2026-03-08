@@ -298,8 +298,11 @@ function handleTaskToggle(e, btn) {
     else state.expandedTasks.add(id);
 
     const nowExpanded = !isExpanded;
-    const body = document.getElementById(`task-body-${id}`);
-    const subs = document.getElementById(`subtasks-${id}`);
+    const taskGroup = btn.closest('.task-group');
+    const taskItem = btn.closest('.task-item');
+    const body = taskItem ? taskItem.querySelector('.task-body') : null;
+    const subs = taskGroup ? taskGroup.querySelector('.subtask-list') : null;
+
     if (body) body.classList.toggle('hidden', !nowExpanded);
     if (subs) subs.classList.toggle('hidden', !nowExpanded);
     btn.classList.toggle('open', nowExpanded);
