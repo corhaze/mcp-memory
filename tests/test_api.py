@@ -386,3 +386,80 @@ class TestTimelineEndpoint:
     def test_timeline_404(self):
         r = client.get("/api/projects/bad-id/timeline")
         assert r.status_code == 404
+
+
+class TestGlobalSearch:
+    """Test the global /api/search endpoint with and without project_id filter."""
+
+    def test_search_empty_query(self):
+        """Empty query returns empty results."""
+        r = client.get("/api/search?q=")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["tasks"] == []
+        assert data["decisions"] == []
+        assert data["notes"] == []
+
+    def test_global_search_across_projects(self, tmp_db):
+        """Search without project_id returns results from all projects."""
+        # Create two projects with tasks
+        proj1 = client.post("/api/projects", json={"name": "alpha"}).json()
+        proj2 = client.post("/api/projects", json={"name": "beta"}).json()
+
+        task1 = client.post(f"/api/projects/{proj1['id']}/tasks", json={"title": "database design"}).json()
+        task2 = client.post(f"/api/projects/{proj2['id']}/tasks", json={"title": "database optimization"}).json()
+
+        # Global search finds both tasks
+        r = client.get("/api/search?q=database&limit=10")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["tasks"]) == 2
+        task_ids = {t["id"] for t in data["tasks"]}
+        assert task1["id"] in task_ids
+        assert task2["id"] in task_ids
+
+    def test_scoped_search_with_project_id(self, tmp_db):
+        """Search with project_id parameter returns results from that project only."""
+        # Create two projects with tasks
+        proj1 = client.post("/api/projects", json={"name": "gamma"}).json()
+        proj2 = client.post("/api/projects", json={"name": "delta"}).json()
+
+        task1 = client.post(f"/api/projects/{proj1['id']}/tasks", json={"title": "api design"}).json()
+        task2 = client.post(f"/api/projects/{proj2['id']}/tasks", json={"title": "api documentation"}).json()
+
+        # Scoped search returns only results from proj1
+        r = client.get(f"/api/search?q=api&project_id={proj1['id']}&limit=10")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["tasks"]) == 1
+        assert data["tasks"][0]["id"] == task1["id"]
+
+    def test_search_includes_decisions_and_notes(self, tmp_db):
+        """Global search includes decisions and notes from all projects."""
+        proj = client.post("/api/projects", json={"name": "epsilon"}).json()
+        client.post(f"/api/projects/{proj['id']}/tasks", json={"title": "testing framework"})
+        client.post(f"/api/projects/{proj['id']}/decisions",
+                   json={"title": "Test runner", "decision_text": "use pytest for testing"})
+        client.post(f"/api/projects/{proj['id']}/notes",
+                   json={"title": "Testing notes", "note_text": "testing is important", "note_type": "context"})
+
+        r = client.get("/api/search?q=testing&limit=10")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["tasks"]) >= 1
+        assert len(data["decisions"]) >= 1
+        assert len(data["notes"]) >= 1
+
+    def test_search_respects_limit(self, tmp_db):
+        """Search respects the limit parameter."""
+        proj = client.post("/api/projects", json={"name": "zeta"}).json()
+        for i in range(5):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"task {i}"})
+
+        # Default limit is 10, should get all 5
+        r = client.get("/api/search?q=task&limit=10")
+        assert len(r.json()["tasks"]) == 5
+
+        # With limit=2, should get only 2
+        r = client.get("/api/search?q=task&limit=2")
+        assert len(r.json()["tasks"]) == 2

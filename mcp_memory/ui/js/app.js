@@ -224,9 +224,15 @@ function bindFilters() {
 // ── Search ─────────────────────────────────────────────────────────────────────
 
 async function performSearch(query) {
-    if (!state.activeProjectId) return;
+    if (state.searchMode === 'current' && !state.activeProjectId) return;
     try {
-        const results = await api.get(`/api/projects/${state.activeProjectId}/semantic_search?q=${encodeURIComponent(query)}&limit=10`);
+        // Build search endpoint with mode-based parameters
+        let searchUrl = `/api/search?q=${encodeURIComponent(query)}&limit=10`;
+        if (state.searchMode === 'current' && state.activeProjectId) {
+            searchUrl += `&project_id=${encodeURIComponent(state.activeProjectId)}`;
+        }
+
+        const results = await api.get(searchUrl);
         state.searchResults = results;
         els.searchTab.classList.remove('hidden');
         activateTab('search');
