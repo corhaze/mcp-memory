@@ -12,7 +12,7 @@ import { renderNotes } from './components/notes.js';
 import { renderGlobalNotes } from './components/global-notes.js';
 import { renderTimeline } from './components/timeline.js';
 import { renderSearch } from './components/search.js';
-import { renderEntityDetail, bindEntityDetailEvents } from './components/entity-detail.js';
+
 import { esc } from './utils.js';
 
 // ── Shared Loaders ─────────────────────────────────────────────────────────────
@@ -145,24 +145,7 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
 
     renderProjectHeader(proj);
 
-    const summaryFields = [{ name: 'summary_text', label: 'Summary', type: 'textarea', required: true }];
-    const summaryEntity = { summary_text: ctx.summary || '' };
-    els.projectSummary.innerHTML = renderEntityDetail({
-        entityId: 'project-summary',
-        entity: summaryEntity,
-        fields: summaryFields,
-        showDelete: false,
-    });
-    const summaryContainer = els.projectSummary.querySelector('#entity-detail-project-summary');
-    if (summaryContainer) {
-        bindEntityDetailEvents(summaryContainer, {
-            entityId: 'project-summary',
-            onSave: async (_id, data) => {
-                await api.post(`/api/projects/${state.activeProjectId}/summary`, data);
-                await selectProject(state.activeProjectId, 'summary', { updatePath: false });
-            },
-        });
-    }
+    bindSummaryInlineEditor(ctx.summary || '');
 
     renderTasks();
     renderDecisions();
@@ -421,6 +404,53 @@ function showProjectForm(proj = null) {
     showModal(proj ? 'Edit Project' : 'New Project', html);
 }
 
+
+function bindSummaryInlineEditor(summaryText) {
+    els.projectSummary.innerHTML = `
+        <div class="summary-view">
+            <div class="summary-toolbar">
+                <button class="btn-secondary btn-edit-summary">✎ Edit</button>
+            </div>
+            <div class="markdown-body">${summaryText ? marked.parse(summaryText) : '<p class="nav-hint">No project summary yet.</p>'}</div>
+        </div>
+        <form class="summary-form hidden">
+            <div class="summary-toolbar">
+                <button type="button" class="btn-secondary btn-cancel-summary">Cancel</button>
+                <button type="submit" class="btn-primary btn-save-summary">Save</button>
+            </div>
+            <textarea name="summary_text" class="form-control summary-textarea">${esc(summaryText)}</textarea>
+        </form>`;
+
+    const viewEl = els.projectSummary.querySelector('.summary-view');
+    const formEl = els.projectSummary.querySelector('.summary-form');
+
+    viewEl.querySelector('.btn-edit-summary').addEventListener('click', () => {
+        viewEl.classList.add('hidden');
+        formEl.classList.remove('hidden');
+        formEl.querySelector('textarea').focus();
+    });
+
+    formEl.querySelector('.btn-cancel-summary').addEventListener('click', () => {
+        formEl.classList.add('hidden');
+        viewEl.classList.remove('hidden');
+    });
+
+    formEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const saveBtn = formEl.querySelector('.btn-save-summary');
+        saveBtn.textContent = 'Saving…';
+        saveBtn.disabled = true;
+        try {
+            const data = { summary_text: formEl.querySelector('textarea').value };
+            await api.post(`/api/projects/${state.activeProjectId}/summary`, data);
+            await selectProject(state.activeProjectId, 'summary', { updatePath: false });
+        } catch (err) {
+            alert('Failed to save: ' + err.message);
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+        }
+    });
+}
 
 async function deleteProject(id) {
     if (!confirm('Are you sure you want to delete this project?')) return;
