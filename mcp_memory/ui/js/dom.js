@@ -14,7 +14,9 @@ export const els = {
     decisionListEl: $('decision-list'),
     noteListEl: $('note-list'),
     timelineListEl: $('timeline-list'),
-    globalNoteListEl: $('global-note-list'),
+    globalView: $('global-view'),
+    globalWorkspaceBtn: $('global-workspace-btn'),
+    globalNoteListMain: $('global-note-list-main'),
     searchInput: $('global-search-input'),
     searchTab: $('tab-search'),
     clearSearchBtn: $('clear-search-btn'),
@@ -42,9 +44,11 @@ export const els = {
 
     // Tabs & Filters
     tabBar: document.querySelector('.tab-bar'),
+    globalTabBar: $('global-tab-bar'),
     taskFilters: $('task-filters'),
     decisionFilters: $('decision-filters'),
     noteFilters: $('note-filters'),
+    globalNoteFilters: $('global-note-filters'),
 };
 
 // Re-export $ for convenience in other modules

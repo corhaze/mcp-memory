@@ -1140,11 +1140,17 @@ select.form-control {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--green-dim) 50%), linear-gradient(135deg, var(--green-dim) 50%, transparent 50%);
-  background-position: calc(100% - 15px) calc(1em + 1px), calc(100% - 11px) calc(1em + 1px);
-  background-size: 4px 4px, 4px 4px;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2007/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300aa29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-position: calc(100% - 10px) center;
+  background-size: 16px;
   background-repeat: no-repeat;
-  padding-right: 24px;
+  padding-right: 32px;
+}
+
+select.form-control option {
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 /* Custom Select UI */
@@ -1227,4 +1233,69 @@ select.form-control {
 .btn-secondary:hover {
   border-color: var(--text-sec);
   color: var(--text-sec);
+}
+
+/* ── Global Workspace & Entity Detail ────────────────────────────────────────── */
+.global-workspace-nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--transition), background var(--transition);
+}
+
+.global-workspace-nav-item:hover {
+  color: var(--text-sec);
+  background: var(--bg-raised);
+}
+
+.global-workspace-nav-item span {
+  pointer-events: none;
+}
+
+.global-workspace-nav-item.active {
+  color: var(--green);
+  background: var(--bg-raised);
+}
+
+.entity-detail {
+  padding: 12px 12px 10px 26px;
+  border-top: 1px solid var(--border);
+}
+
+.entity-detail .field-row {
+  margin-bottom: 8px;
+}
+
+.entity-detail .field-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.entity-detail .field-value {
+  font-size: 11px;
+  color: var(--text-sec);
+}
+
+.entity-detail-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.entity-detail-form .form-group {
+  margin-bottom: 12px;
+}
+
+.entity-detail-form textarea.form-control {
+  min-height: 250px;
 }

@@ -3,7 +3,7 @@
 import { els, $ } from './dom.js';
 import { state } from './state.js';
 import { api } from './api.js';
-import { parsePath, setPath, VALID_TABS } from './router.js';
+import { parsePath, setPath, setGlobalPath, VALID_TABS } from './router.js';
 import { showModal, hideModal, handleModalSave } from './components/modal.js';
 import { renderProjectNav, updateNavHighlight, showProjectEmptyState, renderProjectHeader } from './components/projects.js';
 import { renderTasks, findTask } from './components/tasks.js';
@@ -19,9 +19,49 @@ import { esc } from './utils.js';
 async function loadGlobalNotes() {
     try {
         state.globalNotes = await api.get('/api/global-notes');
-        renderGlobalNotes(showGlobalNoteForm, deleteGlobalNote);
+        renderGlobalNotes({
+            onSave: async (id, data) => {
+                await api.patch(`/api/global-notes/${id}`, data);
+                await loadGlobalNotes();
+            },
+            onDelete: async (id) => {
+                await api.delete(`/api/global-notes/${id}`);
+                await loadGlobalNotes();
+            }
+        });
     } catch (err) {
         console.error('Failed to load global notes:', err);
+    }
+}
+
+async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) {
+    state.activeView = 'global';
+    state.activeProjectId = null;
+
+    document.querySelectorAll('.project-nav-item').forEach(el => el.classList.remove('active'));
+
+    const gwBtn = document.getElementById('global-workspace-btn');
+    if (gwBtn) gwBtn.classList.add('active');
+
+    els.emptyState.classList.add('hidden');
+    els.projectView.classList.add('hidden');
+    if (els.globalView) els.globalView.classList.remove('hidden');
+    els.searchInput.disabled = true;
+
+    // Trigger re-render directly with current state
+    renderGlobalNotes({
+        onSave: async (id, data) => {
+            await api.patch(`/api/global-notes/${id}`, data);
+            await loadGlobalNotes();
+        },
+        onDelete: async (id) => {
+            await api.delete(`/api/global-notes/${id}`);
+            await loadGlobalNotes();
+        }
+    });
+
+    if (updatePath) {
+        setGlobalPath(tab);
     }
 }
 
@@ -70,12 +110,15 @@ async function deleteTaskNote(noteId, taskId) {
 
 async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     state.activeProjectId = id;
+    state.activeView = 'project';
     state.expandedTasks.clear();
 
     updateNavHighlight(id);
+    els.globalWorkspaceBtn?.classList.remove('active');
 
     els.emptyState.classList.add('hidden');
     els.projectView.classList.remove('hidden');
+    if (els.globalView) els.globalView.classList.add('hidden');
     els.searchInput.disabled = false;
 
     try {
@@ -435,6 +478,33 @@ async function init() {
     bindFilters();
 
     els.addGlobalNoteBtn.addEventListener('click', () => showGlobalNoteForm());
+
+    // Make sure we catch clicks even if dom.js is cached by the browser
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#global-workspace-btn')) {
+            selectGlobalWorkspace('notes');
+        }
+    });
+
+    if (els.globalNoteFilters) {
+        els.globalNoteFilters.addEventListener('click', e => {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            els.globalNoteFilters.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.globalNoteFilter = btn.dataset.type;
+            renderGlobalNotes({
+                onSave: async (id, data) => {
+                    await api.patch(`/api/global-notes/${id}`, data);
+                    await loadGlobalNotes();
+                },
+                onDelete: async (id) => {
+                    await api.delete(`/api/global-notes/${id}`);
+                    await loadGlobalNotes();
+                }
+            });
+        });
+    }
     els.addProjectBtn.addEventListener('click', () => showProjectForm());
     els.editProjectBtn.addEventListener('click', () => {
         const proj = state.projects.find(p => p.id === state.activeProjectId);
@@ -474,18 +544,26 @@ async function init() {
 
     const route = parsePath();
     if (route) {
-        const proj = state.projects.find(p => p.name === route.projectName);
-        if (proj) {
-            history.replaceState({ projectName: proj.name, tab: route.tab }, '', location.pathname);
-            await selectProject(proj.id, route.tab, { updatePath: false });
+        if (route.namespace === 'global') {
+            await selectGlobalWorkspace(route.tab, { updatePath: false });
+        } else {
+            const proj = state.projects.find(p => p.name === route.projectName);
+            if (proj) {
+                history.replaceState({ namespace: 'project', projectName: proj.name, tab: route.tab }, '', location.pathname);
+                await selectProject(proj.id, route.tab, { updatePath: false });
+            }
         }
     }
 
     window.addEventListener('popstate', async e => {
         const s = e.state;
-        if (s && s.projectName) {
-            const proj = state.projects.find(p => p.name === s.projectName);
-            if (proj) await selectProject(proj.id, s.tab || 'summary', { updatePath: false });
+        if (s) {
+            if (s.namespace === 'global') {
+                await selectGlobalWorkspace(s.tab || 'notes', { updatePath: false });
+            } else if (s.projectName) {
+                const proj = state.projects.find(p => p.name === s.projectName);
+                if (proj) await selectProject(proj.id, s.tab || 'summary', { updatePath: false });
+            }
         } else {
             showProjectEmptyState();
         }

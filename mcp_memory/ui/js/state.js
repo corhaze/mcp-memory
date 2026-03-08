@@ -1,6 +1,7 @@
 /* state.js — Central state object */
 
 export const state = {
+    activeView: 'empty', // 'empty' | 'project' | 'global'
     projects: [],
     activeProjectId: null,
     tasks: [],
@@ -13,5 +14,7 @@ export const state = {
     expandedTasks: new Set(),
     taskNotes: {},
     globalNotes: [],
+    expandedGlobalNotes: new Set(),
+    globalNoteFilter: '',
     searchResults: null,
 };

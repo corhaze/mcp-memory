@@ -32,11 +32,14 @@ export function updateNavHighlight(id) {
 }
 
 export function showProjectEmptyState() {
+    state.activeView = 'empty';
     state.activeProjectId = null;
     els.emptyState.classList.remove('hidden');
     els.projectView.classList.add('hidden');
+    if (els.globalView) els.globalView.classList.add('hidden');
     els.searchInput.disabled = true;
     updateNavHighlight(null);
+    if (els.globalWorkspaceBtn) els.globalWorkspaceBtn.classList.remove('active');
 }
 
 export function renderProjectHeader(proj) {

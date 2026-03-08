@@ -1,31 +1,88 @@
-/* components/global-notes.js — Global notes sidebar rendering and logic */
+/* components/global-notes.js — Global notes list and expand-in-place editing */
 
-import { els } from '../dom.js';
+import { renderEntityDetail, bindEntityDetailEvents } from './entity-detail.js';
 import { state } from '../state.js';
 import { esc } from '../utils.js';
 
-export function renderGlobalNotes(onSelect, onDelete) {
-    if (!state.globalNotes.length) {
-        els.globalNoteListEl.innerHTML = '<li class="nav-hint" style="font-size:10px;padding:4px 0">No global notes yet.</li>';
+const GLOBAL_NOTE_FIELDS = [
+    { name: 'title', label: 'Title', type: 'text', required: true },
+    { name: 'note_text', label: 'Note', type: 'textarea', required: true },
+    {
+        name: 'note_type', label: 'Type', type: 'select', options: [
+            { value: 'context', label: 'Context' },
+            { value: 'investigation', label: 'Investigation' },
+            { value: 'implementation', label: 'Implementation' },
+            { value: 'bug', label: 'Bug' },
+            { value: 'handover', label: 'Handover' },
+        ]
+    },
+];
+
+export function renderGlobalNotes(options = {}) {
+    const listEl = document.getElementById('global-note-list-main');
+    if (!listEl) return;
+
+    const notes = state.globalNotes.filter(n => !state.globalNoteFilter || n.note_type === state.globalNoteFilter);
+
+    if (!notes.length) {
+        listEl.innerHTML = '<li class="nav-hint">No notes found.</li>';
         return;
     }
-    els.globalNoteListEl.innerHTML = state.globalNotes.map(n => `
-        <li class="global-note-item">
-          <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
-          <button class="global-note-title" data-id="${n.id}">${esc(n.title)}</button>
-          <button class="icon-btn danger delete-global-note" data-id="${n.id}">✕</button>
-        </li>`).join('');
 
-    els.globalNoteListEl.querySelectorAll('.global-note-title').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const note = state.globalNotes.find(n => n.id === btn.dataset.id);
-            if (note) onSelect(note);
-        });
-    });
-    els.globalNoteListEl.querySelectorAll('.delete-global-note').forEach(btn => {
+    listEl.innerHTML = notes.map(n => {
+        const isExpanded = state.expandedGlobalNotes.has(n.id);
+        const detailHtml = isExpanded ? renderEntityDetail({
+            entityId: n.id,
+            entity: n,
+            fields: GLOBAL_NOTE_FIELDS
+        }) : '';
+
+        return `
+        <li class="task-group">
+            <div class="task-item">
+                <div class="task-header">
+                    <button class="task-toggle ${isExpanded ? 'open' : ''}" data-id="${n.id}">▶</button>
+                    <div class="task-title-area">
+                        <div class="task-title">${esc(n.title)}</div>
+                        <div class="task-meta">
+                            <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+                        </div>
+                    </div>
+                </div>
+                ${isExpanded ? detailHtml : ''}
+            </div>
+        </li>`;
+    }).join('');
+
+    // Bind toggles
+    listEl.querySelectorAll('.task-toggle').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            onDelete(btn.dataset.id);
+            const id = btn.dataset.id;
+            if (state.expandedGlobalNotes.has(id)) {
+                state.expandedGlobalNotes.delete(id);
+            } else {
+                state.expandedGlobalNotes.add(id);
+            }
+            renderGlobalNotes(options);
         });
+    });
+
+    // Bind entity detail forms
+    notes.forEach(n => {
+        if (state.expandedGlobalNotes.has(n.id)) {
+            const container = listEl.querySelector(`#entity-detail-${n.id}`);
+            if (container) {
+                bindEntityDetailEvents(container, {
+                    entityId: n.id,
+                    onSave: options.onSave,
+                    onDelete: options.onDelete,
+                    onCollapse: () => {
+                        state.expandedGlobalNotes.delete(n.id);
+                        renderGlobalNotes(options);
+                    }
+                });
+            }
+        }
     });
 }

@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mcp-memory Explorer</title>
-  <link rel="stylesheet" href="/index.css" />
+  <link rel="stylesheet" href="/index.css?v=3" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
@@ -26,11 +26,9 @@
         <input type="text" id="global-search-input" placeholder="Semantic search..." aria-label="Search" disabled />
       </div>
       <div class="global-notes-section">
-        <div class="global-notes-header">
-          <span class="nav-section-label">// global notes</span>
-          <button id="add-global-note-btn" class="icon-btn" title="New Global Note">+</button>
-        </div>
-        <ul id="global-note-list" class="global-note-list"></ul>
+        <button id="global-workspace-btn" class="global-workspace-nav-item">
+          <span class="nav-section-label">// global workspace</span>
+        </button>
       </div>
       <nav id="project-list" aria-label="Projects">
         <p class="nav-hint">Loading projects…</p>
@@ -170,6 +168,35 @@
           <ul id="timeline-list" class="timeline-list" aria-live="polite"></ul>
         </section>
       </div>
+
+      <div id="global-view" class="hidden">
+        <header id="global-header">
+          <div class="project-title-row">
+            <h2>Global Workspace</h2>
+          </div>
+          <p class="project-description">Cross-project notes and standards</p>
+        </header>
+        <div class="tab-bar" id="global-tab-bar" role="tablist">
+          <button class="tab active" data-tab="notes" role="tab">Notes</button>
+        </div>
+        <section id="panel-global-notes" class="panel">
+          <div class="panel-toolbar">
+            <div class="panel-info">
+              <span class="panel-label">Global notes</span>
+              <button id="add-global-note-btn" class="icon-btn" title="New Global Note">+</button>
+            </div>
+            <div class="filter-group" id="global-note-filters">
+              <button class="filter-btn active" data-type="">All</button>
+              <button class="filter-btn" data-type="investigation">Investigation</button>
+              <button class="filter-btn" data-type="implementation">Implementation</button>
+              <button class="filter-btn" data-type="bug">Bug</button>
+              <button class="filter-btn" data-type="context">Context</button>
+              <button class="filter-btn" data-type="handover">Handover</button>
+            </div>
+          </div>
+          <ul id="global-note-list-main" class="entity-list" aria-live="polite"></ul>
+        </section>
+      </div>
     </main>
   </div>
 
@@ -190,7 +217,7 @@
     </div>
   </div>
 
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/app.js?v=2"></script>
 </body>
 
 </html>
