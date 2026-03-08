@@ -608,7 +608,7 @@ body {
 }
 
 .task-item.done {
-  opacity: 0.4;
+  opacity: 0.7;
 }
 
 .task-item.cancelled {
