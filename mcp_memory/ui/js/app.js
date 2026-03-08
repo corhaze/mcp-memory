@@ -534,6 +534,16 @@ async function deleteGlobalNote(id) {
     } catch (err) { alert(err.message); }
 }
 
+// ── marked config — escape raw HTML to prevent parser breakage ──────────────
+
+marked.use({
+    renderer: {
+        html({ text }) {
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    }
+});
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 async function init() {
