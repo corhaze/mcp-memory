@@ -4,49 +4,25 @@ An MCP server that persists project context across LLM sessions — no more re-e
 
 ## How it works
 
-- **Serverless**: Data is stored in `~/.mcp-memory/memory.db` (SQLite — no server needed).
+- **Serverless**: Data lives in `~/.mcp-memory/memory.db` (SQLite — no server, no Docker).
 - **Hybrid Search**: FTS5 keyword search + semantic vector search (FastEmbed) for comprehensive retrieval.
-- **Relational + Semantic**: Structured projects/tasks/decisions with semantic embeddings for fuzzy recall.
-- **Agent-Ready**: `get_working_context` bootstraps any new agent with current summary, open tasks, and linked decisions in one call.
+- **Relational + Semantic**: Structured projects, tasks, decisions, and notes with semantic embeddings for fuzzy recall.
+- **Agent-Ready**: `get_working_context` bootstraps any new agent session with the current project summary, open tasks, linked decisions, and global notes in a single call.
+- **Web UI**: Local terminal-aesthetic explorer for browsing and editing all project data.
 
 ## Quick Start
 
+Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
+
 ```bash
-# Requires Python 3.9+
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+git clone https://github.com/corhaze/mcp-memory
+cd mcp-memory
+uv sync
 ```
-
-## Tools & Features
-
-### Projects & Context
-- `create_project` / `list_projects`: Manage project workspaces.
-- `add_project_summary`: Rolling summaries for cheap session rehydration.
-- `get_working_context`: One-call orientation snapshot — summary + open tasks + decisions.
-
-### Tasks
-- `create_task` / `update_task`: Track work with status, priority, subtasks, and blocking relationships.
-- `log_task_event`: Append-only history for any task.
-- `get_task_tree`: View a task with all its subtasks.
-
-### Decisions
-- `create_decision`: Record durable architecture choices with rationale.
-- `supersede_decision`: Mark a decision as replaced by a newer one.
-
-### Notes
-- `create_note` / `list_notes`: Flexible operational memory (investigation, context, bug, handover).
-
-### Search
-- `search` / `search_tasks` / `search_decisions` / `search_notes`: FTS5 keyword search.
-- `semantic_search_tasks` / `semantic_search_decisions` / `semantic_search_notes`: Vector-based fuzzy search.
-
-### Links
-- `create_link` / `get_links`: Connect related records (task→decision, note→task, etc).
 
 ## Connect to an MCP client
 
-Add to your client config (e.g. `~/.claude.json` or Claude Desktop):
+Add to your client config (e.g. Claude Desktop or `~/.claude.json`):
 
 ```json
 {
@@ -60,55 +36,69 @@ Add to your client config (e.g. `~/.claude.json` or Claude Desktop):
 }
 ```
 
-Or with pip install:
+## MCP Tools
 
-```json
-{
-  "mcpServers": {
-    "mcp-memory": {
-      "command": "/path/to/mcp-memory/.venv/bin/mcp-memory"
-    }
-  }
-}
-```
+### Session startup
+- `get_working_context`: One-call orientation — project summary, open/in-progress tasks, linked decisions, and full global notes text. Call this at the start of every session.
 
-## Migrating from the old mcp-memory schema
+### Projects
+- `create_project` / `list_projects` / `update_project`
+- `add_project_summary`: Set a stable prose overview of the project (goal, stack, key decisions).
+- `get_project_summary`: Retrieve the current summary.
 
-If you have data from the previous version of mcp-memory (contexts, insights, todos, events), run:
+### Tasks
+- `create_task` / `update_task` / `delete_task`: Track work with status, urgency, complexity, subtasks, and blocking relationships.
+- `create_task_note` / `list_task_notes`: Scoped notes on a specific task — findings, attempts, gotchas.
+- `log_task_event` / `get_task_events`: Append-only event history per task.
+- `get_task` / `list_tasks`: Retrieve individual tasks or filtered lists.
 
-```bash
-mcp-memory-cli migrate
-```
+### Decisions
+- `create_decision`: Record durable architecture choices with rationale.
+- `update_decision` / `supersede_decision`: Evolve decisions over time without losing history.
+- `list_decisions` / `get_decision`
 
-This will:
-1. Read your existing `~/.mcp-memory/memory.db` (old schema: contexts, insights, todos, events)
-2. Create projects from the project names found in your data
-3. Convert **contexts** → notes (type: `context`)
-4. Convert **todos** → tasks (preserving status, priority, and subtasks)
-5. Convert **insights** → notes (type: `insight`)
-6. Convert **events** → notes (type: `event`)
-7. Generate semantic embeddings for all migrated data
+### Notes
+- `create_note` / `update_note` / `delete_note`: Flexible operational memory — types: `investigation`, `implementation`, `bug`, `context`, `handover`.
+- `list_notes` / `get_note`
 
-The migration is safe to run multiple times — existing projects in the new schema are not overwritten.
+### Global Notes
+- `create_global_note`: Cross-project philosophy, coding standards, and process rules loaded into every session.
+- `list_global_notes` / `update_global_note` / `delete_global_note`
 
-## Web Explorer UI
+### Search
+- `search`: FTS5 keyword search across tasks, decisions, notes, and document chunks.
+- `semantic_search_tasks` / `semantic_search_decisions` / `semantic_search_notes` / `semantic_search_task_notes`: Vector-based fuzzy search.
 
-Start the local web UI to browse projects, tasks, decisions, and notes:
+### Links
+- `create_link` / `get_links`: Connect related records (task→decision, note→task, etc.) with typed relationships.
 
-```bash
-uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 7878
-```
+### Documents
+- `create_document` / `list_documents`: Store and retrieve larger reference documents with chunked semantic indexing.
 
-> **Note:** Always use `--reload-dir mcp_memory` when running with `--reload`. Without it, uvicorn watches the entire project including the SQLite DB file (`~/.mcp-memory/`), causing rapid module reloads on every DB write, ONNX thread pool accumulation, and severe CPU/memory pressure.
+## Web UI
 
-Then open http://localhost:7878.
-
-## Run Tests
+Browse and edit all project data in a local terminal-aesthetic UI:
 
 ```bash
-./.venv/bin/python -m pytest tests/ -v
+uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 8000
 ```
+
+Then open http://localhost:8000.
+
+> **Important:** Always pass `--reload-dir mcp_memory` when using `--reload`. Without it, uvicorn watches the entire project directory including the SQLite WAL/SHM files, causing a rapid reload loop, ONNX thread accumulation, and severe CPU pressure.
+
+## Development
+
+### Run tests
+
+```bash
+.venv-mcp/bin/pytest tests/ -q
+```
+
+> Tests live in a separate `.venv-mcp` environment. Do not use `uv run pytest` — pytest is not in the uv-managed venv.
+
+A pre-commit hook runs the full test suite automatically on every commit.
 
 ## License
 
-MIT - See [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE) for details.
