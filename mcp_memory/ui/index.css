@@ -457,6 +457,14 @@ body {
   position: relative;
 }
 
+/* Lift the task-group above siblings when its dropdown is open so the
+   options panel isn't clipped by the stacking context created by
+   opacity: 0.85 on sibling .task-item elements. */
+.task-group:has(.task-status-options:not(.hidden)) {
+  position: relative;
+  z-index: 10;
+}
+
 .task-status-trigger {
   background: none;
   border: 1px solid currentColor;
