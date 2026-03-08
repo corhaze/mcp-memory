@@ -19,19 +19,23 @@ import { esc } from './utils.js';
 async function loadGlobalNotes() {
     try {
         state.globalNotes = await api.get('/api/global-notes');
-        renderGlobalNotes({
-            onSave: async (id, data) => {
-                await api.patch(`/api/global-notes/${id}`, data);
-                await loadGlobalNotes();
-            },
-            onDelete: async (id) => {
-                await api.delete(`/api/global-notes/${id}`);
-                await loadGlobalNotes();
-            }
-        });
+        renderGlobalNotes(getGlobalNoteHandlers());
     } catch (err) {
         console.error('Failed to load global notes:', err);
     }
+}
+
+function getGlobalNoteHandlers() {
+    return {
+        onSave: async (id, data) => {
+            await api.patch(`/api/global-notes/${id}`, data);
+            await loadGlobalNotes();
+        },
+        onDelete: async (id) => {
+            await api.delete(`/api/global-notes/${id}`);
+            await loadGlobalNotes();
+        }
+    };
 }
 
 async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) {
@@ -48,17 +52,10 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
     if (els.globalView) els.globalView.classList.remove('hidden');
     els.searchInput.disabled = true;
 
-    // Trigger re-render directly with current state
-    renderGlobalNotes({
-        onSave: async (id, data) => {
-            await api.patch(`/api/global-notes/${id}`, data);
-            await loadGlobalNotes();
-        },
-        onDelete: async (id) => {
-            await api.delete(`/api/global-notes/${id}`);
-            await loadGlobalNotes();
-        }
-    });
+    activateTab('global-notes');
+
+    // Fetch and render to ensure we have latest data
+    await loadGlobalNotes();
 
     if (updatePath) {
         setGlobalPath(tab);
@@ -493,16 +490,7 @@ async function init() {
             els.globalNoteFilters.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             state.globalNoteFilter = btn.dataset.type;
-            renderGlobalNotes({
-                onSave: async (id, data) => {
-                    await api.patch(`/api/global-notes/${id}`, data);
-                    await loadGlobalNotes();
-                },
-                onDelete: async (id) => {
-                    await api.delete(`/api/global-notes/${id}`);
-                    await loadGlobalNotes();
-                }
-            });
+            renderGlobalNotes(getGlobalNoteHandlers());
         });
     }
     els.addProjectBtn.addEventListener('click', () => showProjectForm());
