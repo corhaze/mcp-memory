@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
+from .migrations import run_migrations
+
 def db_path() -> Path:
     import os
     env_path = os.environ.get("MCP_MEMORY_DB_PATH")
@@ -23,40 +25,7 @@ def get_conn() -> Iterator[sqlite3.Connection]:
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
     _init_schema(conn)
-    
-    try:
-        columns = [row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()]
-        if "urgent" not in columns:
-            conn.execute("ALTER TABLE tasks ADD COLUMN urgent INTEGER NOT NULL DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass  # Ignore if running in a read-only sandbox
-
-    try:
-        # Migration: make embeddings.project_id nullable (needed for global notes)
-        col_info = {r["name"]: r for r in conn.execute("PRAGMA table_info(embeddings)").fetchall()}
-        if col_info.get("project_id") and col_info["project_id"]["notnull"]:
-            conn.execute("PRAGMA foreign_keys = OFF")
-            conn.execute("""
-                CREATE TABLE embeddings_new (
-                    id               TEXT PRIMARY KEY,
-                    project_id       TEXT,
-                    entity_type      TEXT NOT NULL,
-                    entity_id        TEXT NOT NULL,
-                    embedding_model  TEXT NOT NULL,
-                    embedding_vector BLOB NOT NULL,
-                    created_at       TEXT NOT NULL,
-                    UNIQUE(entity_type, entity_id),
-                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-                )
-            """)
-            conn.execute("INSERT INTO embeddings_new SELECT * FROM embeddings")
-            conn.execute("DROP TABLE embeddings")
-            conn.execute("ALTER TABLE embeddings_new RENAME TO embeddings")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_entity ON embeddings(entity_type, entity_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_project ON embeddings(project_id)")
-            conn.execute("PRAGMA foreign_keys = ON")
-    except sqlite3.OperationalError:
-        pass
+    run_migrations(conn)
 
     try:
         # sqlite3.Connection can act as its own context manager for transactions
@@ -70,6 +39,11 @@ def _now() -> str:
 
 def _init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript("""
+        -- ── Schema version (migration tracking) ───────────────────────────
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER NOT NULL
+        );
+
         -- ── Core project workspace ─────────────────────────────────────────
         CREATE TABLE IF NOT EXISTS projects (
             id          TEXT PRIMARY KEY,
