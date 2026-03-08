@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mcp-memory Explorer</title>
-  <link rel="stylesheet" href="/index.css?v=4" />
+  <link rel="stylesheet" href="/index.css?v=5" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
@@ -75,6 +75,12 @@
 
         <!-- Summary panel -->
         <section id="panel-summary" class="panel">
+          <div class="panel-toolbar">
+            <div class="panel-info">
+              <span class="panel-label">Project summary</span>
+              <button id="edit-summary-btn" class="icon-btn" title="Edit Summary">✎</button>
+            </div>
+          </div>
           <div id="project-summary-text" class="project-summary" style="padding: 1rem 1.5rem;"></div>
         </section>
 
@@ -217,7 +223,7 @@
     </div>
   </div>
 
-  <script type="module" src="/js/app.js?v=3"></script>
+  <script type="module" src="/js/app.js?v=4"></script>
 </body>
 
 </html>

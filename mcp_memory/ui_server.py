@@ -152,6 +152,10 @@ class GlobalNoteUpdate(BaseModel):
     note_text: Optional[str] = None
     note_type: Optional[str] = None
 
+class SummaryCreate(BaseModel):
+    summary_text: str
+    summary_kind: str = "current"
+
 # ── API routes ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/projects")
@@ -275,6 +279,13 @@ def update_project(project_id: str, req: ProjectUpdate) -> Dict[str, Any]:
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"id": proj.id, "name": proj.name}
+
+@app.post("/api/projects/{project_id}/summary")
+def set_project_summary(project_id: str, req: SummaryCreate) -> Dict[str, Any]:
+    """Set the project summary."""
+    proj = _project_or_404(project_id)
+    s = _db.add_summary(proj.id, req.summary_text, req.summary_kind)
+    return {"id": s.id, "summary_text": s.summary_text, "summary_kind": s.summary_kind}
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: str) -> Dict[str, str]:

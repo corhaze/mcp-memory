@@ -29,6 +29,7 @@ export const els = {
     addProjectBtn: $('add-project-btn'),
     addGlobalNoteBtn: $('add-global-note-btn'),
     editProjectBtn: $('edit-project-btn'),
+    editSummaryBtn: $('edit-summary-btn'),
     deleteProjectBtn: $('delete-project-btn'),
     addTaskBtn: $('add-task-btn'),
     addDecisionBtn: $('add-decision-btn'),

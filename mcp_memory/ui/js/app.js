@@ -145,9 +145,11 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
     renderProjectHeader(proj);
 
     if (ctx.summary) {
+        els.projectSummary.dataset.rawSummary = ctx.summary;
         els.projectSummary.innerHTML = marked.parse(ctx.summary);
     } else {
-        els.projectSummary.innerHTML = '<p class="nav-hint">No project summary available. Be sure to call add_project_summary.</p>';
+        els.projectSummary.dataset.rawSummary = '';
+        els.projectSummary.innerHTML = '<p class="nav-hint">No project summary yet.</p>';
     }
 
     renderTasks();
@@ -407,6 +409,15 @@ function showProjectForm(proj = null) {
     showModal(proj ? 'Edit Project' : 'New Project', html);
 }
 
+function showSummaryForm() {
+    const current = els.projectSummary.dataset.rawSummary || '';
+    const html = `
+    <form data-type="project_summary">
+        <div class="form-group"><label>Summary (markdown)</label><textarea name="summary_text" class="form-control" rows="12">${esc(current)}</textarea></div>
+    </form>`;
+    showModal('Edit Project Summary', html);
+}
+
 async function deleteProject(id) {
     if (!confirm('Are you sure you want to delete this project?')) return;
     try {
@@ -585,6 +596,7 @@ async function init() {
     });
     els.deleteProjectBtn.addEventListener('click', () => deleteProject(state.activeProjectId));
 
+    els.editSummaryBtn.addEventListener('click', () => showSummaryForm());
     els.addTaskBtn.addEventListener('click', () => showTaskForm());
     els.addDecisionBtn.addEventListener('click', () => showDecisionForm());
     els.addNoteBtn.addEventListener('click', () => showNoteForm());
