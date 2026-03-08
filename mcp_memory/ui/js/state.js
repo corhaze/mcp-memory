@@ -12,6 +12,7 @@ export const state = {
     decisionFilter: '',
     noteFilter: '',
     expandedTasks: new Set(),
+    showAddSubtaskForm: new Set(), // Track which tasks have the add-subtask form open
     taskNotes: {},
     globalNotes: [],
     expandedGlobalNotes: new Set(),
