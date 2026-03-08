@@ -18,6 +18,13 @@ export function renderTasks() {
     els.taskListEl.innerHTML = filtered.map(task => renderTaskItem(task)).join('');
 }
 
+function subtaskSummary(task) {
+    if (!task.subtasks || task.subtasks.length === 0) return '';
+    const total = task.subtasks.length;
+    const done = task.subtasks.filter(st => st.status === 'done').length;
+    return `<span class="subtask-summary">${done}/${total} completed</span>`;
+}
+
 export function renderTaskItem(task, depth = 0) {
     const MAX_DEPTH = 5;
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -70,6 +77,7 @@ export function renderTaskItem(task, depth = 0) {
             <div class="task-title">${statusIcon} ${esc(task.title)}</div>
             <div class="task-meta">
               <span class="status-badge badge-${task.status}">${task.status}</span>
+              ${subtaskSummary(task)}
               ${blockedBadge}
               ${task.assigned_agent ? `<span style="font-size:10px;color:var(--text-muted)">[${esc(task.assigned_agent)}]</span>` : ''}
               ${depth === 0 ? `<span class="task-date" title="${task.created_at ? new Date(task.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto">${formatTime(task.created_at)}</span>` : ''}

@@ -683,6 +683,12 @@ body {
   content: '→ ';
 }
 
+.subtask-summary {
+  font-size: 10px;
+  font-family: var(--font);
+  color: var(--amber);
+}
+
 .blocked-by-badge {
   font-size: 10px;
   color: var(--red);
