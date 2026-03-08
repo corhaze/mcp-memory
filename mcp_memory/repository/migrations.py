@@ -65,12 +65,50 @@ def _m4_migrate_completed_to_done(conn: sqlite3.Connection) -> None:
     conn.execute("UPDATE tasks SET status='done' WHERE status='completed'")
 
 
+def _m5_enforce_task_status_constraint(conn: sqlite3.Connection) -> None:
+    """Add database-level constraint to enforce valid task statuses.
+
+    Valid statuses (per decision 3e0fcdb2): {open, in_progress, blocked, done, cancelled}
+
+    Uses triggers to prevent invalid status values at the database layer,
+    complementing API-level validation.
+    """
+    # Create trigger to validate INSERT
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tasks_status_insert_check
+        BEFORE INSERT ON tasks
+        WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
+        BEGIN
+            SELECT RAISE(ABORT,
+                'Invalid task status: ' || NEW.status ||
+                '. Valid statuses: open, in_progress, blocked, done, cancelled');
+        END;
+    """)
+    # Create trigger to validate UPDATE
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tasks_status_update_check
+        BEFORE UPDATE ON tasks
+        WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
+        BEGIN
+            SELECT RAISE(ABORT,
+                'Invalid task status: ' || NEW.status ||
+                '. Valid statuses: open, in_progress, blocked, done, cancelled');
+        END;
+    """)
+    # Clean any remaining invalid statuses (defensive)
+    conn.execute("""
+        UPDATE tasks SET status='done'
+        WHERE status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
+    """)
+
+
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
     ("Make embeddings.project_id nullable",         _m2_make_embeddings_project_id_nullable),
     ("Add complex column to tasks",                 _m3_add_complex_column),
     ("Migrate 'completed' status to 'done'",        _m4_migrate_completed_to_done),
+    ("Enforce task status constraint",              _m5_enforce_task_status_constraint),
 ]
 
 
