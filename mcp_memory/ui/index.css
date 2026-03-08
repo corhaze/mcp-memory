@@ -686,7 +686,7 @@ body {
 .subtask-summary {
   font-size: 10px;
   font-family: var(--font);
-  color: var(--amber);
+  color: #ff8800;
 }
 
 .blocked-by-badge {
