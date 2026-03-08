@@ -27,6 +27,63 @@ function subtaskSummary(task) {
   return `<span class="subtask-summary">${done}/${total} completed</span>`;
 }
 
+function renderAddSubtaskForm(parentTaskId, taskDepth) {
+  const MAX_DEPTH = 5;
+  if (taskDepth >= MAX_DEPTH) return '';
+
+  const showForm = state.showAddSubtaskForm.has(parentTaskId);
+  const formClass = showForm ? 'add-subtask-form' : 'add-subtask-form hidden';
+
+  return `
+    <div class="add-subtask-section" data-parent-id="${parentTaskId}">
+      <button class="add-subtask-btn" data-parent-id="${parentTaskId}">+ Add subtask</button>
+      <form class="${formClass}" data-parent-id="${parentTaskId}">
+        <div class="form-group">
+          <label for="subtask-title-${parentTaskId}">Title *</label>
+          <input
+            type="text"
+            id="subtask-title-${parentTaskId}"
+            class="subtask-title-input"
+            placeholder="Subtask title"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="subtask-desc-${parentTaskId}">Description</label>
+          <textarea
+            id="subtask-desc-${parentTaskId}"
+            class="subtask-desc-input"
+            placeholder="Task description (supports markdown)"
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label for="subtask-status-${parentTaskId}">Status</label>
+          <select id="subtask-status-${parentTaskId}" class="subtask-status-select">
+            <option value="open">open</option>
+            <option value="in_progress">in_progress</option>
+            <option value="blocked">blocked</option>
+            <option value="done">done</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+        </div>
+        <div class="form-group form-checkbox">
+          <input
+            type="checkbox"
+            id="subtask-urgent-${parentTaskId}"
+            class="subtask-urgent-checkbox"
+          />
+          <label for="subtask-urgent-${parentTaskId}">Urgent</label>
+        </div>
+        <div class="form-error" id="form-error-${parentTaskId}" style="display:none;"></div>
+        <div class="form-actions">
+          <button type="submit" class="btn-submit">Submit</button>
+          <button type="button" class="btn-cancel" data-parent-id="${parentTaskId}">Cancel</button>
+        </div>
+      </form>
+    </div>`;
+}
+
 export function renderTaskItem(task, depth = 0) {
   const MAX_DEPTH = 5;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -49,6 +106,8 @@ export function renderTaskItem(task, depth = 0) {
     ? renderTaskNotesHtml(task.id, cachedNotes)
     : '<ul class="task-notes-list"><li class="list-empty task-notes-loading" style="font-size:11px;color:var(--text-dim)">—</li></ul>';
 
+  const addSubtaskFormHtml = renderAddSubtaskForm(task.id, depth);
+
   const bodyHtml = `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
              ${hasDesc ? `<div class="task-description markdown-body">${marked.parse(task.description)}</div>` : ''}
              <div class="task-notes-section">
@@ -58,6 +117,7 @@ export function renderTaskItem(task, depth = 0) {
                </div>
                <div id="task-notes-${task.id}">${notesHtml}</div>
              </div>
+             ${addSubtaskFormHtml}
            </div>`;
 
   const subtasksHtml = (hasSubtasks && depth < MAX_DEPTH)
