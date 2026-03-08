@@ -23,6 +23,7 @@ def create_task(
     Tasks have status: open, in_progress, blocked, done, cancelled.
     Use parent_task_id to create subtasks.
     Use the description field for detailed implementation plans.
+    CRITICAL: As you work on the task, frequently use `create_task_note` to document findings and progress.
 
     Args:
         project_id:         Project UUID or name.
@@ -50,6 +51,8 @@ def create_task(
 def get_task(task_id: str) -> str:
     """
     Retrieve the full details of a task, including subtasks and events.
+    CRITICAL: Always remember to use `create_task_note` to document findings,
+    bugs, and progress as you work on this task.
 
     Args:
         task_id: The UUID of the task.
@@ -132,6 +135,8 @@ def update_task(
     Update a task's fields. Only provided fields are changed.
     Automatically logs a task_event for the change.
     Setting status to 'done' records completed_at.
+    CRITICAL: Ensure you have also used `create_task_note` to document the 
+    substantive findings or reasons behind this update.
 
     Args:
         task_id:            UUID of the task.

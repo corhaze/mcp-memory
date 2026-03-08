@@ -615,6 +615,10 @@ body {
   opacity: 0.25;
 }
 
+#task-list[data-filter="cancelled"] .task-item.cancelled {
+  opacity: 1;
+}
+
 /* Subtask list appears below the card, indented with a left-border guide */
 .subtask-list {
   list-style: none;

@@ -154,6 +154,7 @@ function bindFilters() {
         els.taskFilters.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.taskFilter = btn.dataset.status;
+        els.taskListEl.dataset.filter = btn.dataset.status;
         renderTasks();
         bindTaskEvents();
     });

@@ -23,8 +23,10 @@ mcp = FastMCP(
         "batch updates to the end of a session. Specifically: "
         "- Move tasks to `in_progress` when you start them, `done` when complete. "
         "- Call `log_task_event` after each meaningful step on a task. "
+        "- CRITICAL: Use `create_task_note` frequently to document findings, failures, "
+        "  gotchas, and attempt records specific to a task. Do NOT just rely on the event log. "
         "- Call `create_decision` immediately when any architecture or design choice is made. "
-        "- Call `create_note` when you discover something non-obvious (bugs, gotchas, findings). "
+        "- Call `create_note` when you discover something non-obvious. "
         "Current project state is expressed through tasks, not the summary. "
         "Failing to update records defeats the purpose of this server. "
 
