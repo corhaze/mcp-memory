@@ -8,6 +8,7 @@ Endpoints:
   GET /api/projects/{project_id}/decisions — decisions
   GET /api/projects/{project_id}/notes    — notes
   GET /api/projects/{project_id}/timeline — task events (recent)
+  GET /api/search                  — keyword search across all entities
   DELETE /api/projects/{project_id}       — delete project
 
 Run:
@@ -246,6 +247,35 @@ def get_timeline(project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     # Sort all events newest-first
     events.sort(key=lambda e: e["created_at"], reverse=True)
     return events[:limit]
+@app.get("/api/search")
+def search(q: str, project_id: Optional[str] = None, limit: int = 10) -> Dict[str, Any]:
+    """
+    Search across all entity types using keyword search.
+
+    Query parameters:
+      q (required): search query string
+      project_id (optional): scope to project; if absent, search all projects
+      limit (optional): max results per entity type (default 10)
+    """
+    if not q.strip():
+        return {"tasks": [], "decisions": [], "notes": [], "chunks": []}
+
+    # Call search functions from repository
+    tasks = _db.search_tasks(q, project_id=project_id)[:limit]
+    decisions = _db.search_decisions(q, project_id=project_id)[:limit]
+    notes = _db.search_notes(q, project_id=project_id)[:limit]
+    chunks = _db.search_chunks(q, project_id=project_id)[:limit]
+
+    return {
+        "tasks": [t.to_dict() for t in tasks],
+        "decisions": [d.to_dict() for d in decisions],
+        "notes": [n.to_dict() for n in notes],
+        "chunks": [{"id": c.id, "document_id": c.document_id, "project_id": c.project_id,
+                    "chunk_index": c.chunk_index, "chunk_text": c.chunk_text,
+                    "created_at": c.created_at} for c in chunks]
+    }
+
+
 @app.get("/api/projects/{project_id}/semantic_search")
 def semantic_search(
     project_id: str,
@@ -256,11 +286,11 @@ def semantic_search(
     proj = _project_or_404(project_id)
     if not q:
         return {"tasks": [], "decisions": [], "notes": []}
-    
+
     tasks = _db.semantic_search_tasks(q, proj.id, limit=limit)
     decisions = _db.semantic_search_decisions(q, proj.id, limit=limit)
     notes = _db.semantic_search_notes(q, proj.id, limit=limit)
-    
+
     return {
         "tasks": [t.to_dict() for t in tasks],
         "decisions": [d.to_dict() for d in decisions],
