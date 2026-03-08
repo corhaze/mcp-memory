@@ -169,6 +169,10 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
 
 // ── UI Coordination ───────────────────────────────────────────────────────────
 
+function getActiveTab() {
+    return document.querySelector('.tab.active')?.dataset.tab || 'summary';
+}
+
 function activateTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.toggle('hidden', p.id !== `panel-${name}`));
@@ -547,14 +551,18 @@ async function init() {
 
     els.modalClose.addEventListener('click', hideModal);
     els.modalCancel.addEventListener('click', hideModal);
-    els.modalSave.addEventListener('click', () => handleModalSave({
-        onProjectUpdate: async () => { state.projects = await api.get('/api/projects'); renderProjectNav(selectProject); },
-        onTaskUpdate: () => selectProject(state.activeProjectId),
-        onDecisionUpdate: () => selectProject(state.activeProjectId),
-        onNoteUpdate: () => selectProject(state.activeProjectId),
-        onTaskNoteUpdate: (taskId) => loadTaskNotes(taskId),
-        onGlobalNoteUpdate: () => loadGlobalNotes()
-    }));
+    els.modalSave.addEventListener('click', () => {
+        const tab = getActiveTab();
+        els.modalSave.disabled = true;
+        handleModalSave({
+            onProjectUpdate: async () => { state.projects = await api.get('/api/projects'); renderProjectNav(selectProject); },
+            onTaskUpdate: () => selectProject(state.activeProjectId, tab),
+            onDecisionUpdate: () => selectProject(state.activeProjectId, tab),
+            onNoteUpdate: () => selectProject(state.activeProjectId, tab),
+            onTaskNoteUpdate: (taskId) => loadTaskNotes(taskId),
+            onGlobalNoteUpdate: () => loadGlobalNotes()
+        }).finally(() => { els.modalSave.disabled = false; });
+    });
     els.modalOverlay.addEventListener('click', e => { if (e.target === els.modalOverlay) hideModal(); });
 
     els.searchInput.addEventListener('keyup', e => {

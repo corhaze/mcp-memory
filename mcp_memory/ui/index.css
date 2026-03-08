@@ -615,8 +615,9 @@ body {
   opacity: 0.25;
 }
 
-#task-list[data-filter="cancelled"] .task-item.cancelled {
-  opacity: 1;
+/* On specific filter tabs, all visible items at uniform 85% opacity */
+#task-list[data-filter]:not([data-filter=""]) .task-item {
+  opacity: 0.85;
 }
 
 /* Subtask list appears below the card, indented with a left-border guide */

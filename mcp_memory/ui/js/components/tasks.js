@@ -10,6 +10,8 @@ export function renderTasks() {
     ? state.tasks.filter(t => t.status === state.taskFilter)
     : state.tasks;
 
+  els.taskListEl.dataset.filter = state.taskFilter;
+
   if (!filtered.length) {
     els.taskListEl.innerHTML = '<li class="list-empty">No tasks found.</li>';
     return;
