@@ -23,6 +23,9 @@
   --green-muted: #005514;
   --green-glow: rgba(0, 255, 65, 0.12);
 
+  --blue: #4db6ff;
+  --blue-dim: #0077cc;
+
   --amber: #ffb300;
   --amber-dim: #cc8800;
   --red: #ff3333;
@@ -464,7 +467,7 @@ body {
 }
 
 .badge-done {
-  color: var(--text-muted);
+  color: var(--blue-dim);
 }
 
 .badge-cancelled {
