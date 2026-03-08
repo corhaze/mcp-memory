@@ -38,6 +38,9 @@ mcp = FastMCP(
         "(4) get_links for graph traversal. "
 
         "TASKS: Status flow: open → in_progress → blocked/done/cancelled. "
+        "CRITICAL: Before starting work on any task or subtask, immediately call update_task "
+        "to set status to in_progress. Do this before writing any code, editing any file, "
+        "or taking any implementation action. This applies to subtasks as well as top-level tasks. "
         "Use parent_task_id for subtasks. Use blocked_by_task_id to express dependencies. "
         "When inspecting a task, always call `list_task_notes` to retrieve task-scoped notes — "
         "these are separate from project notes and will not appear in get_working_context. "
