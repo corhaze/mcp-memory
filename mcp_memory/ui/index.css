@@ -329,6 +329,23 @@ body {
   margin-right: 16px;
 }
 
+.project-section-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px 4px 14px;
+  margin-bottom: 8px;
+  margin-top: 12px;
+  background: var(--bg-alt);
+  list-style: none;
+}
+
+.project-section-header:first-child {
+  margin-top: 0;
+}
+
 /* ── Markdown ────────────────────────────────────────────────────────────────── */
 .markdown-body {
   font-family: var(--font);
