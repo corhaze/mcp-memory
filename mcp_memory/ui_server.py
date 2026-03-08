@@ -417,9 +417,12 @@ def delete_global_note(note_id: str) -> Dict[str, str]:
 # Catch-all: serve static files if they exist, otherwise serve index.html so
 # that client-side routes like /mcp-memory or /blog/decisions work on refresh.
 
+_NO_CACHE_SUFFIXES = {".js", ".css"}
+
 @app.get("/{full_path:path}")
 def spa_catch_all(full_path: str):
     candidate = UI_DIR / full_path
     if candidate.exists() and candidate.is_file():
-        return FileResponse(str(candidate))
-    return FileResponse(str(UI_DIR / "index.html"))
+        headers = {"Cache-Control": "no-store"} if candidate.suffix in _NO_CACHE_SUFFIXES else {}
+        return FileResponse(str(candidate), headers=headers)
+    return FileResponse(str(UI_DIR / "index.html"), headers={"Cache-Control": "no-store"})
