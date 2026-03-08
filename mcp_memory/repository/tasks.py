@@ -7,6 +7,9 @@ from .models import (
 )
 from .search import _store_embedding, _semantic_search_raw
 
+# Valid task statuses per decision 3e0fcdb2: "Mandatory status sync for completed tasks"
+VALID_TASK_STATUSES = {"open", "in_progress", "blocked", "done", "cancelled"}
+
 def create_task(
     project_id: str,
     title: str,
@@ -20,6 +23,11 @@ def create_task(
     next_action: Optional[str] = None,
     due_at: Optional[str] = None,
 ) -> Task:
+    if status not in VALID_TASK_STATUSES:
+        raise ValueError(
+            f"Invalid task status '{status}'. Valid statuses are: {', '.join(sorted(VALID_TASK_STATUSES))}. "
+            f"See decision 3e0fcdb2 'Mandatory status sync for completed tasks'."
+        )
     now = _now()
     tid = str(uuid4())
     with get_conn() as conn:
@@ -84,6 +92,11 @@ def update_task(
     next_action: Optional[str] = None,
     due_at: Optional[str] = None,
 ) -> Optional[Task]:
+    if status is not None and status not in VALID_TASK_STATUSES:
+        raise ValueError(
+            f"Invalid task status '{status}'. Valid statuses are: {', '.join(sorted(VALID_TASK_STATUSES))}. "
+            f"See decision 3e0fcdb2 'Mandatory status sync for completed tasks'."
+        )
     task = get_task(task_id)
     if not task:
         return None
