@@ -25,7 +25,7 @@ export function renderDecisions() {
         </div>
         <div class="header-actions">
            <button class="icon-btn edit-decision" data-id="${d.id}">✎</button>
-           <button class="icon-btn danger delete-decision" data-id="${d.id}">🗑</button>
+           <button class="icon-btn danger delete-decision" data-id="${d.id}">✗</button>
         </div>
       </div>
       <div class="decision-text markdown-body">${marked.parse(d.decision_text)}</div>

@@ -92,7 +92,7 @@ export function renderTaskItem(task, depth = 0) {
           </div>
           <div class="header-actions">
             <button class="icon-btn edit-task" data-id="${task.id}">✎</button>
-            <button class="icon-btn danger delete-task" data-id="${task.id}">🗑</button>
+            <button class="icon-btn danger delete-task" data-id="${task.id}">✗</button>
           </div>
           ${toggle}
         </div>

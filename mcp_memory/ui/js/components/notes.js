@@ -23,7 +23,7 @@ export function renderNotes() {
         <span class="note-date" title="${n.created_at ? new Date(n.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:10px">${formatTime(n.created_at)}</span>
         <div class="header-actions">
           <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
-          <button class="icon-btn danger delete-note" data-id="${n.id}">🗑</button>
+          <button class="icon-btn danger delete-note" data-id="${n.id}">✗</button>
         </div>
         <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
       </div>

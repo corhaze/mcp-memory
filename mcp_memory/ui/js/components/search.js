@@ -35,7 +35,7 @@ export function renderSearch(handlers = {}) {
             <span class="decision-title">${esc(d.title)}</span>
             <div class="header-actions">
               <button class="icon-btn edit-decision" data-id="${d.id}">✎</button>
-              <button class="icon-btn danger delete-decision" data-id="${d.id}">🗑</button>
+              <button class="icon-btn danger delete-decision" data-id="${d.id}">✗</button>
             </div>
             <span class="status-badge badge-${d.status}">${d.status}</span>
           </div>
@@ -53,7 +53,7 @@ export function renderSearch(handlers = {}) {
             <span class="note-title">${esc(n.title)}</span>
             <div class="header-actions">
               <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
-              <button class="icon-btn danger delete-note" data-id="${n.id}">🗑</button>
+              <button class="icon-btn danger delete-note" data-id="${n.id}">✗</button>
             </div>
             <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
           </div>
