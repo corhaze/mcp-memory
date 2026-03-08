@@ -17,7 +17,7 @@ from mcp_memory.db import (
 @pytest.fixture(autouse=True)
 def tmp_db(tmp_path, monkeypatch):
     db_file = tmp_path / "test_semantic.db"
-    monkeypatch.setattr("mcp_memory.db.db_path", lambda: db_file)
+    monkeypatch.setattr("mcp_memory.repository.connection.db_path", lambda: db_file)
     yield db_file
 
 
