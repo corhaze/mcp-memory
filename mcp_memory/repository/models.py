@@ -1,7 +1,7 @@
 from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 @dataclass
 class Project:
@@ -11,6 +11,16 @@ class Project:
     status: str
     created_at: str
     updated_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "status": self.status,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 @dataclass
 class ProjectSummary:
@@ -38,6 +48,24 @@ class Task:
     completed_at: Optional[str]
     subtasks: List["Task"] = field(default_factory=list)
 
+    def to_dict(self, depth: int = 0) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "status": self.status,
+            "urgent": self.urgent,
+            "parent_task_id": self.parent_task_id,
+            "blocked_by_task_id": self.blocked_by_task_id,
+            "next_action": self.next_action,
+            "assigned_agent": self.assigned_agent,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "completed_at": self.completed_at,
+            "depth": depth,
+            "subtasks": [st.to_dict() for st in self.subtasks],
+        }
+
 @dataclass
 class TaskEvent:
     id: str
@@ -58,6 +86,17 @@ class Decision:
     created_at: str
     updated_at: str
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "decision_text": self.decision_text,
+            "rationale": self.rationale,
+            "status": self.status,
+            "supersedes_decision_id": self.supersedes_decision_id,
+            "created_at": self.created_at,
+        }
+
 @dataclass
 class Note:
     id: str
@@ -68,6 +107,16 @@ class Note:
     created_at: str
     updated_at: str
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "note_text": self.note_text,
+            "note_type": self.note_type,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
 @dataclass
 class GlobalNote:
     id: str
@@ -76,6 +125,16 @@ class GlobalNote:
     note_type: str
     created_at: str
     updated_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "note_text": self.note_text,
+            "note_type": self.note_type,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 @dataclass
 class TaskNote:
@@ -87,6 +146,17 @@ class TaskNote:
     note_type: str
     created_at: str
     updated_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "task_id": self.task_id,
+            "title": self.title,
+            "note_text": self.note_text,
+            "note_type": self.note_type,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 @dataclass
 class Document:

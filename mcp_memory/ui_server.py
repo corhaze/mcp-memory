@@ -65,7 +65,7 @@ def _topo_sort_tasks(tasks: List[_db.Task]) -> List[Dict[str, Any]]:
         # Recurse into the blocker first so it appears above the blocked task
         if task.blocked_by_task_id and task.blocked_by_task_id in by_id:
             visit(by_id[task.blocked_by_task_id], max(0, depth - 1))
-        result.append(_task_dict(task, depth=depth))
+        result.append(task.to_dict(depth=depth))
 
     # Visit tasks without a blocker (or whose blocker is outside this list) first
     roots = [t for t in tasks if not t.blocked_by_task_id or t.blocked_by_task_id not in by_id]
@@ -78,70 +78,6 @@ def _topo_sort_tasks(tasks: List[_db.Task]) -> List[Dict[str, Any]]:
 
     return result
 
-
-def _task_dict(task: _db.Task, depth: int = 0) -> Dict[str, Any]:
-    return {
-        "id": task.id,
-        "title": task.title,
-        "description": task.description,
-        "status": task.status,
-        "urgent": task.urgent,
-        "parent_task_id": task.parent_task_id,
-        "blocked_by_task_id": task.blocked_by_task_id,
-        "next_action": task.next_action,
-        "assigned_agent": task.assigned_agent,
-        "created_at": task.created_at,
-        "updated_at": task.updated_at,
-        "completed_at": task.completed_at,
-        "depth": depth,
-        "subtasks": [_task_dict(st) for st in task.subtasks],
-    }
-
-
-def _decision_dict(d: _db.Decision) -> Dict[str, Any]:
-    return {
-        "id": d.id,
-        "title": d.title,
-        "decision_text": d.decision_text,
-        "rationale": d.rationale,
-        "status": d.status,
-        "supersedes_decision_id": d.supersedes_decision_id,
-        "created_at": d.created_at,
-    }
-
-
-def _note_dict(n: _db.Note) -> Dict[str, Any]:
-    return {
-        "id": n.id,
-        "title": n.title,
-        "note_text": n.note_text,
-        "note_type": n.note_type,
-        "created_at": n.created_at,
-        "updated_at": n.updated_at,
-    }
-
-
-def _global_note_dict(n: _db.GlobalNote) -> Dict[str, Any]:
-    return {
-        "id": n.id,
-        "title": n.title,
-        "note_text": n.note_text,
-        "note_type": n.note_type,
-        "created_at": n.created_at,
-        "updated_at": n.updated_at,
-    }
-
-
-def _task_note_dict(n: _db.TaskNote) -> Dict[str, Any]:
-    return {
-        "id": n.id,
-        "task_id": n.task_id,
-        "title": n.title,
-        "note_text": n.note_text,
-        "note_type": n.note_type,
-        "created_at": n.created_at,
-        "updated_at": n.updated_at,
-    }
 
 
 # ── Request Models ────────────────────────────────────────────────────────────
@@ -260,7 +196,7 @@ def get_tasks(
         tree = [t for t in tree if t.status == status]
     if topo:
         return _topo_sort_tasks(tree)
-    return [_task_dict(t) for t in tree]
+    return [t.to_dict() for t in tree]
 
 
 @app.get("/api/projects/{project_id}/decisions")
@@ -271,7 +207,7 @@ def get_decisions(
     """Return decisions for a project, optionally filtered by status."""
     proj = _project_or_404(project_id)
     decisions = _db.list_decisions(proj.id, status)
-    return [_decision_dict(d) for d in decisions]
+    return [d.to_dict() for d in decisions]
 
 
 @app.get("/api/projects/{project_id}/notes")
@@ -282,7 +218,7 @@ def get_notes(
     """Return notes for a project, optionally filtered by type."""
     proj = _project_or_404(project_id)
     notes = _db.list_notes(proj.id, note_type)
-    return [_note_dict(n) for n in notes]
+    return [n.to_dict() for n in notes]
 
 
 @app.get("/api/projects/{project_id}/timeline")
@@ -320,9 +256,9 @@ def semantic_search(
     notes = _db.semantic_search_notes(q, proj.id, limit=limit)
     
     return {
-        "tasks": [_task_dict(t) for t in tasks],
-        "decisions": [_decision_dict(d) for d in decisions],
-        "notes": [_note_dict(n) for n in notes]
+        "tasks": [t.to_dict() for t in tasks],
+        "decisions": [d.to_dict() for d in decisions],
+        "notes": [n.to_dict() for n in notes]
     }
 
 
@@ -355,7 +291,7 @@ def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
         req.parent_task_id, req.assigned_agent, req.blocked_by_task_id,
         req.next_action, req.due_at
     )
-    return _task_dict(task)
+    return task.to_dict()
 
 @app.patch("/api/projects/{project_id}/tasks/{task_id}")
 def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any]:
@@ -365,7 +301,7 @@ def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any
     )
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return _task_dict(task)
+    return task.to_dict()
 
 @app.delete("/api/projects/{project_id}/tasks/{task_id}")
 def delete_task(project_id: str, task_id: str) -> Dict[str, str]:
@@ -382,7 +318,7 @@ def create_decision(project_id: str, req: DecisionCreate) -> Dict[str, Any]:
         proj.id, req.title, req.decision_text, req.rationale, req.status,
         req.supersedes_decision_id
     )
-    return _decision_dict(dec)
+    return dec.to_dict()
 
 @app.patch("/api/projects/{project_id}/decisions/{decision_id}")
 def update_decision(project_id: str, decision_id: str, req: DecisionUpdate) -> Dict[str, Any]:
@@ -391,7 +327,7 @@ def update_decision(project_id: str, decision_id: str, req: DecisionUpdate) -> D
     )
     if not dec:
         raise HTTPException(status_code=404, detail="Decision not found")
-    return _decision_dict(dec)
+    return dec.to_dict()
 
 @app.delete("/api/projects/{project_id}/decisions/{decision_id}")
 def delete_decision(project_id: str, decision_id: str) -> Dict[str, str]:
@@ -405,14 +341,14 @@ def delete_decision(project_id: str, decision_id: str) -> Dict[str, str]:
 def create_note(project_id: str, req: NoteCreate) -> Dict[str, Any]:
     proj = _project_or_404(project_id)
     note = _db.create_note(proj.id, req.title, req.note_text, req.note_type)
-    return _note_dict(note)
+    return note.to_dict()
 
 @app.patch("/api/projects/{project_id}/notes/{note_id}")
 def update_note(project_id: str, note_id: str, req: NoteUpdate) -> Dict[str, Any]:
     note = _db.update_note(note_id, req.title, req.note_text, req.note_type)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-    return _note_dict(note)
+    return note.to_dict()
 
 @app.delete("/api/projects/{project_id}/notes/{note_id}")
 def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
@@ -427,7 +363,7 @@ def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
 def get_task_notes(task_id: str) -> List[Dict[str, Any]]:
     """Return all notes attached to a task."""
     notes = _db.list_task_notes(task_id)
-    return [_task_note_dict(n) for n in notes]
+    return [n.to_dict() for n in notes]
 
 
 @app.post("/api/tasks/{task_id}/notes")
@@ -437,7 +373,7 @@ def create_task_note(task_id: str, req: TaskNoteCreate) -> Dict[str, Any]:
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     note = _db.create_task_note(task.project_id, task_id, req.title, req.note_text, req.note_type)
-    return _task_note_dict(note)
+    return note.to_dict()
 
 
 @app.delete("/api/task-notes/{note_id}")
@@ -453,13 +389,13 @@ def delete_task_note(note_id: str) -> Dict[str, str]:
 @app.get("/api/global-notes")
 def get_global_notes(note_type: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return all global notes, optionally filtered by type."""
-    return [_global_note_dict(n) for n in _db.list_global_notes(note_type)]
+    return [n.to_dict() for n in _db.list_global_notes(note_type)]
 
 
 @app.post("/api/global-notes")
 def create_global_note(req: GlobalNoteCreate) -> Dict[str, Any]:
     note = _db.create_global_note(req.title, req.note_text, req.note_type)
-    return _global_note_dict(note)
+    return note.to_dict()
 
 
 @app.patch("/api/global-notes/{note_id}")
@@ -467,7 +403,7 @@ def update_global_note(note_id: str, req: GlobalNoteUpdate) -> Dict[str, Any]:
     note = _db.update_global_note(note_id, req.title, req.note_text, req.note_type)
     if not note:
         raise HTTPException(status_code=404, detail="Global note not found")
-    return _global_note_dict(note)
+    return note.to_dict()
 
 
 @app.delete("/api/global-notes/{note_id}")
