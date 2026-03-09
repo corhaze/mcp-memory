@@ -2,7 +2,7 @@
 name = "mcp-memory"
 version = "0.2.0"
 description = "MCP server for persisting project context — hybrid relational + semantic schema"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.4.0",
     "click>=8.1.0",

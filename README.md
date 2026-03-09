@@ -12,7 +12,7 @@ An MCP server that persists project context across LLM sessions — no more re-e
 
 ## Quick Start
 
-Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
+Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/corhaze/mcp-memory
