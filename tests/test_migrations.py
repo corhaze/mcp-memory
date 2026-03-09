@@ -307,3 +307,28 @@ class TestFreshInitSchema:
             count = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
         assert count == 0
         assert db_file.exists()
+
+    def test_schema_init_runs_only_once_per_path(self, tmp_path, monkeypatch):
+        """Schema init and migrations must not repeat on every get_conn() call."""
+        import unittest.mock as mock
+        db_file = tmp_path / "once" / "memory.db"
+        monkeypatch.setenv("MCP_MEMORY_DB_PATH", str(db_file))
+
+        from mcp_memory.repository import connection as conn_module
+        # Clear the cache so this path starts fresh regardless of test order
+        conn_module._initialized_paths.discard(str(db_file))
+
+        with mock.patch.object(conn_module, "_init_schema", wraps=conn_module._init_schema) as mock_init:
+            # First call: should run init
+            with conn_module.get_conn() as conn:
+                conn.execute("SELECT 1")
+            # Second call: must NOT run init again
+            with conn_module.get_conn() as conn:
+                conn.execute("SELECT 1")
+            # Third call: same
+            with conn_module.get_conn() as conn:
+                conn.execute("SELECT 1")
+
+        assert mock_init.call_count == 1, (
+            f"_init_schema called {mock_init.call_count} times; expected exactly 1"
+        )

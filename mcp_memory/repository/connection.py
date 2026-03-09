@@ -1,34 +1,46 @@
 import contextlib
+import os
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
 from .migrations import run_migrations
 
+# Track which DB paths have been fully initialised (schema + migrations).
+# Keyed by resolved path string so each unique DB (e.g. per-test tmp paths)
+# gets its own one-time init without repeating it on every connection.
+_initialized_paths: set[str] = set()
+_init_lock = threading.Lock()
+
+
 def db_path() -> Path:
-    import os
     env_path = os.environ.get("MCP_MEMORY_DB_PATH")
-    if env_path:
-        p = Path(env_path)
-    else:
-        p = Path.home() / ".mcp-memory" / "memory.db"
-    
+    p = Path(env_path) if env_path else Path.home() / ".mcp-memory" / "memory.db"
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
+
 @contextlib.contextmanager
 def get_conn() -> Iterator[sqlite3.Connection]:
-    """Open (or create) the database and ensure the schema exists."""
-    conn = sqlite3.connect(str(db_path()))
+    """Open (or create) the database, running schema init and migrations once per path."""
+    path = db_path()
+    path_str = str(path)
+
+    conn = sqlite3.connect(path_str)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
-    _init_schema(conn)
-    run_migrations(conn)
 
     try:
-        # sqlite3.Connection can act as its own context manager for transactions
+        if path_str not in _initialized_paths:
+            with _init_lock:
+                if path_str not in _initialized_paths:  # double-checked locking
+                    _init_schema(conn)
+                    run_migrations(conn)
+                    _initialized_paths.add(path_str)
+
         with conn:
             yield conn
     finally:

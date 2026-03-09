@@ -1,3 +1,4 @@
+import heapq
 import pickle
 import sqlite3
 from typing import List, Optional, Tuple
@@ -31,27 +32,35 @@ def _store_embedding(conn: sqlite3.Connection, project_id: Optional[str], entity
 
 def _semantic_search_raw(query: str, entity_type: str, project_id: Optional[str],
                           limit: int) -> List[Tuple[float, str]]:
-    """Return [(score, entity_id)] for a given entity_type."""
+    """Return [(score, entity_id)] for a given entity_type.
+
+    Uses a fixed-size heap to keep memory proportional to `limit` rather than
+    to the total number of stored embeddings.
+    """
     query_vec = _emb.generate_embedding(query)
+    top_k: list[tuple[float, str]] = []
+
     with get_conn() as conn:
         if project_id:
-            rows = conn.execute(
+            cursor = conn.execute(
                 "SELECT entity_id, embedding_vector FROM embeddings "
                 "WHERE entity_type=? AND project_id=?",
                 (entity_type, project_id),
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
+            cursor = conn.execute(
                 "SELECT entity_id, embedding_vector FROM embeddings WHERE entity_type=?",
                 (entity_type,),
-            ).fetchall()
-    scored = []
-    for r in rows:
-        vec = pickle.loads(r["embedding_vector"])
-        score = _emb.cosine_similarity(query_vec, vec)
-        scored.append((score, r["entity_id"]))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[:limit]
+            )
+        for row in cursor:
+            vec = pickle.loads(row["embedding_vector"])
+            score = _emb.cosine_similarity(query_vec, vec)
+            if len(top_k) < limit:
+                heapq.heappush(top_k, (score, row["entity_id"]))
+            elif score > top_k[0][0]:
+                heapq.heapreplace(top_k, (score, row["entity_id"]))
+
+    return sorted(top_k, key=lambda x: x[0], reverse=True)
 
 # ── FTS5 Keyword Search ────────────────────────────────────────────────────────
 
