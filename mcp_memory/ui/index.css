@@ -112,9 +112,7 @@ body {
 }
 
 .sidebar-logo-art::after {
-  content: '_';
-  color: var(--green);
-  animation: blink 1.2s step-end infinite;
+  content: '';
 }
 
 @keyframes blink {

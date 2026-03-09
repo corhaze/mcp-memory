@@ -15,12 +15,13 @@
     <aside id="sidebar">
       <div class="sidebar-header">
         <div class="header-main">
-          <pre class="sidebar-logo-art">╔══════════════╗
-║  MCP·MEMORY  ║
-╚══════════════╝</pre>
+          <pre class="sidebar-logo-art">┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐
+╎ agent·memory ╎
+╎ ctx·persist  ╎
+└╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘</pre>
           <button id="add-project-btn" class="icon-btn" title="New Project">+</button>
         </div>
-        <p class="logo-sub">// project explorer</p>
+        <p class="logo-sub">// task · decision · note</p>
       </div>
       <div class="sidebar-search">
         <div class="search-mode-toggle">
@@ -42,15 +43,16 @@
     <!-- Main content -->
     <main id="main">
       <div id="empty-state" class="empty-state">
-        <pre class="bit-art">┌─────────────────┐
-│  MCP  MEMORY    │
-│  ░░░░░░░░░░░░░  │
-│  ░  SELECT   ░  │
-│  ░  PROJECT  ░  │
-│  ░░░░░░░░░░░░░  │
-└─────────────────┘</pre>
+        <pre class="bit-art">╔═══════════════════════╗
+║  agent·memory  v0.2   ║
+║  ───────────────────  ║
+║  tasks · decisions    ║
+║  notes · context      ║
+║  ───────────────────  ║
+║  > awaiting project_  ║
+╚═══════════════════════╝</pre>
         <h2>Select a project</h2>
-        <p>Choose a project from the sidebar.</p>
+        <p>Choose a project from the sidebar to begin.</p>
       </div>
 
       <div id="project-view" class="hidden">
@@ -87,7 +89,7 @@
         <section id="panel-tasks" class="panel hidden">
           <div class="panel-toolbar">
             <div class="panel-info">
-              <span class="panel-label">Task dependency order</span>
+              <span class="panel-label">Tasks</span>
               <button id="add-task-btn" class="icon-btn" title="New Task">+</button>
             </div>
             <div class="filter-group" id="task-filters">
