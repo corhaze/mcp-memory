@@ -12,7 +12,13 @@ ENV/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
 !mcp_memory/  # Keep the package directory, but ignore any .db files inside it if any
+
+# Logs and backups
+*.log
+*.db.bak
 
 # Testing
 .pytest_cache/
@@ -35,3 +41,6 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+# User-specific Claude Code settings (machine-specific permissions)
+.claude/settings.local.json
