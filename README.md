@@ -17,8 +17,10 @@ Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
 ```bash
 git clone https://github.com/corhaze/mcp-memory
 cd mcp-memory
-uv sync
+uv sync --all-extras
 ```
+
+> **First run:** FastEmbed downloads the embedding model (`BAAI/bge-small-en-v1.5`, ~130 MB) to `~/.cache/fastembed/` on first use. Subsequent starts are instant.
 
 ## Connect to an MCP client
 
@@ -80,10 +82,10 @@ Add to your client config (e.g. Claude Desktop or `~/.claude.json`):
 Browse and edit all project data in a local terminal-aesthetic UI:
 
 ```bash
-uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 8000
+uv run uvicorn mcp_memory.ui_server:app --reload --reload-dir mcp_memory --port 7878
 ```
 
-Then open http://localhost:8000.
+Then open http://localhost:7878.
 
 > **Important:** Always pass `--reload-dir mcp_memory` when using `--reload`. Without it, uvicorn watches the entire project directory including the SQLite WAL/SHM files, causing a rapid reload loop, ONNX thread accumulation, and severe CPU pressure.
 
@@ -92,12 +94,24 @@ Then open http://localhost:8000.
 ### Run tests
 
 ```bash
-.venv-mcp/bin/pytest tests/ -q
+uv run pytest tests/ -q
 ```
 
-> Tests live in a separate `.venv-mcp` environment. Do not use `uv run pytest` — pytest is not in the uv-managed venv.
+### Install pre-commit hook
 
-A pre-commit hook runs the full test suite automatically on every commit.
+Automatically runs the test suite before every commit:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+### Custom database location
+
+By default the database is created at `~/.mcp-memory/memory.db`. Override with an environment variable:
+
+```bash
+MCP_MEMORY_DB_PATH=/custom/path/memory.db uv run mcp-memory
+```
 
 ## License
 
