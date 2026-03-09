@@ -13,6 +13,9 @@ export const state = {
     noteFilter: '',
     expandedTasks: new Set(),
     showAddSubtaskForm: new Set(), // Track which tasks have the add-subtask form open
+    editingTaskId: null,           // ID of the task currently showing its inline edit form
+    showAddTaskForm: false,        // Whether the top-level "add task" inline form is visible
+    showAddTaskNoteForm: new Set(), // Track which tasks have the add-note inline form open
     taskNotes: {},
     globalNotes: [],
     expandedGlobalNotes: new Set(),

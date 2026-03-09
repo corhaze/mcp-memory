@@ -84,11 +84,132 @@ function renderAddSubtaskForm(parentTaskId, taskDepth) {
     </div>`;
 }
 
+const STATUS_OPTIONS = ['open', 'in_progress', 'blocked', 'done', 'cancelled'];
+
+function renderStatusOptions(current) {
+  return STATUS_OPTIONS.map(s =>
+    `<option value="${s}" ${current === s ? 'selected' : ''}>${s}</option>`
+  ).join('');
+}
+
+function renderNoteTypeOptions(current) {
+  const types = ['context', 'investigation', 'implementation', 'bug', 'handover'];
+  return types.map(t =>
+    `<option value="${t}" ${current === t ? 'selected' : ''}>${t}</option>`
+  ).join('');
+}
+
+function renderTaskEditForm(task) {
+  const isEditing = state.editingTaskId === task.id;
+  return `
+    <form class="task-edit-form${isEditing ? '' : ' hidden'}" data-task-id="${esc(task.id)}">
+      <div class="form-group">
+        <label>Title *</label>
+        <input name="title" class="form-control" value="${esc(task.title)}" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" class="form-control task-edit-description">${esc(task.description || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status" class="form-control">${renderStatusOptions(task.status)}</select>
+      </div>
+      <div class="form-group form-checkbox">
+        <input type="checkbox" name="urgent" id="edit-urgent-${esc(task.id)}" ${task.urgent ? 'checked' : ''}>
+        <label for="edit-urgent-${esc(task.id)}">Urgent</label>
+      </div>
+      <div class="form-group form-checkbox">
+        <input type="checkbox" name="complex" id="edit-complex-${esc(task.id)}" ${task.complex ? 'checked' : ''}>
+        <label for="edit-complex-${esc(task.id)}">Complex</label>
+      </div>
+      <div class="form-group">
+        <label>Assigned Agent</label>
+        <input name="assigned_agent" class="form-control" value="${esc(task.assigned_agent || '')}">
+      </div>
+      <div class="form-group">
+        <label>Next Action</label>
+        <input name="next_action" class="form-control" value="${esc(task.next_action || '')}">
+      </div>
+      <div class="form-group">
+        <label>Blocked By Task ID</label>
+        <input name="blocked_by_task_id" class="form-control" value="${esc(task.blocked_by_task_id || '')}">
+      </div>
+      <div class="form-error" style="display:none"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Save</button>
+        <button type="button" class="btn-cancel btn-cancel-task-edit" data-task-id="${esc(task.id)}">Cancel</button>
+      </div>
+    </form>`;
+}
+
+export function renderAddTopTaskForm() {
+  return `
+    <form id="add-top-task-form" class="add-subtask-form">
+      <div class="form-group">
+        <label>Title *</label>
+        <input class="top-task-title-input form-control" placeholder="Task title" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="top-task-desc-input form-control" rows="3" placeholder="Optional description (markdown)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select class="top-task-status-select form-control">
+          ${STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group form-checkbox">
+        <input type="checkbox" class="top-task-urgent-checkbox" id="top-task-urgent">
+        <label for="top-task-urgent">Urgent</label>
+      </div>
+      <div class="form-group">
+        <label>Assigned Agent</label>
+        <input class="top-task-agent-input form-control" placeholder="Optional">
+      </div>
+      <div class="form-error" style="display:none"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Create Task</button>
+        <button type="button" class="btn-cancel-top-task">Cancel</button>
+      </div>
+    </form>`;
+}
+
+function renderAddTaskNoteForm(taskId) {
+  const showForm = state.showAddTaskNoteForm.has(taskId);
+  return `
+    <div class="add-task-note-section" data-task-id="${taskId}">
+      <form class="add-task-note-form${showForm ? '' : ' hidden'}" data-task-id="${taskId}">
+        <div class="form-group">
+          <label>Title *</label>
+          <input class="note-title-input form-control" placeholder="Note title" required>
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea class="note-text-input form-control" rows="3" placeholder="Note content (markdown)"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select class="note-type-select form-control">
+            ${renderNoteTypeOptions('context')}
+          </select>
+        </div>
+        <div class="form-error" style="display:none"></div>
+        <div class="form-actions">
+          <button type="submit" class="btn-submit">Add Note</button>
+          <button type="button" class="btn-cancel-task-note" data-task-id="${taskId}">Cancel</button>
+        </div>
+      </form>
+    </div>`;
+}
+
 export function renderTaskItem(task, depth = 0) {
   const MAX_DEPTH = 5;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   const hasDesc = Boolean(task.description);
   const expanded = state.expandedTasks.has(task.id);
+  const isEditing = state.editingTaskId === task.id;
   const statusIcon = statusEmoji(task.status);
 
   const blockedBadge = task.blocked_by_task_id
@@ -107,17 +228,23 @@ export function renderTaskItem(task, depth = 0) {
     : '<ul class="task-notes-list"><li class="list-empty task-notes-loading" style="font-size:11px;color:var(--text-dim)">—</li></ul>';
 
   const addSubtaskFormHtml = renderAddSubtaskForm(task.id, depth);
+  const taskEditFormHtml = renderTaskEditForm(task);
+  const addNoteFormHtml = renderAddTaskNoteForm(task.id);
 
   const bodyHtml = `<div id="task-body-${task.id}" class="task-body${expanded ? '' : ' hidden'}">
-             ${hasDesc ? `<div class="task-description markdown-body">${marked.parse(task.description)}</div>` : ''}
-             <div class="task-notes-section">
-               <div class="task-notes-header">
-                 <span class="task-notes-label">Notes</span>
-                 <button class="add-task-note-btn" data-task-id="${task.id}">+ add note</button>
+             ${taskEditFormHtml}
+             <div class="task-view-content${isEditing ? ' hidden' : ''}">
+               ${hasDesc ? `<div class="task-description markdown-body">${marked.parse(task.description)}</div>` : ''}
+               <div class="task-notes-section">
+                 <div class="task-notes-header">
+                   <span class="task-notes-label">Notes</span>
+                   <button class="add-task-note-btn" data-task-id="${task.id}">+ add note</button>
+                 </div>
+                 <div id="task-notes-${task.id}">${notesHtml}</div>
+                 ${addNoteFormHtml}
                </div>
-               <div id="task-notes-${task.id}">${notesHtml}</div>
+               ${addSubtaskFormHtml}
              </div>
-             ${addSubtaskFormHtml}
            </div>`;
 
   const subtasksHtml = (hasSubtasks && depth < MAX_DEPTH)

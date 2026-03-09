@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { parsePath, setPath, setGlobalPath, VALID_TABS } from './router.js';
 import { showModal, hideModal, handleModalSave } from './components/modal.js';
 import { renderProjectNav, updateNavHighlight, showProjectEmptyState, renderProjectHeader } from './components/projects.js';
-import { renderTasks, findTask } from './components/tasks.js';
+import { renderTasks, findTask, renderAddTopTaskForm } from './components/tasks.js';
 import { renderDecisions } from './components/decisions.js';
 import { renderNotes } from './components/notes.js';
 import { renderGlobalNotes } from './components/global-notes.js';
@@ -103,6 +103,127 @@ async function deleteTaskNote(noteId, taskId) {
     } catch (err) {
         alert(err.message);
     }
+}
+
+async function submitTaskEditForm(form) {
+    const taskId = form.dataset.taskId;
+    const errorDiv = form.querySelector('.form-error');
+    errorDiv.style.display = 'none';
+
+    const title = form.querySelector('[name="title"]').value.trim();
+    if (!title) {
+        errorDiv.textContent = 'Title is required';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    // FormData omits unchecked checkboxes — handle explicitly
+    data.urgent = form.querySelector('[name="urgent"]').checked;
+    data.complex = form.querySelector('[name="complex"]').checked;
+    // Map empty ID fields to null
+    for (const key of ['parent_task_id', 'blocked_by_task_id']) {
+        if (data[key] === '') data[key] = null;
+    }
+
+    const submitBtn = form.querySelector('.btn-submit');
+    submitBtn.textContent = 'Saving…';
+    submitBtn.disabled = true;
+
+    try {
+        await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, data);
+        state.editingTaskId = null;
+        await selectProject(state.activeProjectId, getActiveTab());
+    } catch (err) {
+        errorDiv.textContent = err.message || 'Failed to save';
+        errorDiv.style.display = 'block';
+        submitBtn.textContent = 'Save';
+        submitBtn.disabled = false;
+    }
+}
+
+async function submitAddTaskNoteForm(form) {
+    const taskId = form.dataset.taskId;
+    const errorDiv = form.querySelector('.form-error');
+    errorDiv.style.display = 'none';
+
+    const title = form.querySelector('.note-title-input').value.trim();
+    const noteText = form.querySelector('.note-text-input').value.trim();
+    const noteType = form.querySelector('.note-type-select').value;
+
+    if (!title) {
+        errorDiv.textContent = 'Title is required';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    const submitBtn = form.querySelector('.btn-submit');
+    submitBtn.textContent = 'Saving…';
+    submitBtn.disabled = true;
+
+    try {
+        await api.post(`/api/tasks/${taskId}/notes`, { title, note_text: noteText, note_type: noteType });
+        state.showAddTaskNoteForm.delete(taskId);
+        await loadTaskNotes(taskId);
+    } catch (err) {
+        errorDiv.textContent = err.message || 'Failed to add note';
+        errorDiv.style.display = 'block';
+        submitBtn.textContent = 'Add Note';
+        submitBtn.disabled = false;
+    }
+}
+
+function showAddTopTaskForm() {
+    state.showAddTaskForm = true;
+    els.addTaskFormContainer.innerHTML = renderAddTopTaskForm();
+    els.addTaskFormContainer.classList.remove('hidden');
+    els.addTaskFormContainer.querySelector('.top-task-title-input')?.focus();
+
+    const form = els.addTaskFormContainer.querySelector('#add-top-task-form');
+
+    form.querySelector('.btn-submit').addEventListener('click', async e => {
+        e.preventDefault();
+        const errorDiv = form.querySelector('.form-error');
+        errorDiv.style.display = 'none';
+
+        const title = form.querySelector('.top-task-title-input').value.trim();
+        if (!title) {
+            errorDiv.textContent = 'Title is required';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        const description = form.querySelector('.top-task-desc-input').value.trim() || null;
+        const status = form.querySelector('.top-task-status-select').value;
+        const urgent = form.querySelector('.top-task-urgent-checkbox').checked;
+        const assigned_agent = form.querySelector('.top-task-agent-input').value.trim() || null;
+
+        const submitBtn = form.querySelector('.btn-submit');
+        submitBtn.textContent = 'Creating…';
+        submitBtn.disabled = true;
+
+        try {
+            await api.post(`/api/projects/${state.activeProjectId}/tasks`, {
+                title, description, status, urgent, assigned_agent
+            });
+            state.showAddTaskForm = false;
+            els.addTaskFormContainer.classList.add('hidden');
+            els.addTaskFormContainer.innerHTML = '';
+            await selectProject(state.activeProjectId, getActiveTab());
+        } catch (err) {
+            errorDiv.textContent = err.message || 'Failed to create task';
+            errorDiv.style.display = 'block';
+            submitBtn.textContent = 'Create Task';
+            submitBtn.disabled = false;
+        }
+    });
+
+    form.querySelector('.btn-cancel-top-task').addEventListener('click', () => {
+        state.showAddTaskForm = false;
+        els.addTaskFormContainer.classList.add('hidden');
+        els.addTaskFormContainer.innerHTML = '';
+    });
 }
 
 // ── Project Selection ─────────────────────────────────────────────────────────
@@ -243,15 +364,40 @@ async function performSearch(query) {
                 container.querySelectorAll('.task-toggle').forEach(btn => {
                     btn.addEventListener('click', (e) => handleTaskToggle(e, btn));
                 });
+                // Note: search panel task notes use the tasks tab inline form — navigate there
                 container.querySelectorAll('.add-task-note-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => { e.stopPropagation(); showTaskNoteForm(btn.dataset.taskId); });
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const taskId = btn.dataset.taskId;
+                        state.expandedTasks.add(taskId);
+                        state.showAddTaskNoteForm.add(taskId);
+                        state.taskFilter = '';
+                        els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
+                            b.classList.toggle('active', b.dataset.status === '');
+                        });
+                        renderTasks();
+                        bindTaskEvents();
+                        activateTab('tasks');
+                        const proj = state.projects.find(p => p.id === state.activeProjectId);
+                        if (proj) setPath(proj.name, 'tasks', true);
+                    });
                 });
                 container.querySelectorAll('.edit-task').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        // Search in both project tasks and search result tasks to find the item
-                        const task = findTask(btn.dataset.id, state.tasks) || findTask(btn.dataset.id, state.searchResults.tasks);
-                        if (task) showTaskForm(task);
+                        // Navigate to Tasks tab with the task in edit mode
+                        const taskId = btn.dataset.id;
+                        state.editingTaskId = taskId;
+                        state.expandedTasks.add(taskId);
+                        state.taskFilter = '';
+                        els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
+                            b.classList.toggle('active', b.dataset.status === '');
+                        });
+                        renderTasks();
+                        bindTaskEvents();
+                        activateTab('tasks');
+                        const proj = state.projects.find(p => p.id === state.activeProjectId);
+                        if (proj) setPath(proj.name, 'tasks', true);
                     });
                 });
                 container.querySelectorAll('.delete-task').forEach(btn => {
@@ -464,15 +610,70 @@ function bindTaskEvents() {
     els.taskListEl.querySelectorAll('.add-task-note-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             e.stopPropagation();
-            showTaskNoteForm(btn.dataset.taskId);
+            const taskId = btn.dataset.taskId;
+            const section = els.taskListEl.querySelector(`.add-task-note-section[data-task-id="${taskId}"]`);
+            if (!section) return;
+            const form = section.querySelector('.add-task-note-form');
+            if (!form) return;
+            const isOpen = state.showAddTaskNoteForm.has(taskId);
+            if (isOpen) {
+                state.showAddTaskNoteForm.delete(taskId);
+                form.classList.add('hidden');
+            } else {
+                state.showAddTaskNoteForm.add(taskId);
+                form.classList.remove('hidden');
+                form.querySelector('.note-title-input')?.focus();
+            }
+        });
+    });
+
+    els.taskListEl.querySelectorAll('.add-task-note-form').forEach(form => {
+        const submitBtn = form.querySelector('.btn-submit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async e => {
+                e.preventDefault();
+                e.stopPropagation();
+                await submitAddTaskNoteForm(form);
+            });
+        }
+        form.querySelector('.btn-cancel-task-note')?.addEventListener('click', e => {
+            e.stopPropagation();
+            const taskId = form.dataset.taskId;
+            state.showAddTaskNoteForm.delete(taskId);
+            form.classList.add('hidden');
+            form.reset();
         });
     });
 
     els.taskListEl.querySelectorAll('.edit-task').forEach(btn => {
         btn.addEventListener('click', e => {
             e.stopPropagation();
-            const task = findTask(btn.dataset.id, state.tasks);
-            if (task) showTaskForm(task);
+            const taskId = btn.dataset.id;
+            // Toggle: clicking edit again on the open form cancels it
+            if (state.editingTaskId === taskId) {
+                state.editingTaskId = null;
+                renderTasks();
+                bindTaskEvents();
+                return;
+            }
+            state.editingTaskId = taskId;
+            state.expandedTasks.add(taskId);
+            renderTasks();
+            bindTaskEvents();
+        });
+    });
+
+    els.taskListEl.querySelectorAll('.task-edit-form').forEach(form => {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            e.stopPropagation();
+            await submitTaskEditForm(form);
+        });
+        form.querySelector('.btn-cancel-task-edit')?.addEventListener('click', e => {
+            e.stopPropagation();
+            state.editingTaskId = null;
+            renderTasks();
+            bindTaskEvents();
         });
     });
 
@@ -610,27 +811,6 @@ async function deleteProject(id) {
     } catch (err) { alert(err.message); }
 }
 
-function showTaskForm(task = null) {
-    const html = `
-    <form data-type="task" data-id="${task ? task.id : ''}">
-        <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${task ? esc(task.title) : ''}" required></div>
-        <div class="form-group"><label>Description</label><textarea name="description" class="form-control">${task ? esc(task.description) : ''}</textarea></div>
-        <div class="form-group"><label>Status</label><select name="status" class="form-control">
-            <option value="open" ${task?.status === 'open' ? 'selected' : ''}>Open</option>
-            <option value="in_progress" ${task?.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-            <option value="blocked" ${task?.status === 'blocked' ? 'selected' : ''}>Blocked</option>
-            <option value="done" ${task?.status === 'done' ? 'selected' : ''}>Done</option>
-            <option value="cancelled" ${task?.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-        </select></div>
-        <div class="form-group"><label>Urgent</label><input type="checkbox" name="urgent" ${task?.urgent ? 'checked' : ''} /></div>
-        <div class="form-group"><label>Complex</label><input type="checkbox" name="complex" ${task?.complex ? 'checked' : ''} /></div>
-        <div class="form-group"><label>Assigned Agent</label><input name="assigned_agent" class="form-control" value="${task ? esc(task.assigned_agent) : ''}"></div>
-        <div class="form-group"><label>Parent Task ID</label><input name="parent_task_id" class="form-control" value="${task ? esc(task.parent_task_id) : ''}"></div>
-        <div class="form-group"><label>Blocked By Task ID</label><input name="blocked_by_task_id" class="form-control" value="${task ? esc(task.blocked_by_task_id) : ''}"></div>
-        <div class="form-group"><label>Next Action</label><input name="next_action" class="form-control" value="${task ? esc(task.next_action) : ''}"></div>
-    </form>`;
-    showModal(task ? 'Edit Task' : 'New Task', html);
-}
 
 async function deleteTask(id) {
     if (!confirm('Delete this task?')) return;
@@ -687,21 +867,6 @@ async function deleteNote(id) {
     } catch (err) { alert(err.message); }
 }
 
-function showTaskNoteForm(taskId) {
-    const html = `
-    <form data-type="task_note" data-task-id="${taskId}">
-        <div class="form-group"><label>Title</label><input name="title" class="form-control" required></div>
-        <div class="form-group"><label>Note</label><textarea name="note_text" class="form-control" required></textarea></div>
-        <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
-            <option value="context">Context</option>
-            <option value="investigation">Investigation</option>
-            <option value="implementation">Implementation</option>
-            <option value="bug">Bug</option>
-            <option value="handover">Handover</option>
-        </select></div>
-    </form>`;
-    showModal('Add Task Note', html);
-}
 
 function showGlobalNoteForm(note = null) {
     const html = `
@@ -811,7 +976,7 @@ async function init() {
     });
     els.deleteProjectBtn.addEventListener('click', () => deleteProject(state.activeProjectId));
 
-    els.addTaskBtn.addEventListener('click', () => showTaskForm());
+    els.addTaskBtn.addEventListener('click', () => showAddTopTaskForm());
     els.addDecisionBtn.addEventListener('click', () => showDecisionForm());
     els.addNoteBtn.addEventListener('click', () => showNoteForm());
 

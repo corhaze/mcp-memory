@@ -1522,6 +1522,48 @@ select.form-control option {
   display: none;
 }
 
+/* Inline task edit form — appears inside task body, replaces the view content */
+.task-edit-form {
+  padding: 12px 0 8px;
+  border-top: 1px solid var(--border);
+}
+
+.task-edit-form textarea.task-edit-description {
+  min-height: 200px;
+  resize: vertical;
+}
+
+.task-edit-form.hidden {
+  display: none;
+}
+
+.task-view-content.hidden {
+  display: none;
+}
+
+/* Add-task inline form container (above task list) */
+.add-task-form-container {
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.add-task-form-container.hidden {
+  display: none;
+}
+
+/* Inline add-note form inside task body */
+.add-task-note-form {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg-deeper);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.add-task-note-form.hidden {
+  display: none;
+}
+
 .form-group {
   margin-bottom: 12px;
 }

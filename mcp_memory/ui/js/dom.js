@@ -11,6 +11,7 @@ export const els = {
     projectDesc: $('project-description'),
     projectSummary: $('project-summary-text'),
     taskListEl: $('task-list'),
+    addTaskFormContainer: $('add-task-form-container'),
     decisionListEl: $('decision-list'),
     noteListEl: $('note-list'),
     timelineListEl: $('timeline-list'),
