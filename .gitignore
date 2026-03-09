@@ -32,3 +32,6 @@ Thumbs.db
 
 # Local MCP memory storage (if any)
 .mcp-memory/
+
+# Git worktrees
+.worktrees/
