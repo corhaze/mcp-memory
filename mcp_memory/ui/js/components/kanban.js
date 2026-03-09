@@ -43,16 +43,20 @@ function renderCard(task) {
         </div>`;
 }
 
-function renderColumn(status, tasks) {
+function renderColumn(status, tasks, totalCount = null) {
     const cards = tasks.length
         ? tasks.map(renderCard).join('')
         : '<div class="kanban-drop-placeholder">Drop here</div>';
+
+    const count = totalCount !== null && totalCount !== tasks.length
+        ? `${tasks.length}/${totalCount}`
+        : tasks.length;
 
     return `
         <div class="kanban-column" data-status="${status}">
             <div class="kanban-column-header badge-${status}">
                 <span>${COLUMN_LABELS[status]}</span>
-                <span class="kanban-column-count">${tasks.length}</span>
+                <span class="kanban-column-count">${count}</span>
             </div>
             <div class="kanban-column-body" data-status="${status}">
                 ${cards}
@@ -69,8 +73,24 @@ export function renderKanban() {
         if (col) col.push(task);
     }
 
+    // Limit the done column to the 5 most recently completed tasks so it
+    // doesn't dominate the board. Tasks are sorted by completed_at desc,
+    // falling back to created_at for any that lack a completion timestamp.
+    const allDone = byStatus.get('done');
+    allDone.sort((a, b) => {
+        const ta = a.completed_at || a.created_at || '';
+        const tb = b.completed_at || b.created_at || '';
+        return tb.localeCompare(ta);
+    });
+    byStatus.set('done', allDone.slice(0, 5));
+    const totalDone = allDone.length;
+
     els.kanbanBoard.innerHTML = COLUMNS
-        .map(status => renderColumn(status, byStatus.get(status)))
+        .map(status => renderColumn(
+            status,
+            byStatus.get(status),
+            status === 'done' ? totalDone : null,
+        ))
         .join('');
 }
 
