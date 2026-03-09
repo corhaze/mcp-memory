@@ -31,8 +31,10 @@ mcp = FastMCP(
         "Failing to update records defeats the purpose of this server. "
 
         "RETRIEVAL ORDER: (1) get_working_context for relational state, "
-        "(2) search/search_* for keyword lookup, "
-        "(3) semantic_search_* for fuzzy recall when keywords fail, "
+        "(2) search for keyword lookup (always available), "
+        "(3) semantic_search_* for fuzzy recall when keywords fail — requires "
+        "MCP_MEMORY_ENABLE_EMBEDDINGS=1; if unavailable the tool will say so, "
+        "fall back to `search` in that case, "
         "(4) get_links for graph traversal. "
 
         "TASKS: Status flow: open → in_progress → blocked/done/cancelled. "

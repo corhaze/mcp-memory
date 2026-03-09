@@ -1,6 +1,12 @@
 from typing import Optional
 from .mcp import mcp
 import mcp_memory.db as _db
+from mcp_memory import embeddings as _emb
+
+_EMBEDDINGS_UNAVAILABLE = (
+    "Semantic search is unavailable — embedding model not loaded. "
+    "Use the `search` tool for keyword search instead."
+)
 
 # ── Project Notes ─────────────────────────────────────────────────────────────
 
@@ -205,6 +211,8 @@ def semantic_search_global_notes(query: str, limit: int = 5) -> str:
         query: Natural language query.
         limit: Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     notes = _db.semantic_search_global_notes(query, limit)
     if not notes:
         return "No results found."
@@ -323,6 +331,8 @@ def semantic_search_task_notes(
         task_id:    Optional task filter — restrict results to one task.
         limit:      Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     pid = None
     if project_id:
         proj = _db.get_project(project_id)

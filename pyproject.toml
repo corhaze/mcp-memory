@@ -6,12 +6,12 @@ requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.4.0",
     "click>=8.1.0",
-    "fastembed>=0.2.0",
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
 ]
 
 [project.optional-dependencies]
+embeddings = ["fastembed>=0.2.0"]
 dev = ["pytest>=9.0.0", "pytest-cov>=4.0.0"]
 
 [build-system]

@@ -4,9 +4,15 @@ tests/test_semantic_search.py — vector/semantic search tests for mcp-memory.
 These tests use the real FastEmbed model (BAAI/bge-small-en-v1.5).
 On first run, the model will be downloaded (~25MB) and cached.
 Subsequent runs are fast. Tests assert semantic relevance, not exact matches.
+
+Skipped automatically when fastembed is not installed.
 """
 
 import pytest
+
+pytest.importorskip("fastembed")
+
+import mcp_memory.embeddings as _emb
 from mcp_memory.db import (
     create_project, create_task, create_decision, create_note,
     create_document, add_chunks,
@@ -14,11 +20,16 @@ from mcp_memory.db import (
     semantic_search_notes, semantic_search_chunks,
 )
 
+
 @pytest.fixture(autouse=True)
-def tmp_db(tmp_path, monkeypatch):
-    db_file = tmp_path / "test_semantic.db"
-    monkeypatch.setattr("mcp_memory.repository.connection.db_path", lambda: db_file)
-    yield db_file
+def enable_embeddings(monkeypatch):
+    """Enable embeddings and reset module state for each test."""
+    monkeypatch.setenv("MCP_MEMORY_ENABLE_EMBEDDINGS", "1")
+    monkeypatch.setattr(_emb, "_model", None)
+    monkeypatch.setattr(_emb, "_model_available", None)
+    yield
+    monkeypatch.setattr(_emb, "_model", None)
+    monkeypatch.setattr(_emb, "_model_available", None)
 
 
 @pytest.fixture

@@ -14,7 +14,12 @@ EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 def _store_embedding(conn: sqlite3.Connection, project_id: Optional[str], entity_type: str,
                      entity_id: str, text: str) -> None:
-    """Generate and upsert an embedding for any entity."""
+    """Generate and upsert an embedding for any entity.
+
+    Skips silently when the embedding model is unavailable.
+    """
+    if not _emb.is_available():
+        return
     vector = _emb.generate_embedding(text)
     emb_id = str(uuid4())
     conn.execute(
@@ -34,9 +39,12 @@ def _semantic_search_raw(query: str, entity_type: str, project_id: Optional[str]
                           limit: int) -> List[Tuple[float, str]]:
     """Return [(score, entity_id)] for a given entity_type.
 
+    Returns an empty list when the embedding model is unavailable.
     Uses a fixed-size heap to keep memory proportional to `limit` rather than
     to the total number of stored embeddings.
     """
+    if not _emb.is_available():
+        return []
     query_vec = _emb.generate_embedding(query)
     top_k: list[tuple[float, str]] = []
 

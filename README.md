@@ -17,10 +17,40 @@ Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
 ```bash
 git clone https://github.com/corhaze/mcp-memory
 cd mcp-memory
-uv sync --all-extras
+
+# Standard install — FTS5 keyword search, no semantic search:
+uv sync
+
+# With semantic search (requires HuggingFace access on first run):
+uv sync --extra embeddings
 ```
 
-> **First run:** FastEmbed downloads the embedding model (`BAAI/bge-small-en-v1.5`, ~130 MB) to `~/.cache/fastembed/` on first use. Subsequent starts are instant.
+## Semantic search (optional)
+
+Semantic search is disabled by default. To enable it:
+
+1. Install with the `embeddings` extra: `uv sync --extra embeddings`
+2. Set `MCP_MEMORY_ENABLE_EMBEDDINGS=1` in your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "mcp-memory": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/mcp-memory", "mcp-memory"],
+      "env": { "MCP_MEMORY_ENABLE_EMBEDDINGS": "1" }
+    }
+  }
+}
+```
+
+> **First run with embeddings:** FastEmbed downloads `BAAI/bge-small-en-v1.5` (~130 MB) to `~/.cache/fastembed/`. Subsequent starts are instant.
+
+When `MCP_MEMORY_ENABLE_EMBEDDINGS` is not set (or fastembed is not installed):
+- All entity creation and non-semantic tools work normally.
+- `semantic_search_*` tools return a clear message directing you to `search` instead.
+- FTS5 keyword search (`search` tool) is always available.
 
 ## Connect to an MCP client
 
@@ -37,6 +67,8 @@ Add to your client config (e.g. Claude Desktop or `~/.claude.json`):
   }
 }
 ```
+
+See [Semantic search](#semantic-search-optional) above if you want to enable vector search.
 
 ## MCP Tools
 

@@ -1,6 +1,12 @@
 from typing import List, Optional
 from .mcp import mcp
 import mcp_memory.db as _db
+from mcp_memory import embeddings as _emb
+
+_EMBEDDINGS_UNAVAILABLE = (
+    "Semantic search is unavailable — embedding model not loaded. "
+    "Use the `search` tool for keyword search instead."
+)
 
 # ── Unified Search ────────────────────────────────────────────────────────────
 
@@ -87,6 +93,8 @@ def semantic_search_tasks(
         project_id: Optional project filter.
         limit:      Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     pid = None
     if project_id:
         proj = _db.get_project(project_id)
@@ -112,6 +120,8 @@ def semantic_search_decisions(
         project_id: Optional project filter.
         limit:      Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     pid = None
     if project_id:
         proj = _db.get_project(project_id)
@@ -137,6 +147,8 @@ def semantic_search_notes(
         project_id: Optional project filter.
         limit:      Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     pid = None
     if project_id:
         proj = _db.get_project(project_id)
@@ -162,6 +174,8 @@ def semantic_search_chunks(
         project_id: Optional project filter.
         limit:      Max results (default 5).
     """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
     pid = None
     if project_id:
         proj = _db.get_project(project_id)
