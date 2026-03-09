@@ -102,11 +102,23 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.sidebar-header .header-main {
+  position: relative;
+}
+
+.sidebar-header .header-main #add-project-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
 .sidebar-logo-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
+  width: 100%;
+  padding: 10px 0;
   margin-bottom: 4px;
   user-select: none;
 
