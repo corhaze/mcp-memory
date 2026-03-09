@@ -24,6 +24,7 @@ export const els = {
     searchDecisionsList: $('search-decisions-list'),
     searchNotesList: $('search-notes-list'),
     searchEmptyState: $('search-empty-state'),
+    kanbanBoard: $('kanban-board'),
 
     // Buttons & Inputs
     addProjectBtn: $('add-project-btn'),

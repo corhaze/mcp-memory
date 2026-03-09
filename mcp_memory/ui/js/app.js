@@ -12,6 +12,7 @@ import { renderNotes } from './components/notes.js';
 import { renderGlobalNotes } from './components/global-notes.js';
 import { renderTimeline } from './components/timeline.js';
 import { renderSearch } from './components/search.js';
+import { renderKanban, bindKanbanEvents } from './components/kanban.js';
 
 import { esc } from './utils.js';
 
@@ -148,6 +149,7 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
     bindSummaryInlineEditor(ctx.summary || '');
 
     renderTasks();
+    renderKanban();
     renderDecisions();
     renderNotes();
     renderTimeline();
@@ -769,6 +771,39 @@ async function init() {
             renderGlobalNotes(getGlobalNoteHandlers());
         });
     }
+    bindKanbanEvents(
+        // onStatusChange — PATCH status then refresh with board tab active
+        async (taskId, newStatus) => {
+            try {
+                await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, { status: newStatus });
+                await selectProject(state.activeProjectId, 'board');
+            } catch (err) {
+                alert(err.message);
+            }
+        },
+        // onCardClick — switch to Tasks tab with the task expanded
+        (taskId) => {
+            state.expandedTasks.add(taskId);
+            // Reset filter so the task is visible regardless of its status.
+            state.taskFilter = '';
+            els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.status === '');
+            });
+            renderTasks();
+            bindTaskEvents();
+            activateTab('tasks');
+            const proj = state.projects.find(p => p.id === state.activeProjectId);
+            if (proj) setPath(proj.name, 'tasks', true);
+            // Scroll to task and load notes after the tab paint settles.
+            requestAnimationFrame(() => {
+                const taskEl = document.querySelector(`.task-group [data-task-id="${taskId}"]`)
+                    ?.closest('.task-group');
+                if (taskEl) taskEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                if (!state.taskNotes[taskId]) loadTaskNotes(taskId);
+            });
+        }
+    );
+
     els.addProjectBtn.addEventListener('click', () => showProjectForm());
     els.editProjectBtn.addEventListener('click', () => {
         const proj = state.projects.find(p => p.id === state.activeProjectId);

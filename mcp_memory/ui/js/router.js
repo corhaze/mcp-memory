@@ -2,7 +2,7 @@
 
 import { state } from './state.js';
 
-export const VALID_TABS = ['summary', 'tasks', 'decisions', 'notes', 'timeline', 'search'];
+export const VALID_TABS = ['summary', 'tasks', 'board', 'decisions', 'notes', 'timeline', 'search'];
 export const VALID_GLOBAL_TABS = ['notes'];
 
 export function parsePath() {

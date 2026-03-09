@@ -71,6 +71,7 @@
         <div class="tab-bar" role="tablist">
           <button class="tab active" data-tab="summary" role="tab" id="tab-summary">Summary</button>
           <button class="tab" data-tab="tasks" role="tab" id="tab-tasks">Tasks</button>
+          <button class="tab" data-tab="board" role="tab" id="tab-board">Board</button>
           <button class="tab" data-tab="decisions" role="tab" id="tab-decisions">Decisions</button>
           <button class="tab" data-tab="notes" role="tab" id="tab-notes">Notes</button>
           <button class="tab" data-tab="timeline" role="tab" id="tab-timeline">Timeline</button>
@@ -99,6 +100,14 @@
             </div>
           </div>
           <ul id="task-list" class="task-list" aria-live="polite"></ul>
+        </section>
+
+        <!-- Board panel -->
+        <section id="panel-board" class="panel hidden">
+          <div class="panel-toolbar">
+            <span class="panel-label">Kanban board</span>
+          </div>
+          <div id="kanban-board" class="kanban-board"></div>
         </section>
 
         <!-- Decisions panel -->

@@ -1612,3 +1612,115 @@ select.form-control option {
   color: var(--text-sec);
 }
 
+/* ── Kanban Board ─────────────────────────────────────────────────────────────── */
+#panel-board {
+  overflow-x: auto;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 8px;
+  min-height: 400px;
+  align-items: start;
+}
+
+.kanban-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  min-height: 300px;
+}
+
+.kanban-column-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.kanban-column-count {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.kanban-column-body {
+  flex: 1;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 60px;
+}
+
+.kanban-column-body.kanban-drop-active {
+  background: var(--green-glow);
+  outline: 1px dashed var(--green-muted);
+  outline-offset: -2px;
+}
+
+.kanban-card {
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 8px 10px;
+  cursor: grab;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  user-select: none;
+}
+
+.kanban-card:hover {
+  border-color: var(--border-bright);
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.kanban-card.dragging {
+  opacity: 0.4;
+  border-color: var(--green-dim);
+}
+
+.kanban-column[data-status="done"] .kanban-card {
+  opacity: 0.7;
+}
+
+.kanban-column[data-status="cancelled"] .kanban-card {
+  opacity: 0.4;
+}
+
+.kanban-card-title {
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.kanban-card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.kanban-subtask-summary {
+  font-size: 10px;
+  color: #ff8800;
+}
+
+.kanban-drop-placeholder {
+  color: var(--text-dim);
+  font-size: 10px;
+  text-align: center;
+  padding: 12px 6px;
+  border: 1px dashed var(--border);
+}
