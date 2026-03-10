@@ -136,5 +136,65 @@ def search_chunks(query: str, project_id: Optional[str] = None) -> List[Document
             ).fetchall()
     return [_row_to_chunk(r) for r in rows]
 
-# Note: Search wrappers for specific domains are moved to their respective domain modules 
+# Note: Search wrappers for specific domains are moved to their respective domain modules
 # to keep them grouped with related CRUD, but they call _semantic_search_raw here.
+
+# ── Unified Semantic Search ────────────────────────────────────────────────────
+
+def semantic_search_all(
+    query: str,
+    project_id: Optional[str] = None,
+    limit: int = 10,
+) -> list[dict]:
+    """Fan out semantic search across all entity types and return merged results.
+
+    Each result dict has:
+        entity_type: one of "task", "decision", "note", "task_note", "global_note"
+        score:       float cosine similarity
+        entity:      the model object (Task, Decision, Note, TaskNote, GlobalNote)
+
+    global_note has no project_id filter and is always included regardless of
+    the project_id argument.  Returns [] if embeddings are unavailable.
+    """
+    if not _emb.is_available():
+        return []
+
+    # Fan out: over-fetch per type so we have enough candidates after merging.
+    raw: dict[str, List[Tuple[float, str]]] = {
+        "task":        _semantic_search_raw(query, "task",        project_id, limit),
+        "decision":    _semantic_search_raw(query, "decision",    project_id, limit),
+        "note":        _semantic_search_raw(query, "note",        project_id, limit),
+        "task_note":   _semantic_search_raw(query, "task_note",   project_id, limit),
+        "global_note": _semantic_search_raw(query, "global_note", None,       limit),
+    }
+
+    # Bulk-fetch entities per type using a single WHERE id IN (...) query.
+    def _fetch_bulk(table: str, ids: list[str], converter) -> dict[str, object]:
+        if not ids:
+            return {}
+        placeholders = ", ".join("?" * len(ids))
+        with get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM {table} WHERE id IN ({placeholders})", ids
+            ).fetchall()
+        return {row["id"]: converter(row) for row in rows}
+
+    entity_maps: dict[str, dict[str, object]] = {
+        "task":        _fetch_bulk("tasks",        [eid for _, eid in raw["task"]],        _row_to_task),
+        "decision":    _fetch_bulk("decisions",    [eid for _, eid in raw["decision"]],    _row_to_decision),
+        "note":        _fetch_bulk("notes",        [eid for _, eid in raw["note"]],        _row_to_note),
+        "task_note":   _fetch_bulk("task_notes",   [eid for _, eid in raw["task_note"]],   _row_to_task_note),
+        "global_note": _fetch_bulk("global_notes", [eid for _, eid in raw["global_note"]], _row_to_global_note),
+    }
+
+    # Merge all scored results, skip any entity_id not found in the DB.
+    merged: list[dict] = []
+    for entity_type, scored in raw.items():
+        emap = entity_maps[entity_type]
+        for score, eid in scored:
+            entity = emap.get(eid)
+            if entity is not None:
+                merged.append({"entity_type": entity_type, "score": score, "entity": entity})
+
+    merged.sort(key=lambda r: r["score"], reverse=True)
+    return merged[:limit]
