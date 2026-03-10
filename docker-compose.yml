@@ -1,0 +1,9 @@
+services:
+  ui:
+    build: .
+    ports:
+      - "7878:7878"
+    volumes:
+      - ~/.mcp-memory:/root/.mcp-memory
+    environment:
+      - MCP_MEMORY_ENABLE_EMBEDDINGS=1
