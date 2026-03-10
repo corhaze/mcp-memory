@@ -186,3 +186,58 @@ def semantic_search_chunks(
     lines = [f"[doc:{c.document_id}] chunk {c.chunk_index}: {c.chunk_text[:100]}..."
              for c in chunks]
     return f"{len(chunks)} result(s):\n" + "\n".join(lines)
+
+
+@mcp.tool()
+def semantic_search_all(
+    query: str,
+    project_id: Optional[str] = None,
+    limit: int = 10,
+) -> str:
+    """
+    Search tasks, decisions, notes, task notes, and global notes in a single
+    call using semantic similarity. Returns the top results across all entity
+    types ranked by relevance score.
+
+    Prefer this over calling semantic_search_tasks/decisions/notes separately.
+    Falls back gracefully when embeddings are unavailable.
+
+    Args:
+        query:      Natural language query.
+        project_id: Optional project filter (UUID or name).
+        limit:      Max total results across all types (default 10).
+    """
+    if not _emb.is_available():
+        return _EMBEDDINGS_UNAVAILABLE
+    pid = None
+    if project_id:
+        proj = _db.get_project(project_id)
+        pid = proj.id if proj else None
+    results = _db.semantic_search_all(query, pid, limit)
+    if not results:
+        return "No results found."
+
+    lines = []
+    for r in results:
+        entity_type = r["entity_type"]
+        score = r["score"]
+        entity = r["entity"]
+
+        if entity_type == "task":
+            lines.append(f"[task] {entity.title} (score: {score:.2f})")
+            next_part = f" | Next: {entity.next_action}" if entity.next_action else ""
+            lines.append(f"  Status: {entity.status}{next_part}")
+        elif entity_type == "decision":
+            lines.append(f"[decision] {entity.title} (score: {score:.2f})")
+            lines.append(f"  Status: {entity.status}")
+        elif entity_type == "note":
+            lines.append(f"[note] {entity.title} (score: {score:.2f})")
+            lines.append(f"  Type: {entity.note_type}")
+        elif entity_type == "task_note":
+            lines.append(f"[task_note] {entity.title} (score: {score:.2f})")
+            lines.append(f"  Type: {entity.note_type} | Task: {entity.task_id}")
+        elif entity_type == "global_note":
+            lines.append(f"[global_note] {entity.title} (score: {score:.2f})")
+            lines.append(f"  Type: {entity.note_type}")
+
+    return "\n".join(lines)
