@@ -1265,6 +1265,21 @@ form.summary-form textarea.summary-textarea {
   color: var(--amber-dim);
 }
 
+/* ── Entity ID chip (click-to-copy) ──────────────────────────────────────────── */
+.entity-id-chip {
+  font-size: 9px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color var(--transition), border-color var(--transition);
+}
+.entity-id-chip:hover { color: var(--text-muted); border-color: var(--border-bright); }
+.entity-id-chip.copied { color: var(--green); border-color: var(--green-dim); }
+
 .note-text {
   font-size: 11px;
   color: var(--text-sec);

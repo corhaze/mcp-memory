@@ -36,6 +36,7 @@ export function renderNoteItem(n) {
       <div class="note-view-content${isEditing ? ' hidden' : ''}">
         <div class="note-header">
           <span class="note-title">${esc(n.title)}</span>
+          <span class="entity-id-chip" data-full-id="${n.id}" title="Copy ID"><span class="id-text">#${n.id.slice(0, 8)}</span></span>
           <span class="note-date" title="${n.created_at ? new Date(n.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:10px">${formatTime(n.created_at)}</span>
           <div class="header-actions">
             <button class="icon-btn edit-note" data-id="${n.id}">✎</button>

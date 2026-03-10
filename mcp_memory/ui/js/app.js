@@ -958,6 +958,22 @@ async function init() {
         if (!e.target.closest('.task-status-dropdown')) {
             document.querySelectorAll('.task-status-options').forEach(o => o.classList.add('hidden'));
         }
+
+        const chip = e.target.closest('.entity-id-chip');
+        if (chip) {
+            e.stopPropagation();
+            const fullId = chip.dataset.fullId;
+            navigator.clipboard.writeText(fullId).then(() => {
+                const idText = chip.querySelector('.id-text');
+                const original = idText.textContent;
+                idText.textContent = '✓';
+                chip.classList.add('copied');
+                setTimeout(() => {
+                    idText.textContent = original;
+                    chip.classList.remove('copied');
+                }, 1500);
+            });
+        }
     });
 
     if (els.globalNoteFilters) {

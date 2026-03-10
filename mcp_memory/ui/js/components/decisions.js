@@ -9,6 +9,7 @@ export function renderDecisionItem(d) {
     <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
       <div class="decision-header">
         <span class="decision-title">${esc(d.title)}</span>
+        <span class="entity-id-chip" data-full-id="${d.id}" title="Copy ID"><span class="id-text">#${d.id.slice(0, 8)}</span></span>
         <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
           <span class="decision-date" title="${d.created_at ? new Date(d.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim)">${formatTime(d.created_at)}</span>
           <span class="status-badge badge-${d.status}">${d.status}</span>
