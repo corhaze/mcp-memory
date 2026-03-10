@@ -1019,13 +1019,12 @@ form.summary-form textarea.summary-textarea {
 }
 
 .task-next-action {
-  font-size: 10px;
-  color: var(--amber-dim);
-  margin-top: 2px;
-}
-
-.task-next-action::before {
-  content: '→ ';
+  font-size: 11px;
+  color: var(--amber);
+  margin-top: 6px;
+  border-left: 2px solid var(--amber);
+  background: rgba(255, 176, 0, 0.10);
+  padding: 6px 8px;
 }
 
 .subtask-summary {

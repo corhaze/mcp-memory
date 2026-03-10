@@ -192,7 +192,7 @@ export function renderTaskItem(task, depth = 0) {
     : '';
 
   const nextAction = task.next_action
-    ? `<div class="task-next-action">${esc(task.next_action)}</div>`
+    ? `<div class="task-next-action">▶ next: ${esc(task.next_action)}</div>`
     : '';
 
   const toggle = `<span class="task-toggle${expanded ? ' open' : ''}" data-task-id="${task.id}" title="Expand">›</span>`;
