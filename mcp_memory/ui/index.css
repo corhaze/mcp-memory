@@ -453,8 +453,8 @@ body {
 }
 
 .markdown-body pre {
-  background: var(--bg-hover);
-  padding: 8px;
+  background: #282c34;
+  padding: 0;
   border-radius: 2px;
   overflow-x: auto;
   margin-top: 4px;
@@ -464,8 +464,8 @@ body {
 
 .markdown-body pre code {
   background: transparent;
-  padding: 0;
-  color: var(--text-sec);
+  padding: 8px;
+  display: block;
 }
 
 .markdown-body blockquote {
