@@ -14,6 +14,8 @@ RUN uv sync --extra embeddings --no-dev
 RUN MCP_MEMORY_ENABLE_EMBEDDINGS=1 uv run python -c \
     "from fastembed import TextEmbedding; list(TextEmbedding('BAAI/bge-small-en-v1.5').embed(['warmup']))"
 
+ENV MCP_MEMORY_ENABLE_EMBEDDINGS=1
+
 VOLUME /root/.mcp-memory
 EXPOSE 7878
 
