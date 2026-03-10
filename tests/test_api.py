@@ -463,3 +463,55 @@ class TestGlobalSearch:
         # With limit=2, should get only 2
         r = client.get("/api/search?q=task&limit=2")
         assert len(r.json()["tasks"]) == 2
+
+
+# ── Unified Semantic Search ────────────────────────────────────────────────────
+
+class TestUnifiedSemanticSearch:
+    """Tests for GET /api/projects/{project_id}/search/semantic."""
+
+    def test_returns_200_when_embeddings_unavailable(self, proj):
+        """When embeddings are off, returns 200 with empty results and embeddings_available=false."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=auth+bug")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["query"] == "auth bug"
+        assert data["embeddings_available"] is False
+        assert data["results"] == []
+
+    def test_returns_404_for_unknown_project(self):
+        """Unknown project_id returns 404."""
+        r = client.get("/api/projects/does-not-exist/search/semantic?q=anything")
+        assert r.status_code == 404
+
+    def test_empty_query_returns_empty_results(self, proj):
+        """Blank/whitespace query returns empty results without hitting the model."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["results"] == []
+
+    def test_whitespace_only_query_returns_empty_results(self, proj):
+        """Whitespace-only query is treated as empty."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=   ")
+        assert r.status_code == 200
+        assert r.json()["results"] == []
+
+    def test_response_shape(self, proj):
+        """Response always has query, embeddings_available, and results keys."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=test")
+        assert r.status_code == 200
+        data = r.json()
+        assert "query" in data
+        assert "embeddings_available" in data
+        assert "results" in data
+
+    def test_default_limit_is_15(self, proj):
+        """Endpoint accepts limit param; default is 15 (tested via no error with no param)."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=anything")
+        assert r.status_code == 200
+
+    def test_custom_limit_param_accepted(self, proj):
+        """Explicit limit param is accepted without error."""
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=anything&limit=5")
+        assert r.status_code == 200

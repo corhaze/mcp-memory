@@ -32,6 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import mcp_memory.db as _db
+import mcp_memory.embeddings as _emb
 
 app = FastAPI(title="mcp-memory Explorer", version="0.2.0")
 
@@ -295,6 +296,92 @@ def semantic_search(
         "tasks": [t.to_dict() for t in tasks],
         "decisions": [d.to_dict() for d in decisions],
         "notes": [n.to_dict() for n in notes]
+    }
+
+
+@app.get("/api/projects/{project_id}/search/semantic")
+def unified_semantic_search(
+    project_id: str,
+    q: str,
+    limit: int = 15,
+) -> Dict[str, Any]:
+    """
+    Unified semantic search across all entity types for a project.
+
+    Returns a flat ranked list of results with entity_type, score, id, and
+    key readable fields. When embeddings are unavailable, returns an empty
+    results list with embeddings_available: false.
+    """
+    proj = _project_or_404(project_id)
+    embeddings_available = _emb.is_available()
+
+    if not q.strip() or not embeddings_available:
+        return {
+            "query": q,
+            "embeddings_available": embeddings_available,
+            "results": [],
+        }
+
+    raw_results = _db.semantic_search_all(q, proj.id, limit=limit)
+    results: List[Dict[str, Any]] = []
+
+    for item in raw_results:
+        entity_type: str = item["entity_type"]
+        score: float = item["score"]
+        entity = item["entity"]
+
+        if entity_type == "task":
+            result = {
+                "entity_type": entity_type,
+                "score": score,
+                "id": entity.id,
+                "title": entity.title,
+                "status": entity.status,
+            }
+            if entity.next_action:
+                result["next_action"] = entity.next_action
+        elif entity_type == "decision":
+            result = {
+                "entity_type": entity_type,
+                "score": score,
+                "id": entity.id,
+                "title": entity.title,
+                "status": entity.status,
+            }
+        elif entity_type == "note":
+            result = {
+                "entity_type": entity_type,
+                "score": score,
+                "id": entity.id,
+                "title": entity.title,
+                "note_type": entity.note_type,
+            }
+        elif entity_type == "task_note":
+            result = {
+                "entity_type": entity_type,
+                "score": score,
+                "id": entity.id,
+                "title": entity.title,
+                "note_type": entity.note_type,
+                "task_id": entity.task_id,
+            }
+        elif entity_type == "global_note":
+            result = {
+                "entity_type": entity_type,
+                "score": score,
+                "id": entity.id,
+                "title": entity.title,
+                "note_type": entity.note_type,
+            }
+        else:
+            continue
+
+        results.append(result)
+
+    return {
+        "query": q,
+        "embeddings_available": embeddings_available,
+        "results": results,
     }
 
 
