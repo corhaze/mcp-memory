@@ -484,12 +484,10 @@ class TestUnifiedSemanticSearch:
         r = client.get("/api/projects/does-not-exist/search/semantic?q=anything")
         assert r.status_code == 404
 
-    def test_empty_query_returns_empty_results(self, proj):
-        """Blank/whitespace query returns empty results without hitting the model."""
+    def test_empty_query_rejected(self, proj):
+        """Empty string query is rejected at the validation layer (min_length=1)."""
         r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["results"] == []
+        assert r.status_code == 422
 
     def test_whitespace_only_query_returns_empty_results(self, proj):
         """Whitespace-only query is treated as empty."""
@@ -507,11 +505,27 @@ class TestUnifiedSemanticSearch:
         assert "results" in data
 
     def test_default_limit_is_15(self, proj):
-        """Endpoint accepts limit param; default is 15 (tested via no error with no param)."""
-        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=anything")
+        """Smoke test: default limit param parses without error.
+
+        Embeddings are off in tests so we verify the no-embeddings response
+        contract rather than actual ranking behaviour.
+        """
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=auth")
         assert r.status_code == 200
+        data = r.json()
+        assert data["embeddings_available"] is False
+        assert data["results"] == []
+        assert data["query"] == "auth"
 
     def test_custom_limit_param_accepted(self, proj):
-        """Explicit limit param is accepted without error."""
-        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=anything&limit=5")
+        """Smoke test: explicit limit param is parsed without error.
+
+        Embeddings are off in tests so we verify the no-embeddings response
+        contract rather than actual ranking behaviour.
+        """
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=auth&limit=5")
         assert r.status_code == 200
+        data = r.json()
+        assert data["embeddings_available"] is False
+        assert data["results"] == []
+        assert data["query"] == "auth"

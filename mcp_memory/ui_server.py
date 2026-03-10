@@ -26,7 +26,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -37,6 +37,16 @@ import mcp_memory.embeddings as _emb
 app = FastAPI(title="mcp-memory Explorer", version="0.2.0")
 
 UI_DIR = Path(__file__).parent / "ui"
+
+# Fields to extract per entity type for the unified semantic search response.
+# next_action is handled separately for tasks (it is optional).
+_SEMANTIC_SEARCH_FIELDS: dict[str, list[str]] = {
+    "task":        ["id", "title", "status"],
+    "decision":    ["id", "title", "status"],
+    "note":        ["id", "title", "note_type"],
+    "task_note":   ["id", "title", "note_type", "task_id"],
+    "global_note": ["id", "title", "note_type"],
+}
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -302,7 +312,7 @@ def semantic_search(
 @app.get("/api/projects/{project_id}/search/semantic")
 def unified_semantic_search(
     project_id: str,
-    q: str,
+    q: str = Query(..., min_length=1, description="Semantic search query"),
     limit: int = 15,
 ) -> Dict[str, Any]:
     """
@@ -325,58 +335,17 @@ def unified_semantic_search(
     raw_results = _db.semantic_search_all(q, proj.id, limit=limit)
     results: List[Dict[str, Any]] = []
 
-    for item in raw_results:
-        entity_type: str = item["entity_type"]
-        score: float = item["score"]
-        entity = item["entity"]
-
-        if entity_type == "task":
-            result = {
-                "entity_type": entity_type,
-                "score": score,
-                "id": entity.id,
-                "title": entity.title,
-                "status": entity.status,
-            }
-            if entity.next_action:
-                result["next_action"] = entity.next_action
-        elif entity_type == "decision":
-            result = {
-                "entity_type": entity_type,
-                "score": score,
-                "id": entity.id,
-                "title": entity.title,
-                "status": entity.status,
-            }
-        elif entity_type == "note":
-            result = {
-                "entity_type": entity_type,
-                "score": score,
-                "id": entity.id,
-                "title": entity.title,
-                "note_type": entity.note_type,
-            }
-        elif entity_type == "task_note":
-            result = {
-                "entity_type": entity_type,
-                "score": score,
-                "id": entity.id,
-                "title": entity.title,
-                "note_type": entity.note_type,
-                "task_id": entity.task_id,
-            }
-        elif entity_type == "global_note":
-            result = {
-                "entity_type": entity_type,
-                "score": score,
-                "id": entity.id,
-                "title": entity.title,
-                "note_type": entity.note_type,
-            }
-        else:
+    for r in raw_results:
+        entity_type = r["entity_type"]
+        entity = r["entity"]
+        fields = _SEMANTIC_SEARCH_FIELDS.get(entity_type)
+        if fields is None:
             continue
-
-        results.append(result)
+        shaped = {"entity_type": entity_type, "score": r["score"]}
+        shaped.update({f: getattr(entity, f) for f in fields})
+        if entity_type == "task" and entity.next_action:
+            shaped["next_action"] = entity.next_action
+        results.append(shaped)
 
     return {
         "query": q,
