@@ -1,0 +1,10 @@
+{
+    "name": "mcp-memory",
+    "type": "module",
+    "scripts": {
+        "test:js": "vitest run"
+    },
+    "devDependencies": {
+        "vitest": "^2.1.0"
+    }
+}

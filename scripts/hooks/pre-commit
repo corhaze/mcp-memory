@@ -12,5 +12,8 @@ set -e
 echo "🧪 Running pytest tests/"
 uv run pytest tests/ -q
 
+echo "🧪 Running JS unit tests"
+npm run test:js --silent
+
 echo "✅ All tests passed! Commit proceeding."
 exit 0

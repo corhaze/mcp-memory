@@ -40,6 +40,9 @@ Thumbs.db
 # Local MCP memory storage (if any)
 .mcp-memory/
 
+# Node.js
+node_modules/
+
 # Git worktrees
 .worktrees/
 
