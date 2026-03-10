@@ -74,14 +74,15 @@ def _m5_enforce_task_status_constraint(conn: sqlite3.Connection) -> None:
     complementing API-level validation.
     """
     # Create trigger to validate INSERT
+    # Note: RAISE() requires a string literal — column refs (|| NEW.status) are
+    # not valid in all SQLite versions, so we use a static message here.
     conn.execute("""
         CREATE TRIGGER IF NOT EXISTS tasks_status_insert_check
         BEFORE INSERT ON tasks
         WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
         BEGIN
             SELECT RAISE(ABORT,
-                'Invalid task status: ' || NEW.status ||
-                '. Valid statuses: open, in_progress, blocked, done, cancelled');
+                'Invalid task status. Valid statuses: open, in_progress, blocked, done, cancelled');
         END;
     """)
     # Create trigger to validate UPDATE
@@ -91,8 +92,7 @@ def _m5_enforce_task_status_constraint(conn: sqlite3.Connection) -> None:
         WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
         BEGIN
             SELECT RAISE(ABORT,
-                'Invalid task status: ' || NEW.status ||
-                '. Valid statuses: open, in_progress, blocked, done, cancelled');
+                'Invalid task status. Valid statuses: open, in_progress, blocked, done, cancelled');
         END;
     """)
     # Clean any remaining invalid statuses (defensive)
