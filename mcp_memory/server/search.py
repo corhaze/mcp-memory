@@ -224,20 +224,23 @@ def semantic_search_all(
         entity = r["entity"]
 
         if entity_type == "task":
-            lines.append(f"[task] {entity.title} (score: {score:.2f})")
+            lines.append(f"[task] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
             next_part = f" | Next: {entity.next_action}" if entity.next_action else ""
             lines.append(f"  Status: {entity.status}{next_part}")
         elif entity_type == "decision":
-            lines.append(f"[decision] {entity.title} (score: {score:.2f})")
+            lines.append(f"[decision] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
             lines.append(f"  Status: {entity.status}")
         elif entity_type == "note":
-            lines.append(f"[note] {entity.title} (score: {score:.2f})")
+            lines.append(f"[note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
             lines.append(f"  Type: {entity.note_type}")
         elif entity_type == "task_note":
-            lines.append(f"[task_note] {entity.title} (score: {score:.2f})")
-            lines.append(f"  Type: {entity.note_type} | Task: {entity.task_id}")
+            lines.append(f"[task_note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
+            lines.append(f"  Type: {entity.note_type} | Task: {entity.task_id[:8]}")
         elif entity_type == "global_note":
-            lines.append(f"[global_note] {entity.title} (score: {score:.2f})")
+            lines.append(f"[global_note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
             lines.append(f"  Type: {entity.note_type}")
+        else:
+            lines.append(f"[{entity_type}] {entity_type} (score: {score:.2f}, id: {str(entity.id)[:8]})")
+            lines.append(f"  (unknown entity type)")
 
-    return "\n".join(lines)
+    return f"{len(results)} result(s):\n" + "\n".join(lines)
