@@ -24,6 +24,7 @@ from mcp_memory.db import (
     create_decision,
     create_note,
     create_global_note,
+    create_task_note,
     semantic_search_all,
 )
 from mcp_memory.repository.connection import get_conn, _now
@@ -126,15 +127,17 @@ def test_results_sorted_by_score_descending(emb_on):
 # ---------------------------------------------------------------------------
 
 def test_task_note_decision_all_appear(emb_on):
-    """A task, note, and decision with embeddings all show up in results."""
+    """A task, note, decision, and task_note with embeddings all show up in results."""
     proj = create_project("proj-all-types")
     task = create_task(proj.id, "My task")
     decision = create_decision(proj.id, "My decision", "text", rationale=None)
     note = create_note(proj.id, "My note", "body", note_type="general")
+    task_note = create_task_note(proj.id, task.id, "My task note", "note body", note_type="context")
 
-    _insert_embedding(proj.id, "task",     task.id,     _fake_vec(0.8))
-    _insert_embedding(proj.id, "decision", decision.id, _fake_vec(0.6))
-    _insert_embedding(proj.id, "note",     note.id,     _fake_vec(0.4))
+    _insert_embedding(proj.id, "task",      task.id,      _fake_vec(0.8))
+    _insert_embedding(proj.id, "decision",  decision.id,  _fake_vec(0.6))
+    _insert_embedding(proj.id, "note",      note.id,      _fake_vec(0.4))
+    _insert_embedding(proj.id, "task_note", task_note.id, _fake_vec(0.3))
 
     results = semantic_search_all("query", proj.id, limit=10)
 
@@ -142,11 +145,12 @@ def test_task_note_decision_all_appear(emb_on):
     assert "task" in entity_types
     assert "note" in entity_types
     assert "decision" in entity_types
-    entity_ids = {r["entity"]["id"] if isinstance(r["entity"], dict) else r["entity"].id
-                  for r in results}
+    assert "task_note" in entity_types
+    entity_ids = {r["entity"].id for r in results}
     assert task.id in entity_ids
     assert decision.id in entity_ids
     assert note.id in entity_ids
+    assert task_note.id in entity_ids
 
 
 # ---------------------------------------------------------------------------
@@ -168,10 +172,7 @@ def test_project_filter_excludes_other_project_but_includes_global_notes(emb_on)
 
     results = semantic_search_all("query", proj_a.id, limit=10)
 
-    result_ids = {
-        r["entity"].id if hasattr(r["entity"], "id") else r["entity"]["id"]
-        for r in results
-    }
+    result_ids = {r["entity"].id for r in results}
 
     assert task_a.id in result_ids, "task from searched project must be included"
     assert task_b.id not in result_ids, "task from other project must be excluded"
@@ -192,7 +193,7 @@ def test_limit_is_respected(emb_on):
 
     results = semantic_search_all("query", proj.id, limit=3)
 
-    assert len(results) <= 3
+    assert len(results) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -220,9 +221,11 @@ def test_mcp_tool_formats_output_correctly(emb_on):
     proj = create_project("proj-fmt")
     task = create_task(proj.id, "Formatted task title")
     note = create_note(proj.id, "Formatted note title", "body", note_type="general")
+    task_note = create_task_note(proj.id, task.id, "Formatted task note title", "body", note_type="context")
 
-    _insert_embedding(proj.id, "task", task.id, _fake_vec(0.9))
-    _insert_embedding(proj.id, "note", note.id, _fake_vec(0.6))
+    _insert_embedding(proj.id, "task",      task.id,      _fake_vec(0.9))
+    _insert_embedding(proj.id, "note",      note.id,      _fake_vec(0.6))
+    _insert_embedding(proj.id, "task_note", task_note.id, _fake_vec(0.4))
 
     output = mcp_tool("some query", project_id=proj.id, limit=10)
 
@@ -240,3 +243,7 @@ def test_mcp_tool_formats_output_correctly(emb_on):
     assert "[note]" in output
     assert "Formatted note title" in output
     assert note.id[:8] in output
+
+    assert "[task_note]" in output
+    assert "Formatted task note title" in output
+    assert task_note.id[:8] in output
