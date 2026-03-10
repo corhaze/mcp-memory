@@ -37,6 +37,14 @@ mcp = FastMCP(
         "fall back to `search` in that case, "
         "(4) get_links for graph traversal. "
 
+        "ANSWERING QUESTIONS (MANDATORY): Before reading any code file to answer a question "
+        "about the project, always search the memory bank first using `search` or "
+        "`semantic_search_*`. Notes, task notes, and decisions frequently contain the answer "
+        "or directly relevant context — investigation findings, past debugging sessions, "
+        "architecture rationale, and gotchas are stored here precisely so you don't have to "
+        "re-derive them from code. Code exploration is a fallback for when memory search "
+        "yields insufficient results, not the first step. "
+
         "TASKS: Status flow: open → in_progress → blocked/done/cancelled. "
         "CRITICAL: Before starting work on any task or subtask, immediately call update_task "
         "to set status to in_progress. Do this before writing any code, editing any file, "
