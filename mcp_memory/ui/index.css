@@ -28,6 +28,8 @@
 
   --amber: #ffb300;
   --amber-dim: #cc8800;
+  --amber-muted: #4a3000;
+  --amber-glow: rgba(255, 179, 0, 0.12);
   --red: #ff3333;
   --red-dim: #7a0000;
 
@@ -57,7 +59,7 @@ body {
 }
 
 :focus-visible {
-  outline: 1px solid var(--green);
+  outline: 1px solid var(--amber);
   outline-offset: 2px;
 }
 
@@ -273,13 +275,13 @@ body {
 }
 
 .project-nav-item.active {
-  color: var(--green);
+  color: var(--amber);
   background: var(--bg-raised);
 }
 
 .project-nav-item.active::before {
   content: '▶ ';
-  color: var(--green);
+  color: var(--amber);
 }
 
 .proj-dot {
@@ -329,10 +331,10 @@ body {
 }
 
 .toggle-btn.active {
-  background: var(--green-muted);
-  border-color: var(--green-dim);
-  color: var(--green);
-  box-shadow: 0 0 6px var(--green-glow);
+  background: var(--amber-muted);
+  border-color: var(--amber-dim);
+  color: var(--amber);
+  box-shadow: 0 0 6px var(--amber-glow);
 }
 
 .sidebar-search input {
@@ -348,7 +350,7 @@ body {
 
 .sidebar-search input:focus {
   outline: none;
-  border-color: var(--green-dim);
+  border-color: var(--amber-dim);
 }
 
 .sidebar-search input:disabled {
@@ -680,8 +682,8 @@ form.summary-form textarea.summary-textarea {
 }
 
 .tab.active {
-  color: var(--green);
-  border-bottom-color: var(--green);
+  color: var(--amber);
+  border-bottom-color: var(--amber);
 }
 
 /* ── Panel ───────────────────────────────────────────────────────────────────── */
@@ -743,9 +745,9 @@ form.summary-form textarea.summary-textarea {
 }
 
 .filter-btn.active {
-  color: var(--green);
-  border-color: var(--green);
-  box-shadow: 0 0 6px var(--green-glow);
+  color: var(--amber);
+  border-color: var(--amber);
+  box-shadow: 0 0 6px var(--amber-glow);
 }
 
 /* Status-coloured filter buttons — always visible, glow added when active */
@@ -1363,7 +1365,7 @@ form.summary-form textarea.summary-textarea {
 }
 
 .form-control:focus {
-  border-color: var(--green-dim);
+  border-color: var(--amber-dim);
 }
 
 textarea.form-control {
@@ -1434,7 +1436,7 @@ select.form-control option {
 }
 
 .custom-select-option.selected {
-  color: var(--green);
+  color: var(--amber);
 }
 
 .btn-primary,
@@ -1450,13 +1452,13 @@ select.form-control option {
 }
 
 .btn-primary {
-  background: var(--green-muted);
-  border-color: var(--green-dim);
-  color: var(--green);
+  background: var(--amber-muted);
+  border-color: var(--amber-dim);
+  color: var(--amber);
 }
 
 .btn-primary:hover {
-  background: var(--green-dim);
+  background: var(--amber-dim);
   color: #000;
 }
 
@@ -1646,7 +1648,7 @@ select.form-control option {
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--green-dim);
+  border-color: var(--amber-dim);
 }
 
 .form-group textarea {
@@ -1694,18 +1696,18 @@ select.form-control option {
 }
 
 .form-group.form-checkbox input[type="checkbox"]:hover {
-  border-color: var(--green-dim);
+  border-color: var(--amber-dim);
 }
 
 .form-group.form-checkbox input[type="checkbox"]:checked {
-  background: var(--green-muted);
-  border-color: var(--green-dim);
+  background: var(--amber-muted);
+  border-color: var(--amber-dim);
 }
 
 .form-group.form-checkbox input[type="checkbox"]:checked::after {
   content: '✓';
   position: absolute;
-  color: var(--green);
+  color: var(--amber);
   font-size: 10px;
   line-height: 1;
   top: 1px;
@@ -1754,13 +1756,13 @@ select.form-control option {
 }
 
 .btn-submit {
-  background: var(--green-muted);
-  border-color: var(--green-dim);
-  color: var(--green);
+  background: var(--amber-muted);
+  border-color: var(--amber-dim);
+  color: var(--amber);
 }
 
 .btn-submit:hover {
-  background: var(--green-dim);
+  background: var(--amber-dim);
   color: #000;
 }
 
@@ -1825,8 +1827,8 @@ select.form-control option {
 }
 
 .kanban-column-body.kanban-drop-active {
-  background: var(--green-glow);
-  outline: 1px dashed var(--green-muted);
+  background: var(--amber-glow);
+  outline: 1px dashed var(--amber-muted);
   outline-offset: -2px;
 }
 
@@ -1849,7 +1851,7 @@ select.form-control option {
 
 .kanban-card.dragging {
   opacity: 0.4;
-  border-color: var(--green-dim);
+  border-color: var(--amber-dim);
 }
 
 .kanban-column[data-status="done"] .kanban-card {
