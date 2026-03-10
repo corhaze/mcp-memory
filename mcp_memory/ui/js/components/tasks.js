@@ -59,7 +59,7 @@ function renderAddSubtaskForm(parentTaskId, taskDepth) {
         </div>
         <div class="form-group">
           <label for="subtask-status-${parentTaskId}">Status</label>
-          <select id="subtask-status-${parentTaskId}" class="subtask-status-select">
+          <select id="subtask-status-${parentTaskId}" class="subtask-status-select form-control">
             <option value="open">open</option>
             <option value="in_progress">in_progress</option>
             <option value="blocked">blocked</option>
@@ -99,43 +99,54 @@ function renderNoteTypeOptions(current) {
   ).join('');
 }
 
+function renderTaskFormFields(task) {
+  const isEdit = Boolean(task);
+  const v = field => isEdit ? esc(task[field] || '') : '';
+  const chk = field => isEdit && task[field] ? 'checked' : '';
+  const uid = isEdit ? esc(task.id) : 'new';
+
+  return `
+    <div class="form-group">
+      <label>Title *</label>
+      <input name="title" class="form-control" value="${v('title')}" placeholder="Task title" required>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea name="description" class="form-control${isEdit ? ' task-edit-description' : ''}" rows="3" placeholder="Optional description (markdown)">${v('description')}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select name="status" class="form-control">${renderStatusOptions(isEdit ? task.status : 'open')}</select>
+    </div>
+    <div class="form-group form-checkbox">
+      <input type="checkbox" name="urgent" id="task-urgent-${uid}" ${chk('urgent')}>
+      <label for="task-urgent-${uid}">Urgent</label>
+    </div>
+    ${isEdit ? `
+    <div class="form-group form-checkbox">
+      <input type="checkbox" name="complex" id="task-complex-${uid}" ${chk('complex')}>
+      <label for="task-complex-${uid}">Complex</label>
+    </div>
+    <div class="form-group">
+      <label>Next Action</label>
+      <input name="next_action" class="form-control" value="${v('next_action')}">
+    </div>
+    <div class="form-group">
+      <label>Blocked By Task ID</label>
+      <input name="blocked_by_task_id" class="form-control" value="${v('blocked_by_task_id')}">
+    </div>` : ''}
+    <div class="form-group">
+      <label>Assigned Agent</label>
+      <input name="assigned_agent" class="form-control" value="${v('assigned_agent')}" placeholder="Optional">
+    </div>
+    <div class="form-error" style="display:none"></div>`;
+}
+
 function renderTaskEditForm(task) {
   const isEditing = state.editingTaskId === task.id;
   return `
     <form class="task-edit-form${isEditing ? '' : ' hidden'}" data-task-id="${esc(task.id)}">
-      <div class="form-group">
-        <label>Title *</label>
-        <input name="title" class="form-control" value="${esc(task.title)}" required>
-      </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea name="description" class="form-control task-edit-description">${esc(task.description || '')}</textarea>
-      </div>
-      <div class="form-group">
-        <label>Status</label>
-        <select name="status" class="form-control">${renderStatusOptions(task.status)}</select>
-      </div>
-      <div class="form-group form-checkbox">
-        <input type="checkbox" name="urgent" id="edit-urgent-${esc(task.id)}" ${task.urgent ? 'checked' : ''}>
-        <label for="edit-urgent-${esc(task.id)}">Urgent</label>
-      </div>
-      <div class="form-group form-checkbox">
-        <input type="checkbox" name="complex" id="edit-complex-${esc(task.id)}" ${task.complex ? 'checked' : ''}>
-        <label for="edit-complex-${esc(task.id)}">Complex</label>
-      </div>
-      <div class="form-group">
-        <label>Assigned Agent</label>
-        <input name="assigned_agent" class="form-control" value="${esc(task.assigned_agent || '')}">
-      </div>
-      <div class="form-group">
-        <label>Next Action</label>
-        <input name="next_action" class="form-control" value="${esc(task.next_action || '')}">
-      </div>
-      <div class="form-group">
-        <label>Blocked By Task ID</label>
-        <input name="blocked_by_task_id" class="form-control" value="${esc(task.blocked_by_task_id || '')}">
-      </div>
-      <div class="form-error" style="display:none"></div>
+      ${renderTaskFormFields(task)}
       <div class="form-actions">
         <button type="submit" class="btn-submit">Save</button>
         <button type="button" class="btn-cancel btn-cancel-task-edit" data-task-id="${esc(task.id)}">Cancel</button>
@@ -146,32 +157,10 @@ function renderTaskEditForm(task) {
 export function renderAddTopTaskForm() {
   return `
     <form id="add-top-task-form" class="add-subtask-form">
-      <div class="form-group">
-        <label>Title *</label>
-        <input class="top-task-title-input form-control" placeholder="Task title" required>
-      </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea class="top-task-desc-input form-control" rows="3" placeholder="Optional description (markdown)"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Status</label>
-        <select class="top-task-status-select form-control">
-          ${STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group form-checkbox">
-        <input type="checkbox" class="top-task-urgent-checkbox" id="top-task-urgent">
-        <label for="top-task-urgent">Urgent</label>
-      </div>
-      <div class="form-group">
-        <label>Assigned Agent</label>
-        <input class="top-task-agent-input form-control" placeholder="Optional">
-      </div>
-      <div class="form-error" style="display:none"></div>
+      ${renderTaskFormFields(null)}
       <div class="form-actions">
         <button type="submit" class="btn-submit">Create Task</button>
-        <button type="button" class="btn-cancel-top-task">Cancel</button>
+        <button type="button" class="btn-cancel btn-cancel-top-task">Cancel</button>
       </div>
     </form>`;
 }
@@ -198,7 +187,7 @@ function renderAddTaskNoteForm(taskId) {
         <div class="form-error" style="display:none"></div>
         <div class="form-actions">
           <button type="submit" class="btn-submit">Add Note</button>
-          <button type="button" class="btn-cancel-task-note" data-task-id="${taskId}">Cancel</button>
+          <button type="button" class="btn-cancel btn-cancel-task-note" data-task-id="${taskId}">Cancel</button>
         </div>
       </form>
     </div>`;

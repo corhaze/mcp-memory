@@ -16,6 +16,11 @@ import { renderKanban, bindKanbanEvents } from './components/kanban.js';
 
 import { esc } from './utils.js';
 
+// ── Refresh constants ──────────────────────────────────────────────────────────
+
+const STALE_TAB_MS = 30_000;   // refresh on tab switch if data is >30s old
+const HIDDEN_STALE_MS = 5_000; // refresh on visibility restore if hidden >5s
+
 // ── Shared Loaders ─────────────────────────────────────────────────────────────
 
 async function loadGlobalNotes() {
@@ -178,7 +183,7 @@ function showAddTopTaskForm() {
     state.showAddTaskForm = true;
     els.addTaskFormContainer.innerHTML = renderAddTopTaskForm();
     els.addTaskFormContainer.classList.remove('hidden');
-    els.addTaskFormContainer.querySelector('.top-task-title-input')?.focus();
+    els.addTaskFormContainer.querySelector('[name="title"]')?.focus();
 
     const form = els.addTaskFormContainer.querySelector('#add-top-task-form');
 
@@ -187,17 +192,17 @@ function showAddTopTaskForm() {
         const errorDiv = form.querySelector('.form-error');
         errorDiv.style.display = 'none';
 
-        const title = form.querySelector('.top-task-title-input').value.trim();
+        const title = form.querySelector('[name="title"]').value.trim();
         if (!title) {
             errorDiv.textContent = 'Title is required';
             errorDiv.style.display = 'block';
             return;
         }
 
-        const description = form.querySelector('.top-task-desc-input').value.trim() || null;
-        const status = form.querySelector('.top-task-status-select').value;
-        const urgent = form.querySelector('.top-task-urgent-checkbox').checked;
-        const assigned_agent = form.querySelector('.top-task-agent-input').value.trim() || null;
+        const description = form.querySelector('[name="description"]').value.trim() || null;
+        const status = form.querySelector('[name="status"]').value;
+        const urgent = form.querySelector('[name="urgent"]').checked;
+        const assigned_agent = form.querySelector('[name="assigned_agent"]').value.trim() || null;
 
         const submitBtn = form.querySelector('.btn-submit');
         submitBtn.textContent = 'Creating…';
@@ -226,6 +231,55 @@ function showAddTopTaskForm() {
     });
 }
 
+// ── Refresh helpers ───────────────────────────────────────────────────────────
+
+function showRefreshIndicator() {
+    const el = document.getElementById('refresh-indicator');
+    if (!el) return;
+    el.classList.remove('active');
+    void el.offsetWidth; // force reflow to restart animation
+    el.classList.add('active');
+}
+
+function isDataStale(thresholdMs) {
+    return !state.lastFetchedAt || (Date.now() - state.lastFetchedAt) > thresholdMs;
+}
+
+async function fetchProjectData(id) {
+    const [ctx, tasks, decisions, notes, timeline] = await Promise.all([
+        api.get(`/api/projects/${id}`),
+        api.get(`/api/projects/${id}/tasks?topo=true`),
+        api.get(`/api/projects/${id}/decisions`),
+        api.get(`/api/projects/${id}/notes`),
+        api.get(`/api/projects/${id}/timeline`),
+    ]);
+    return { ctx, tasks, decisions, notes, timeline };
+}
+
+async function refreshProjectData() {
+    if (!state.activeProjectId) return;
+    showRefreshIndicator();
+    try {
+        const { ctx, tasks, decisions, notes, timeline } = await fetchProjectData(state.activeProjectId);
+        state.tasks = tasks || [];
+        state.decisions = decisions || [];
+        state.notes = notes || [];
+        state.timeline = timeline || [];
+        state.lastFetchedAt = Date.now();
+        // Re-render panels without resetting expanded state or active tab
+        renderTasks();
+        renderKanban();
+        renderDecisions();
+        renderNotes();
+        renderTimeline();
+        bindTaskEvents();
+        bindDecisionEvents();
+        bindNoteEvents();
+    } catch {
+        // silent — don't disrupt UX on background refresh failure
+    }
+}
+
 // ── Project Selection ─────────────────────────────────────────────────────────
 
 async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
@@ -241,20 +295,14 @@ async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     if (els.globalView) els.globalView.classList.add('hidden');
     els.searchInput.disabled = false;
 
+    showRefreshIndicator();
     try {
-        const [ctx, tasks, decisions, notes, timeline] = await Promise.all([
-            api.get(`/api/projects/${id}`),
-            api.get(`/api/projects/${id}/tasks?topo=true`),
-            api.get(`/api/projects/${id}/decisions`),
-            api.get(`/api/projects/${id}/notes`),
-            api.get(`/api/projects/${id}/timeline`),
-        ]);
-
+        const { ctx, tasks, decisions, notes, timeline } = await fetchProjectData(id);
         state.tasks = tasks || [];
         state.decisions = decisions || [];
         state.notes = notes || [];
         state.timeline = timeline || [];
-
+        state.lastFetchedAt = Date.now();
         renderProjectView(ctx, tab, updatePath);
     } catch (err) {
         alert("Failed to load project: " + err.message);
@@ -306,6 +354,7 @@ function bindTabs() {
             if (state.activeProjectId) {
                 const proj = state.projects.find(p => p.id === state.activeProjectId);
                 if (proj) setPath(proj.name, name, true);
+                if (isDataStale(STALE_TAB_MS)) refreshProjectData();
             }
         });
     });
@@ -704,8 +753,8 @@ function bindTaskEvents() {
         }
     });
 
-    // Cancel subtask form handler
-    els.taskListEl.querySelectorAll('.btn-cancel').forEach(btn => {
+    // Cancel subtask form handler (excludes more-specific cancel buttons)
+    els.taskListEl.querySelectorAll('.btn-cancel:not(.btn-cancel-task-edit):not(.btn-cancel-task-note)').forEach(btn => {
         btn.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -913,6 +962,18 @@ async function init() {
     renderProjectNav(selectProject);
     bindTabs();
     bindFilters();
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            state.hiddenAt = Date.now();
+        } else {
+            const wasHiddenMs = state.hiddenAt ? Date.now() - state.hiddenAt : 0;
+            state.hiddenAt = null;
+            if (wasHiddenMs > HIDDEN_STALE_MS && state.activeProjectId) {
+                refreshProjectData();
+            }
+        }
+    });
 
     els.addGlobalNoteBtn.addEventListener('click', () => showGlobalNoteForm());
 

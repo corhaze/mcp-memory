@@ -22,4 +22,6 @@ export const state = {
     globalNoteFilter: '',
     searchResults: null,
     searchMode: 'current', // 'current' | 'all'
+    lastFetchedAt: null,   // timestamp of last successful project data fetch
+    hiddenAt: null,        // timestamp when browser tab was hidden
 };
