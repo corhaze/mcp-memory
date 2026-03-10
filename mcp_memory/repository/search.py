@@ -168,33 +168,77 @@ def semantic_search_all(
         "global_note": _semantic_search_raw(query, "global_note", None,       limit),
     }
 
-    # Bulk-fetch entities per type using a single WHERE id IN (...) query.
-    def _fetch_bulk(table: str, ids: list[str], converter) -> dict[str, object]:
-        if not ids:
-            return {}
-        placeholders = ", ".join("?" * len(ids))
+    merged: list[dict] = []
+
+    # tasks
+    task_ids = [eid for _, eid in raw["task"]]
+    if task_ids:
+        placeholders = ", ".join("?" * len(task_ids))
         with get_conn() as conn:
             rows = conn.execute(
-                f"SELECT * FROM {table} WHERE id IN ({placeholders})", ids
+                f"SELECT * FROM tasks WHERE id IN ({placeholders})", task_ids
             ).fetchall()
-        return {row["id"]: converter(row) for row in rows}
-
-    entity_maps: dict[str, dict[str, object]] = {
-        "task":        _fetch_bulk("tasks",        [eid for _, eid in raw["task"]],        _row_to_task),
-        "decision":    _fetch_bulk("decisions",    [eid for _, eid in raw["decision"]],    _row_to_decision),
-        "note":        _fetch_bulk("notes",        [eid for _, eid in raw["note"]],        _row_to_note),
-        "task_note":   _fetch_bulk("task_notes",   [eid for _, eid in raw["task_note"]],   _row_to_task_note),
-        "global_note": _fetch_bulk("global_notes", [eid for _, eid in raw["global_note"]], _row_to_global_note),
-    }
-
-    # Merge all scored results, skip any entity_id not found in the DB.
-    merged: list[dict] = []
-    for entity_type, scored in raw.items():
-        emap = entity_maps[entity_type]
-        for score, eid in scored:
-            entity = emap.get(eid)
+        task_map = {row["id"]: _row_to_task(row) for row in rows}
+        for score, eid in raw["task"]:
+            entity = task_map.get(eid)
             if entity is not None:
-                merged.append({"entity_type": entity_type, "score": score, "entity": entity})
+                merged.append({"entity_type": "task", "score": score, "entity": entity})
+
+    # decisions
+    decision_ids = [eid for _, eid in raw["decision"]]
+    if decision_ids:
+        placeholders = ", ".join("?" * len(decision_ids))
+        with get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM decisions WHERE id IN ({placeholders})", decision_ids
+            ).fetchall()
+        decision_map = {row["id"]: _row_to_decision(row) for row in rows}
+        for score, eid in raw["decision"]:
+            entity = decision_map.get(eid)
+            if entity is not None:
+                merged.append({"entity_type": "decision", "score": score, "entity": entity})
+
+    # notes
+    note_ids = [eid for _, eid in raw["note"]]
+    if note_ids:
+        placeholders = ", ".join("?" * len(note_ids))
+        with get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM notes WHERE id IN ({placeholders})", note_ids
+            ).fetchall()
+        note_map = {row["id"]: _row_to_note(row) for row in rows}
+        for score, eid in raw["note"]:
+            entity = note_map.get(eid)
+            if entity is not None:
+                merged.append({"entity_type": "note", "score": score, "entity": entity})
+
+    # task_notes
+    task_note_ids = [eid for _, eid in raw["task_note"]]
+    if task_note_ids:
+        placeholders = ", ".join("?" * len(task_note_ids))
+        with get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM task_notes WHERE id IN ({placeholders})", task_note_ids
+            ).fetchall()
+        task_note_map = {row["id"]: _row_to_task_note(row) for row in rows}
+        for score, eid in raw["task_note"]:
+            entity = task_note_map.get(eid)
+            if entity is not None:
+                merged.append({"entity_type": "task_note", "score": score, "entity": entity})
+
+    # global_notes
+    global_note_ids = [eid for _, eid in raw["global_note"]]
+    if global_note_ids:
+        placeholders = ", ".join("?" * len(global_note_ids))
+        with get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM global_notes WHERE id IN ({placeholders})", global_note_ids
+            ).fetchall()
+        global_note_map = {row["id"]: _row_to_global_note(row) for row in rows}
+        for score, eid in raw["global_note"]:
+            entity = global_note_map.get(eid)
+            if entity is not None:
+                merged.append({"entity_type": "global_note", "score": score, "entity": entity})
 
     merged.sort(key=lambda r: r["score"], reverse=True)
     return merged[:limit]

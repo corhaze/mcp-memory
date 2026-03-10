@@ -118,6 +118,7 @@ from .repository.search import (
     search_decisions,
     search_notes,
     search_chunks,
+    semantic_search_all,
 )
 from .repository.context import (
     get_working_context,
@@ -144,5 +145,5 @@ __all__ = [
     "get_links_for", "list_links", "delete_link", "create_tag", "list_tags",
     "tag_entity", "untag_entity", "get_entities_by_tag", "list_entity_tags",
     "search_tasks", "search_decisions", "search_notes", "search_chunks",
-    "get_working_context"
+    "semantic_search_all", "get_working_context"
 ]
