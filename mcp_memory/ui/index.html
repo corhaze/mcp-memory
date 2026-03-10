@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mcp-memory Explorer</title>
-  <link rel="stylesheet" href="/index.css?v=9" />
+  <link rel="stylesheet" href="/index.css?v=10" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -160,18 +160,8 @@
             </div>
           </div>
           <div id="search-results-container" class="search-results">
-            <div id="search-tasks-section" class="search-section hidden">
-              <h3>Tasks</h3>
-              <ul id="search-tasks-list" class="task-list" aria-live="polite"></ul>
-            </div>
-            <div id="search-decisions-section" class="search-section hidden">
-              <h3>Decisions</h3>
-              <ul id="search-decisions-list" class="entity-list" aria-live="polite"></ul>
-            </div>
-            <div id="search-notes-section" class="search-section hidden">
-              <h3>Notes</h3>
-              <ul id="search-notes-list" class="entity-list" aria-live="polite"></ul>
-            </div>
+            <p id="search-embeddings-notice" class="search-embeddings-notice hidden"></p>
+            <ul id="search-results-list" class="search-results-list" aria-live="polite"></ul>
             <p id="search-empty-state" class="nav-hint hidden" style="padding: 1rem;">No results found.</p>
           </div>
         </section>
@@ -252,7 +242,7 @@
     </div>
   </div>
 
-  <script type="module" src="/js/app.js?v=5"></script>
+  <script type="module" src="/js/app.js?v=6"></script>
 </body>
 
 </html>

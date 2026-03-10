@@ -21,9 +21,8 @@ export const els = {
     searchInput: $('global-search-input'),
     searchTab: $('tab-search'),
     clearSearchBtn: $('clear-search-btn'),
-    searchTasksList: $('search-tasks-list'),
-    searchDecisionsList: $('search-decisions-list'),
-    searchNotesList: $('search-notes-list'),
+    searchResultsList: $('search-results-list'),
+    searchEmbeddingsNotice: $('search-embeddings-notice'),
     searchEmptyState: $('search-empty-state'),
     kanbanBoard: $('kanban-board'),
 

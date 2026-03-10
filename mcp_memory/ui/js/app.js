@@ -400,95 +400,15 @@ function bindFilters() {
 // ── Search ─────────────────────────────────────────────────────────────────────
 
 async function performSearch(query) {
-    if (state.searchMode === 'current' && !state.activeProjectId) return;
+    if (!state.activeProjectId) return;
     try {
-        // Build search endpoint with mode-based parameters
-        let searchUrl = `/api/search?q=${encodeURIComponent(query)}&limit=10`;
-        if (state.searchMode === 'current' && state.activeProjectId) {
-            searchUrl += `&project_id=${encodeURIComponent(state.activeProjectId)}`;
-        }
-
-        const results = await api.get(searchUrl);
-        state.searchResults = results;
+        const data = await api.get(
+            `/api/projects/${state.activeProjectId}/search/semantic?q=${encodeURIComponent(query)}`
+        );
+        state.searchResults = data;
         els.searchTab.classList.remove('hidden');
         activateTab('search');
-        renderSearch({
-            onTasksRender: (container) => {
-                container.querySelectorAll('.task-toggle').forEach(btn => {
-                    btn.addEventListener('click', (e) => handleTaskToggle(e, btn));
-                });
-                // Note: search panel task notes use the tasks tab inline form — navigate there
-                container.querySelectorAll('.add-task-note-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const taskId = btn.dataset.taskId;
-                        state.expandedTasks.add(taskId);
-                        state.showAddTaskNoteForm.add(taskId);
-                        state.taskFilter = '';
-                        els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
-                            b.classList.toggle('active', b.dataset.status === '');
-                        });
-                        renderTasks();
-                        activateTab('tasks');
-                        const proj = state.projects.find(p => p.id === state.activeProjectId);
-                        if (proj) setPath(proj.name, 'tasks', true);
-                    });
-                });
-                container.querySelectorAll('.edit-task').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        // Navigate to Tasks tab with the task in edit mode
-                        const taskId = btn.dataset.id;
-                        state.editingTaskId = taskId;
-                        state.expandedTasks.add(taskId);
-                        state.taskFilter = '';
-                        els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
-                            b.classList.toggle('active', b.dataset.status === '');
-                        });
-                        renderTasks();
-                        activateTab('tasks');
-                        const proj = state.projects.find(p => p.id === state.activeProjectId);
-                        if (proj) setPath(proj.name, 'tasks', true);
-                    });
-                });
-                container.querySelectorAll('.delete-task').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteTask(btn.dataset.id);
-                    });
-                });
-            },
-            onDecisionsRender: (container) => {
-                container.querySelectorAll('.edit-decision').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const dec = state.searchResults.decisions.find(d => d.id === btn.dataset.id);
-                        if (dec) showDecisionForm(dec);
-                    });
-                });
-                container.querySelectorAll('.delete-decision').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteDecision(btn.dataset.id);
-                    });
-                });
-            },
-            onNotesRender: (container) => {
-                container.querySelectorAll('.edit-note').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const note = state.searchResults.notes.find(n => n.id === btn.dataset.id);
-                        if (note) showNoteForm(note);
-                    });
-                });
-                container.querySelectorAll('.delete-note').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteNote(btn.dataset.id);
-                    });
-                });
-            }
-        });
+        renderSearch();
     } catch (err) {
         alert(err.message);
     }
