@@ -10,6 +10,10 @@ from .search import _store_embedding, _semantic_search_raw
 # Valid task statuses per decision 3e0fcdb2: "Mandatory status sync for completed tasks"
 VALID_TASK_STATUSES = {"open", "in_progress", "blocked", "done", "cancelled"}
 
+# Statuses that propagate recursively to subtasks (in_progress is excluded —
+# subtasks are not auto-started when a parent begins)
+_PROPAGATE_STATUSES = {"done", "cancelled", "blocked", "open"}
+
 def create_task(
     project_id: str,
     title: str,
@@ -79,6 +83,29 @@ def list_tasks(
         sql = f"SELECT * FROM tasks WHERE {' AND '.join(where)} ORDER BY created_at DESC"
         rows = conn.execute(sql, params).fetchall()
     return [_row_to_task(r) for r in rows]
+
+def _propagate_status_to_subtasks(conn: Any, parent_id: str, status: str, now: str) -> None:
+    """Recursively propagate status to all descendants of parent_id."""
+    rows = conn.execute(
+        "SELECT id FROM tasks WHERE parent_task_id=?", (parent_id,)
+    ).fetchall()
+    for (child_id,) in rows:
+        fields = ["status = ?", "updated_at = ?"]
+        vals: list = [status, now]
+        if status == "done":
+            fields.append("completed_at = ?")
+            vals.append(now)
+        elif status in ("open", "blocked"):
+            fields.append("completed_at = NULL")
+        vals.append(child_id)
+        conn.execute(f"UPDATE tasks SET {', '.join(fields)} WHERE id=?", vals)
+        _log_task_event_inner(conn, child_id, "updated",
+                              f"Status → {status} (propagated from parent)")
+        if status == "done":
+            _log_task_event_inner(conn, child_id, "completed",
+                                  "Task marked done (propagated from parent)")
+        _propagate_status_to_subtasks(conn, child_id, status, now)
+
 
 def update_task(
     task_id: str,
@@ -158,6 +185,8 @@ def update_task(
             _log_task_event_inner(conn, task_id, "completed", "Task marked done")
         if status == "blocked":
             _log_task_event_inner(conn, task_id, "blocked", next_action or "")
+        if status in _PROPAGATE_STATUSES:
+            _propagate_status_to_subtasks(conn, task_id, status, now)
         new_title = title or task.title
         new_desc = description or task.description or ""
         _store_embedding(conn, task.project_id, "task", task_id, f"{new_title}\n{new_desc}")

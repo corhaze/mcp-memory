@@ -3,7 +3,7 @@
 import { els } from '../dom.js';
 import { state } from '../state.js';
 import { api } from '../api.js';
-import { esc, statusEmoji, formatTime } from '../utils.js';
+import { esc, statusEmoji, formatTime, STATUS_OPTIONS, renderNoteTypeOptions, renderStatusOptions } from '../utils.js';
 
 export function renderTasks() {
   const filtered = state.taskFilter
@@ -84,20 +84,6 @@ function renderAddSubtaskForm(parentTaskId, taskDepth) {
     </div>`;
 }
 
-const STATUS_OPTIONS = ['open', 'in_progress', 'blocked', 'done', 'cancelled'];
-
-function renderStatusOptions(current) {
-  return STATUS_OPTIONS.map(s =>
-    `<option value="${s}" ${current === s ? 'selected' : ''}>${s}</option>`
-  ).join('');
-}
-
-function renderNoteTypeOptions(current) {
-  const types = ['context', 'investigation', 'implementation', 'bug', 'handover'];
-  return types.map(t =>
-    `<option value="${t}" ${current === t ? 'selected' : ''}>${t}</option>`
-  ).join('');
-}
 
 function renderTaskFormFields(task) {
   const isEdit = Boolean(task);

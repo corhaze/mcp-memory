@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { parsePath, setPath, setGlobalPath, VALID_TABS } from './router.js';
 import { showModal, hideModal, handleModalSave } from './components/modal.js';
 import { renderProjectNav, updateNavHighlight, showProjectEmptyState, renderProjectHeader } from './components/projects.js';
-import { renderTasks, findTask, renderAddTopTaskForm } from './components/tasks.js';
+import { renderTasks, findTask, renderAddTopTaskForm, renderTaskNotesHtml } from './components/tasks.js';
 import { renderDecisions } from './components/decisions.js';
 import { renderNotes } from './components/notes.js';
 import { renderGlobalNotes } from './components/global-notes.js';
@@ -70,18 +70,13 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
 }
 
 async function loadTaskNotes(taskId) {
-    // This will trigger the component to load and render itself
-    // For now we delegate back to the component logic if we move it there
-    // but to avoid circular deps we handle the refresh logic here.
     try {
         const notes = await api.get(`/api/tasks/${taskId}/notes`);
         state.taskNotes[taskId] = notes;
         const container = document.getElementById(`task-notes-${taskId}`);
         if (container) {
-            import('./components/tasks.js').then(m => {
-                container.innerHTML = m.renderTaskNotesHtml(taskId, notes);
-                bindTaskNoteButtons(taskId);
-            });
+            container.innerHTML = renderTaskNotesHtml(taskId, notes);
+            bindTaskNoteButtons(taskId);
         }
     } catch (err) {
         console.error('Failed to load task notes:', err);
@@ -139,7 +134,7 @@ async function submitTaskEditForm(form) {
     try {
         await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, data);
         state.editingTaskId = null;
-        await selectProject(state.activeProjectId, getActiveTab());
+        await refreshTasks();
     } catch (err) {
         errorDiv.textContent = err.message || 'Failed to save';
         errorDiv.style.display = 'block';
@@ -215,7 +210,7 @@ function showAddTopTaskForm() {
             state.showAddTaskForm = false;
             els.addTaskFormContainer.classList.add('hidden');
             els.addTaskFormContainer.innerHTML = '';
-            await selectProject(state.activeProjectId, getActiveTab());
+            await refreshTasks();
         } catch (err) {
             errorDiv.textContent = err.message || 'Failed to create task';
             errorDiv.style.display = 'block';
@@ -272,12 +267,28 @@ async function refreshProjectData() {
         renderDecisions();
         renderNotes();
         renderTimeline();
-        bindTaskEvents();
-        bindDecisionEvents();
-        bindNoteEvents();
     } catch {
         // silent — don't disrupt UX on background refresh failure
     }
+}
+
+async function refreshTasks() {
+    if (!state.activeProjectId) return;
+    state.tasks = await api.get(`/api/projects/${state.activeProjectId}/tasks?topo=true`);
+    renderTasks();
+    renderKanban();
+}
+
+async function refreshDecisions() {
+    if (!state.activeProjectId) return;
+    state.decisions = await api.get(`/api/projects/${state.activeProjectId}/decisions`);
+    renderDecisions();
+}
+
+async function refreshNotes() {
+    if (!state.activeProjectId) return;
+    state.notes = await api.get(`/api/projects/${state.activeProjectId}/notes`);
+    renderNotes();
 }
 
 // ── Project Selection ─────────────────────────────────────────────────────────
@@ -323,10 +334,6 @@ function renderProjectView(ctx, tab = 'summary', updatePath = true) {
     renderNotes();
     renderTimeline();
 
-    bindTaskEvents();
-    bindDecisionEvents();
-    bindNoteEvents();
-
     activateTab(tab);
 
     if (updatePath) {
@@ -369,7 +376,6 @@ function bindFilters() {
         state.taskFilter = btn.dataset.status;
         els.taskListEl.dataset.filter = btn.dataset.status;
         renderTasks();
-        bindTaskEvents();
     });
 
     els.decisionFilters.addEventListener('click', e => {
@@ -379,7 +385,6 @@ function bindFilters() {
         btn.classList.add('active');
         state.decisionFilter = btn.dataset.status;
         renderDecisions();
-        bindDecisionEvents();
     });
 
     els.noteFilters.addEventListener('click', e => {
@@ -389,7 +394,6 @@ function bindFilters() {
         btn.classList.add('active');
         state.noteFilter = btn.dataset.type;
         renderNotes();
-        bindNoteEvents();
     });
 }
 
@@ -425,7 +429,6 @@ async function performSearch(query) {
                             b.classList.toggle('active', b.dataset.status === '');
                         });
                         renderTasks();
-                        bindTaskEvents();
                         activateTab('tasks');
                         const proj = state.projects.find(p => p.id === state.activeProjectId);
                         if (proj) setPath(proj.name, 'tasks', true);
@@ -443,7 +446,6 @@ async function performSearch(query) {
                             b.classList.toggle('active', b.dataset.status === '');
                         });
                         renderTasks();
-                        bindTaskEvents();
                         activateTab('tasks');
                         const proj = state.projects.find(p => p.id === state.activeProjectId);
                         if (proj) setPath(proj.name, 'tasks', true);
@@ -589,8 +591,7 @@ async function submitAddSubtaskForm(form) {
         const btn = form.closest('.add-subtask-section').querySelector('.add-subtask-btn');
         if (btn) btn.textContent = '+ Add subtask';
 
-        // Refresh the project view to show the new subtask
-        await selectProject(state.activeProjectId, getActiveTab());
+        await refreshTasks();
     } catch (err) {
         errorDiv.textContent = err.message || 'Failed to create subtask';
         errorDiv.style.display = 'block';
@@ -624,42 +625,47 @@ function cancelAddSubtaskForm(btn) {
     }
 }
 
-function bindTaskEvents() {
-    els.taskListEl.querySelectorAll('.task-status-trigger').forEach(btn => {
-        btn.addEventListener('click', e => {
+// ── Delegated event handlers (bound once in init) ───────────────────────────
+
+function bindTaskListEvents() {
+    els.taskListEl.addEventListener('click', async e => {
+        const statusTrigger = e.target.closest('.task-status-trigger');
+        if (statusTrigger) {
             e.stopPropagation();
-            const dropdown = btn.closest('.task-status-dropdown');
+            const dropdown = statusTrigger.closest('.task-status-dropdown');
             const options = dropdown.querySelector('.task-status-options');
             const isOpen = !options.classList.contains('hidden');
             document.querySelectorAll('.task-status-options').forEach(o => o.classList.add('hidden'));
             if (!isOpen) options.classList.remove('hidden');
-        });
-    });
+            return;
+        }
 
-    els.taskListEl.querySelectorAll('.task-status-options .status-option').forEach(opt => {
-        opt.addEventListener('click', async e => {
+        const statusOption = e.target.closest('.task-status-options .status-option');
+        if (statusOption) {
             e.stopPropagation();
-            const dropdown = opt.closest('.task-status-dropdown');
+            const dropdown = statusOption.closest('.task-status-dropdown');
             const taskId = dropdown.dataset.taskId;
-            const newStatus = opt.dataset.value;
+            const newStatus = statusOption.dataset.value;
             dropdown.querySelector('.task-status-options').classList.add('hidden');
             try {
                 await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, { status: newStatus });
-                await selectProject(state.activeProjectId, getActiveTab());
+                await refreshTasks();
             } catch (err) {
                 alert(err.message);
             }
-        });
-    });
+            return;
+        }
 
-    els.taskListEl.querySelectorAll('.task-toggle').forEach(btn => {
-        btn.addEventListener('click', e => handleTaskToggle(e, btn));
-    });
+        const taskToggle = e.target.closest('.task-toggle');
+        if (taskToggle) {
+            handleTaskToggle(e, taskToggle);
+            return;
+        }
 
-    els.taskListEl.querySelectorAll('.add-task-note-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
+        const addNoteBtn = e.target.closest('.add-task-note-btn');
+        if (addNoteBtn) {
             e.stopPropagation();
-            const taskId = btn.dataset.taskId;
+            const taskId = addNoteBtn.dataset.taskId;
             const section = els.taskListEl.querySelector(`.add-task-note-section[data-task-id="${taskId}"]`);
             if (!section) return;
             const form = section.querySelector('.add-task-note-form');
@@ -673,117 +679,164 @@ function bindTaskEvents() {
                 form.classList.remove('hidden');
                 form.querySelector('.note-title-input')?.focus();
             }
-        });
-    });
-
-    els.taskListEl.querySelectorAll('.add-task-note-form').forEach(form => {
-        const submitBtn = form.querySelector('.btn-submit');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', async e => {
-                e.preventDefault();
-                e.stopPropagation();
-                await submitAddTaskNoteForm(form);
-            });
+            return;
         }
-        form.querySelector('.btn-cancel-task-note')?.addEventListener('click', e => {
+
+        const cancelNoteBtn = e.target.closest('.btn-cancel-task-note');
+        if (cancelNoteBtn) {
             e.stopPropagation();
-            const taskId = form.dataset.taskId;
-            state.showAddTaskNoteForm.delete(taskId);
+            const form = cancelNoteBtn.closest('.add-task-note-form');
+            state.showAddTaskNoteForm.delete(form.dataset.taskId);
             form.classList.add('hidden');
             form.reset();
-        });
-    });
+            return;
+        }
 
-    els.taskListEl.querySelectorAll('.edit-task').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const taskId = btn.dataset.id;
-            // Toggle: clicking edit again on the open form cancels it
-            if (state.editingTaskId === taskId) {
-                state.editingTaskId = null;
-                renderTasks();
-                bindTaskEvents();
-                return;
-            }
-            state.editingTaskId = taskId;
-            state.expandedTasks.add(taskId);
-            renderTasks();
-            bindTaskEvents();
-        });
-    });
-
-    els.taskListEl.querySelectorAll('.task-edit-form').forEach(form => {
-        form.addEventListener('submit', async e => {
+        const submitNoteBtn = e.target.closest('.add-task-note-form .btn-submit');
+        if (submitNoteBtn) {
             e.preventDefault();
             e.stopPropagation();
-            await submitTaskEditForm(form);
-        });
-        form.querySelector('.btn-cancel-task-edit')?.addEventListener('click', e => {
+            await submitAddTaskNoteForm(submitNoteBtn.closest('.add-task-note-form'));
+            return;
+        }
+
+        const editTaskBtn = e.target.closest('.edit-task');
+        if (editTaskBtn) {
+            e.stopPropagation();
+            const taskId = editTaskBtn.dataset.id;
+            state.editingTaskId = state.editingTaskId === taskId ? null : taskId;
+            if (state.editingTaskId) state.expandedTasks.add(taskId);
+            renderTasks();
+            return;
+        }
+
+        const cancelEditBtn = e.target.closest('.btn-cancel-task-edit');
+        if (cancelEditBtn) {
             e.stopPropagation();
             state.editingTaskId = null;
             renderTasks();
-            bindTaskEvents();
-        });
-    });
+            return;
+        }
 
-    els.taskListEl.querySelectorAll('.delete-task').forEach(btn => {
-        btn.addEventListener('click', e => {
+        const deleteTaskBtn = e.target.closest('.delete-task');
+        if (deleteTaskBtn) {
             e.stopPropagation();
-            deleteTask(btn.dataset.id);
-        });
-    });
+            deleteTask(deleteTaskBtn.dataset.id);
+            return;
+        }
 
-    // Add subtask form toggle handler
-    els.taskListEl.querySelectorAll('.add-subtask-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
+        const addSubtaskBtn = e.target.closest('.add-subtask-btn');
+        if (addSubtaskBtn) {
             e.stopPropagation();
-            toggleAddSubtaskForm(btn);
-        });
-    });
+            toggleAddSubtaskForm(addSubtaskBtn);
+            return;
+        }
 
-    // Add subtask form submit handler
-    els.taskListEl.querySelectorAll('.add-subtask-form').forEach(form => {
-        const submitBtn = form.querySelector('.btn-submit');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', async e => {
-                e.preventDefault();
-                e.stopPropagation();
-                await submitAddSubtaskForm(form);
-            });
+        const submitSubtaskBtn = e.target.closest('.add-subtask-form .btn-submit');
+        if (submitSubtaskBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            await submitAddSubtaskForm(submitSubtaskBtn.closest('.add-subtask-form'));
+            return;
+        }
+
+        // Subtask cancel (exclude more-specific cancel buttons)
+        const cancelSubtaskBtn = e.target.closest(
+            '.btn-cancel:not(.btn-cancel-task-edit):not(.btn-cancel-task-note)'
+        );
+        if (cancelSubtaskBtn && els.taskListEl.contains(cancelSubtaskBtn)) {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelAddSubtaskForm(cancelSubtaskBtn);
         }
     });
 
-    // Cancel subtask form handler (excludes more-specific cancel buttons)
-    els.taskListEl.querySelectorAll('.btn-cancel:not(.btn-cancel-task-edit):not(.btn-cancel-task-note)').forEach(btn => {
-        btn.addEventListener('click', e => {
+    els.taskListEl.addEventListener('submit', async e => {
+        const form = e.target.closest('.task-edit-form');
+        if (form) {
             e.preventDefault();
             e.stopPropagation();
-            cancelAddSubtaskForm(btn);
-        });
+            await submitTaskEditForm(form);
+        }
     });
 }
 
-function bindDecisionEvents() {
-    els.decisionListEl.querySelectorAll('.edit-decision').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const dec = state.decisions.find(d => d.id === btn.dataset.id);
+function bindDecisionListEvents() {
+    els.decisionListEl.addEventListener('click', e => {
+        const editBtn = e.target.closest('.edit-decision');
+        if (editBtn) {
+            const dec = state.decisions.find(d => d.id === editBtn.dataset.id);
             if (dec) showDecisionForm(dec);
-        });
-    });
-    els.decisionListEl.querySelectorAll('.delete-decision').forEach(btn => {
-        btn.addEventListener('click', () => deleteDecision(btn.dataset.id));
+            return;
+        }
+        const deleteBtn = e.target.closest('.delete-decision');
+        if (deleteBtn) {
+            deleteDecision(deleteBtn.dataset.id);
+        }
     });
 }
 
-function bindNoteEvents() {
-    els.noteListEl.querySelectorAll('.edit-note').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const note = state.notes.find(n => n.id === btn.dataset.id);
-            if (note) showNoteForm(note);
-        });
+async function submitNoteEditForm(form) {
+    const noteId = form.dataset.noteId;
+    const errorDiv = form.querySelector('.form-error');
+    errorDiv.style.display = 'none';
+
+    const title = form.querySelector('[name="title"]').value.trim();
+    if (!title) {
+        errorDiv.textContent = 'Title is required';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    const data = {
+        title,
+        note_text: form.querySelector('[name="note_text"]').value.trim(),
+        note_type: form.querySelector('[name="note_type"]').value,
+    };
+
+    const submitBtn = form.querySelector('.btn-submit');
+    submitBtn.textContent = 'Saving…';
+    submitBtn.disabled = true;
+
+    try {
+        await api.patch(`/api/projects/${state.activeProjectId}/notes/${noteId}`, data);
+        state.editingNoteId = null;
+        await refreshNotes();
+    } catch (err) {
+        errorDiv.textContent = err.message || 'Failed to save';
+        errorDiv.style.display = 'block';
+        submitBtn.textContent = 'Save';
+        submitBtn.disabled = false;
+    }
+}
+
+function bindNoteListEvents() {
+    els.noteListEl.addEventListener('click', e => {
+        const editBtn = e.target.closest('.edit-note');
+        if (editBtn) {
+            const noteId = editBtn.dataset.id;
+            state.editingNoteId = state.editingNoteId === noteId ? null : noteId;
+            renderNotes();
+            return;
+        }
+        const cancelBtn = e.target.closest('.btn-cancel-note-edit');
+        if (cancelBtn) {
+            state.editingNoteId = null;
+            renderNotes();
+            return;
+        }
+        const deleteBtn = e.target.closest('.delete-note');
+        if (deleteBtn) {
+            deleteNote(deleteBtn.dataset.id);
+        }
     });
-    els.noteListEl.querySelectorAll('.delete-note').forEach(btn => {
-        btn.addEventListener('click', () => deleteNote(btn.dataset.id));
+
+    els.noteListEl.addEventListener('submit', async e => {
+        const form = e.target.closest('.note-edit-form');
+        if (form) {
+            e.preventDefault();
+            await submitNoteEditForm(form);
+        }
     });
 }
 
@@ -865,7 +918,7 @@ async function deleteTask(id) {
     if (!confirm('Delete this task?')) return;
     try {
         await api.delete(`/api/projects/${state.activeProjectId}/tasks/${id}`);
-        await selectProject(state.activeProjectId);
+        await refreshTasks();
     } catch (err) { alert(err.message); }
 }
 
@@ -888,7 +941,7 @@ async function deleteDecision(id) {
     if (!confirm('Delete this decision?')) return;
     try {
         await api.delete(`/api/projects/${state.activeProjectId}/decisions/${id}`);
-        await selectProject(state.activeProjectId);
+        await refreshDecisions();
     } catch (err) { alert(err.message); }
 }
 
@@ -912,7 +965,7 @@ async function deleteNote(id) {
     if (!confirm('Delete this note?')) return;
     try {
         await api.delete(`/api/projects/${state.activeProjectId}/notes/${id}`);
-        await selectProject(state.activeProjectId);
+        await refreshNotes();
     } catch (err) { alert(err.message); }
 }
 
@@ -997,12 +1050,16 @@ async function init() {
             renderGlobalNotes(getGlobalNoteHandlers());
         });
     }
+    bindTaskListEvents();
+    bindDecisionListEvents();
+    bindNoteListEvents();
+
     bindKanbanEvents(
         // onStatusChange — PATCH status then refresh with board tab active
         async (taskId, newStatus) => {
             try {
                 await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, { status: newStatus });
-                await selectProject(state.activeProjectId, 'board');
+                await refreshTasks();
             } catch (err) {
                 alert(err.message);
             }
@@ -1016,7 +1073,6 @@ async function init() {
                 b.classList.toggle('active', b.dataset.status === '');
             });
             renderTasks();
-            bindTaskEvents();
             activateTab('tasks');
             const proj = state.projects.find(p => p.id === state.activeProjectId);
             if (proj) setPath(proj.name, 'tasks', true);
@@ -1048,9 +1104,9 @@ async function init() {
         els.modalSave.disabled = true;
         handleModalSave({
             onProjectUpdate: async () => { state.projects = await api.get('/api/projects'); renderProjectNav(selectProject); },
-            onTaskUpdate: () => selectProject(state.activeProjectId, tab),
-            onDecisionUpdate: () => selectProject(state.activeProjectId, tab),
-            onNoteUpdate: () => selectProject(state.activeProjectId, tab),
+            onTaskUpdate: () => refreshTasks(),
+            onDecisionUpdate: () => refreshDecisions(),
+            onNoteUpdate: () => refreshNotes(),
             onTaskNoteUpdate: (taskId) => loadTaskNotes(taskId),
             onGlobalNoteUpdate: () => loadGlobalNotes()
         }).finally(() => { els.modalSave.disabled = false; });

@@ -297,3 +297,71 @@ class TestSearchTaskNotes:
         create_task_note(proj.id, task.id, "Note", "something unrelated", "context")
         results = search_task_notes("kubernetes", project_id=proj.id)
         assert results == []
+
+
+class TestStatusPropagation:
+    def test_done_propagates_to_direct_subtasks(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child1 = create_task(proj.id, "Child 1", parent_task_id=parent.id)
+        child2 = create_task(proj.id, "Child 2", parent_task_id=parent.id)
+        update_task(parent.id, status="done")
+        assert get_task(child1.id).status == "done"
+        assert get_task(child2.id).status == "done"
+
+    def test_done_propagates_recursively(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id)
+        grandchild = create_task(proj.id, "Grandchild", parent_task_id=child.id)
+        update_task(parent.id, status="done")
+        assert get_task(child.id).status == "done"
+        assert get_task(grandchild.id).status == "done"
+
+    def test_cancelled_propagates_recursively(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id)
+        grandchild = create_task(proj.id, "Grandchild", parent_task_id=child.id)
+        update_task(parent.id, status="cancelled")
+        assert get_task(child.id).status == "cancelled"
+        assert get_task(grandchild.id).status == "cancelled"
+
+    def test_blocked_propagates_recursively(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id)
+        grandchild = create_task(proj.id, "Grandchild", parent_task_id=child.id)
+        update_task(parent.id, status="blocked")
+        assert get_task(child.id).status == "blocked"
+        assert get_task(grandchild.id).status == "blocked"
+
+    def test_open_propagates_recursively(self, proj):
+        parent = create_task(proj.id, "Parent", status="done")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id, status="done")
+        grandchild = create_task(proj.id, "Grandchild", parent_task_id=child.id, status="done")
+        update_task(parent.id, status="open")
+        assert get_task(child.id).status == "open"
+        assert get_task(grandchild.id).status == "open"
+
+    def test_in_progress_does_not_propagate(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id, status="open")
+        update_task(parent.id, status="in_progress")
+        assert get_task(child.id).status == "open"
+
+    def test_propagation_does_not_affect_unrelated_tasks(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id)
+        unrelated = create_task(proj.id, "Unrelated", status="open")
+        update_task(parent.id, status="done")
+        assert get_task(unrelated.id).status == "open"
+
+    def test_done_sets_completed_at_on_subtasks(self, proj):
+        parent = create_task(proj.id, "Parent")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id)
+        assert get_task(child.id).completed_at is None
+        update_task(parent.id, status="done")
+        assert get_task(child.id).completed_at is not None
+
+    def test_reopen_clears_completed_at_on_subtasks(self, proj):
+        parent = create_task(proj.id, "Parent", status="done")
+        child = create_task(proj.id, "Child", parent_task_id=parent.id, status="done")
+        update_task(parent.id, status="open")
+        assert get_task(child.id).completed_at is None

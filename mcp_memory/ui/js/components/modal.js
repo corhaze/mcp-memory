@@ -7,7 +7,6 @@ import { state } from '../state.js';
 export function showModal(title, contentHtml) {
     els.modalTitle.textContent = title;
     els.modalBody.innerHTML = contentHtml;
-    initCustomSelects(els.modalBody);
     els.modalOverlay.classList.remove('hidden');
 }
 
@@ -15,66 +14,6 @@ export function hideModal() {
     els.modalOverlay.classList.add('hidden');
     els.modalBody.innerHTML = '';
 }
-
-export function initCustomSelects(container) {
-    container.querySelectorAll('select.form-control').forEach(select => {
-        select.style.display = 'none'; // Hide native dropdown
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'custom-select-wrapper';
-
-        const trigger = document.createElement('div');
-        trigger.className = 'custom-select-trigger form-control';
-
-        const optionsDiv = document.createElement('div');
-        optionsDiv.className = 'custom-select-options hidden';
-
-        const updateTrigger = () => {
-            const selectedOpt = select.options[select.selectedIndex];
-            trigger.textContent = selectedOpt ? selectedOpt.textContent : '';
-        };
-        updateTrigger();
-
-        Array.from(select.options).forEach(opt => {
-            const optionEl = document.createElement('div');
-            optionEl.className = 'custom-select-option';
-            optionEl.textContent = opt.textContent;
-            optionEl.dataset.value = opt.value;
-            if (opt.selected || opt.value === select.value) optionEl.classList.add('selected');
-
-            optionEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                select.value = opt.value;
-                updateTrigger();
-                optionsDiv.classList.add('hidden');
-                Array.from(optionsDiv.children).forEach(c => c.classList.remove('selected'));
-                optionEl.classList.add('selected');
-            });
-            optionsDiv.appendChild(optionEl);
-        });
-
-        trigger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isHidden = optionsDiv.classList.contains('hidden');
-            document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
-            if (isHidden) optionsDiv.classList.remove('hidden');
-        });
-
-        wrapper.appendChild(trigger);
-        wrapper.appendChild(optionsDiv);
-        select.parentNode.insertBefore(wrapper, select.nextSibling);
-    });
-}
-
-// Close custom selects when clicking outside
-document.addEventListener('click', () => {
-    document.querySelectorAll('.custom-select-options').forEach(el => el.classList.add('hidden'));
-});
-
-// handleModalSave is slightly complex because it calls selectProject, loadTaskNotes, loadGlobalNotes etc.
-// For now, we will assume these are passed in or we use a circular dependency (not ideal) 
-// or simple event-driven architecture.
-// Actually, let's keep handleModalSave partially generic or pass the refresh callbacks.
 
 export async function handleModalSave({
     onProjectUpdate,
