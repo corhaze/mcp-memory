@@ -572,6 +572,10 @@ form.summary-form textarea.summary-textarea {
   resize: vertical;
 }
 
+.note-edit-text {
+  min-height: 80px;
+}
+
 /* ── Status badges ───────────────────────────────────────────────────────────── */
 .status-badge {
   font-size: 10px;
@@ -1411,52 +1415,33 @@ select.form-control option {
   color: var(--text);
 }
 
-/* Custom Select UI */
-.custom-select-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.custom-select-trigger {
-  cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--green-dim) 50%), linear-gradient(135deg, var(--green-dim) 50%, transparent 50%);
-  background-position: calc(100% - 15px) calc(1em + 1px), calc(100% - 11px) calc(1em + 1px);
-  background-size: 4px 4px, 4px 4px;
-  background-repeat: no-repeat;
-  padding-right: 24px;
-  user-select: none;
-}
-
-.custom-select-options {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--bg);
+/* Native select — styled to match the terminal theme */
+select.form-control {
+  appearance: none;
+  background-color: var(--bg-raised);
+  color: var(--text);
   border: 1px solid var(--border);
-  border-top: none;
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.custom-select-option {
-  padding: 8px 10px;
-  cursor: pointer;
-  color: var(--text-muted);
   font-family: var(--font);
   font-size: 12px;
-  transition: background var(--transition), color var(--transition);
+  padding: 6px 28px 6px 10px;
+  width: 100%;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--green-dim) 50%),
+                    linear-gradient(135deg, var(--green-dim) 50%, transparent 50%);
+  background-position: calc(100% - 15px) calc(1em - 1px), calc(100% - 11px) calc(1em - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  transition: border-color var(--transition);
 }
 
-.custom-select-option:hover {
-  background: var(--bg-raised);
-  color: var(--green);
+select.form-control:focus {
+  outline: none;
+  border-color: var(--amber);
 }
 
-.custom-select-option.selected {
-  color: var(--amber);
+select.form-control option {
+  background: var(--bg);
+  color: var(--text);
 }
 
 .btn-primary,

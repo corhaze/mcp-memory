@@ -1,5 +1,21 @@
 /* utils.js — Shared utility functions */
 
+export const STATUS_OPTIONS = ['open', 'in_progress', 'blocked', 'done', 'cancelled'];
+
+export const NOTE_TYPES = ['context', 'investigation', 'implementation', 'bug', 'handover'];
+
+export function renderNoteTypeOptions(current) {
+    return NOTE_TYPES.map(t =>
+        `<option value="${t}" ${t === current ? 'selected' : ''}>${t}</option>`
+    ).join('');
+}
+
+export function renderStatusOptions(current) {
+    return STATUS_OPTIONS.map(s =>
+        `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
+    ).join('');
+}
+
 export function esc(str) {
     if (!str) return '';
     return String(str)

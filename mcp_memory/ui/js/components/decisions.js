@@ -2,20 +2,10 @@
 
 import { els } from '../dom.js';
 import { state } from '../state.js';
-import { api } from '../api.js';
 import { esc, formatTime } from '../utils.js';
 
-export function renderDecisions() {
-    const filtered = state.decisionFilter
-        ? state.decisions.filter(d => d.status === state.decisionFilter)
-        : state.decisions;
-
-    if (!filtered.length) {
-        els.decisionListEl.innerHTML = '<li class="list-empty">No decisions found.</li>';
-        return;
-    }
-
-    els.decisionListEl.innerHTML = filtered.map(d => `
+export function renderDecisionItem(d) {
+    return `
     <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
       <div class="decision-header">
         <span class="decision-title">${esc(d.title)}</span>
@@ -31,6 +21,18 @@ export function renderDecisions() {
       <div class="decision-text markdown-body">${marked.parse(d.decision_text)}</div>
       ${d.rationale ? `<div class="decision-rationale">${esc(d.rationale)}</div>` : ''}
       ${d.supersedes_decision_id ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">↳ Supersedes ${d.supersedes_decision_id.slice(0, 8)}</div>` : ''}
-    </li>
-  `).join('');
+    </li>`;
+}
+
+export function renderDecisions() {
+    const filtered = state.decisionFilter
+        ? state.decisions.filter(d => d.status === state.decisionFilter)
+        : state.decisions;
+
+    if (!filtered.length) {
+        els.decisionListEl.innerHTML = '<li class="list-empty">No decisions found.</li>';
+        return;
+    }
+
+    els.decisionListEl.innerHTML = filtered.map(renderDecisionItem).join('');
 }
