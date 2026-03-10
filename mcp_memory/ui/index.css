@@ -40,6 +40,26 @@
 
   --font: 'JetBrains Mono', 'Fira Code', ui-monospace, 'Courier New', monospace;
   --transition: 150ms ease;
+
+  /* ── Status colour map (single source of truth) ── */
+  --status-open:          var(--green-dim);
+  --status-open-dim:      var(--green-muted);
+  --status-open-glow:     var(--green-glow);
+
+  --status-progress:      var(--amber);
+  --status-progress-dim:  var(--amber-dim);
+  --status-progress-glow: var(--amber-glow);
+
+  --status-blocked:       var(--red);
+  --status-blocked-dim:   var(--red-dim);
+  --status-blocked-glow:  rgba(255, 51, 51, 0.15);
+
+  --status-done:          var(--blue);
+  --status-done-dim:      var(--blue-dim);
+  --status-done-glow:     rgba(77, 182, 255, 0.15);
+
+  --status-cancelled:     var(--text-muted);
+  --status-cancelled-dim: var(--border-bright);
 }
 
 body {
@@ -623,23 +643,23 @@ form.summary-form textarea.summary-textarea {
 
 .badge-active,
 .badge-open {
-  color: var(--green-dim);
+  color: var(--status-open);
 }
 
 .badge-in_progress {
-  color: var(--amber);
+  color: var(--status-progress);
 }
 
 .badge-blocked {
-  color: var(--red);
+  color: var(--status-blocked);
 }
 
 .badge-done {
-  color: var(--blue-dim);
+  color: var(--status-done-dim);
 }
 
 .badge-cancelled {
-  color: var(--text-dim);
+  color: var(--status-cancelled);
 }
 
 .badge-archived {
@@ -752,49 +772,49 @@ form.summary-form textarea.summary-textarea {
 
 /* Status-coloured filter buttons — always visible, glow added when active */
 .filter-btn[data-status="open"] {
-  color: var(--green-dim);
-  border-color: var(--green-muted);
+  color: var(--status-open);
+  border-color: var(--status-open-dim);
 }
 .filter-btn[data-status="open"].active {
-  border-color: var(--green-dim);
-  box-shadow: 0 0 6px var(--green-glow);
+  border-color: var(--status-open);
+  box-shadow: 0 0 6px var(--status-open-glow);
 }
 
 .filter-btn[data-status="in_progress"] {
-  color: var(--amber-dim);
-  border-color: var(--amber-dim);
+  color: var(--status-progress-dim);
+  border-color: var(--status-progress-dim);
 }
 .filter-btn[data-status="in_progress"].active {
-  color: var(--amber);
-  border-color: var(--amber);
-  box-shadow: 0 0 6px rgba(255, 179, 0, 0.15);
+  color: var(--status-progress);
+  border-color: var(--status-progress);
+  box-shadow: 0 0 6px var(--status-progress-glow);
 }
 
 .filter-btn[data-status="blocked"] {
-  color: var(--red);
-  border-color: var(--red-dim);
+  color: var(--status-blocked);
+  border-color: var(--status-blocked-dim);
 }
 .filter-btn[data-status="blocked"].active {
-  border-color: var(--red);
-  box-shadow: 0 0 6px rgba(255, 51, 51, 0.15);
+  border-color: var(--status-blocked);
+  box-shadow: 0 0 6px var(--status-blocked-glow);
 }
 
 .filter-btn[data-status="done"] {
-  color: var(--blue-dim);
-  border-color: var(--blue-dim);
+  color: var(--status-done-dim);
+  border-color: var(--status-done-dim);
 }
 .filter-btn[data-status="done"].active {
-  color: var(--blue);
-  border-color: var(--blue-dim);
-  box-shadow: 0 0 6px rgba(77, 182, 255, 0.15);
+  color: var(--status-done);
+  border-color: var(--status-done-dim);
+  box-shadow: 0 0 6px var(--status-done-glow);
 }
 
 .filter-btn[data-status="cancelled"] {
-  color: var(--text-muted);
+  color: var(--status-cancelled);
   border-color: var(--border);
 }
 .filter-btn[data-status="cancelled"].active {
-  border-color: var(--border-bright);
+  border-color: var(--status-cancelled-dim);
   box-shadow: none;
 }
 
