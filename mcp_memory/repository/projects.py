@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple
 from uuid import uuid4
 from .connection import get_conn, _now
 from .models import Project, ProjectSummary, _row_to_project, _row_to_summary
@@ -63,10 +63,6 @@ def delete_project(name_or_id: str) -> bool:
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM projects WHERE id=?", (proj.id,))
     return cur.rowcount > 0
-
-def list_all_project_names() -> List[str]:
-    """Return sorted list of all project names (for backwards compat)."""
-    return [p.name for p in list_projects()]
 
 # ── Project Summaries ──────────────────────────────────────────────────────────
 
