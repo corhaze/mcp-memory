@@ -43,6 +43,15 @@ export function renderSearch() {
     const rs = state.searchResults;
     if (!rs) return;
 
+    if (rs._no_project) {
+        els.searchEmbeddingsNotice.textContent =
+            'Select a project to search.';
+        els.searchEmbeddingsNotice.classList.remove('hidden');
+        els.searchEmptyState.classList.add('hidden');
+        els.searchResultsList.innerHTML = '';
+        return;
+    }
+
     const embeddingsUnavailable = rs.embeddings_available === false;
     if (embeddingsUnavailable) {
         els.searchEmbeddingsNotice.textContent =

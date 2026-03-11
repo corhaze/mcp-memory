@@ -57,7 +57,15 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
 
     hideAllViews();
     if (els.globalView) els.globalView.classList.remove('hidden');
-    els.searchInput.disabled = true;
+    els.searchInput.disabled = false;
+    els.searchInput.placeholder = 'Search all projects...';
+
+    // "Current project" mode makes no sense without an active project
+    const currentBtn = document.querySelector('.toggle-btn[data-mode="current"]');
+    const allBtn = document.querySelector('.toggle-btn[data-mode="all"]');
+    if (currentBtn) { currentBtn.disabled = true; currentBtn.classList.remove('active'); }
+    if (allBtn) { allBtn.disabled = false; allBtn.classList.add('active'); }
+    state.searchMode = 'all';
 
     activateTab('global-notes');
 
@@ -351,6 +359,9 @@ async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     els.projectView.classList.remove('hidden');
     els.searchInput.disabled = false;
 
+    // Restore both search mode toggles
+    document.querySelectorAll('.toggle-btn').forEach(b => b.disabled = false);
+
     showRefreshIndicator();
     try {
         const { ctx, tasks, decisions, notes, timeline } = await fetchProjectData(id);
@@ -445,7 +456,16 @@ function bindFilters() {
 // ── Search ─────────────────────────────────────────────────────────────────────
 
 async function performSearch(query) {
-    if (!state.activeProjectId) return;
+    if (!state.activeProjectId) {
+        state.searchResults = { embeddings_available: false, results: [], _no_project: true };
+        // Show the project-view shell (no project header data) just to render the search panel
+        hideAllViews();
+        els.projectView.classList.remove('hidden');
+        els.searchTab.classList.remove('hidden');
+        activateTab('search');
+        renderSearch();
+        return;
+    }
     try {
         const data = await api.get(
             `/api/projects/${state.activeProjectId}/search/semantic?q=${encodeURIComponent(query)}`
