@@ -19,6 +19,7 @@ export const state = {
     showAddTaskNoteForm: new Set(), // Track which tasks have the add-note inline form open
     taskNotes: {},
     globalNotes: [],
+    expandedNotes: new Set(),
     expandedGlobalNotes: new Set(),
     globalNoteFilter: '',
     searchResults: null,

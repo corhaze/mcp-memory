@@ -732,9 +732,22 @@ async function submitNoteEditForm(form) {
 
 function bindNoteListEvents() {
     els.noteListEl.addEventListener('click', e => {
+        const toggleBtn = e.target.closest('.note-item .task-toggle');
+        if (toggleBtn) {
+            e.stopPropagation();
+            const id = toggleBtn.dataset.id;
+            if (state.expandedNotes.has(id)) {
+                state.expandedNotes.delete(id);
+            } else {
+                state.expandedNotes.add(id);
+            }
+            renderNotes();
+            return;
+        }
         const editBtn = e.target.closest('.edit-note');
         if (editBtn) {
             const noteId = editBtn.dataset.id;
+            state.expandedNotes.add(noteId); // ensure expanded when editing
             state.editingNoteId = state.editingNoteId === noteId ? null : noteId;
             renderNotes();
             return;

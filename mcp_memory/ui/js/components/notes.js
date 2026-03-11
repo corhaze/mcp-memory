@@ -28,23 +28,26 @@ function renderNoteEditForm(note) {
     </form>`;
 }
 
-export function renderNoteItem(n) {
+export function renderNoteItem(n, isExpanded = false) {
     const isEditing = state.editingNoteId === n.id;
     return `
     <li class="note-item">
-      ${renderNoteEditForm(n)}
-      <div class="note-view-content${isEditing ? ' hidden' : ''}">
-        <div class="note-header">
-          <span class="note-title">${esc(n.title)}</span>
-          <span class="entity-id-chip" data-full-id="${n.id}" title="Copy ID"><span class="id-text">#${n.id.slice(0, 8)}</span></span>
-          <span class="note-date" title="${n.created_at ? new Date(n.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:10px">${formatTime(n.created_at)}</span>
-          <div class="header-actions">
-            <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
-            <button class="icon-btn danger delete-note" data-id="${n.id}">✗</button>
-          </div>
-          <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+      <div class="note-header">
+        <button class="task-toggle${isExpanded ? ' open' : ''}" data-id="${n.id}">▶</button>
+        <span class="note-title">${esc(n.title)}</span>
+        <span class="entity-id-chip" data-full-id="${n.id}" title="Copy ID"><span class="id-text">#${n.id.slice(0, 8)}</span></span>
+        <span class="note-date" title="${n.created_at ? new Date(n.created_at).toLocaleString() : ''}" style="font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:10px">${formatTime(n.created_at)}</span>
+        <div class="header-actions">
+          <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
+          <button class="icon-btn danger delete-note" data-id="${n.id}">✗</button>
         </div>
-        <div class="note-text markdown-body">${marked.parse(n.note_text)}</div>
+        <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+      </div>
+      <div class="note-body${isExpanded ? '' : ' hidden'}">
+        ${renderNoteEditForm(n)}
+        <div class="note-view-content${isEditing ? ' hidden' : ''}">
+          <div class="note-text markdown-body">${marked.parse(n.note_text)}</div>
+        </div>
       </div>
     </li>`;
 }
@@ -60,5 +63,5 @@ export function renderNotes() {
         return;
     }
 
-    els.noteListEl.innerHTML = filtered.map(renderNoteItem).join('');
+    els.noteListEl.innerHTML = filtered.map(n => renderNoteItem(n, state.expandedNotes.has(n.id))).join('');
 }
