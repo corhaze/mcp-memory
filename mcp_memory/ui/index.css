@@ -196,12 +196,6 @@ body {
   }
 }
 
-.logo-sub {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-}
-
 #project-list {
   flex: 1;
   overflow-y: auto;
