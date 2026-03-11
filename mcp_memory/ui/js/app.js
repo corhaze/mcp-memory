@@ -508,21 +508,17 @@ function bindFilters() {
 // ── Search ─────────────────────────────────────────────────────────────────────
 
 async function performSearch(query) {
-    if (!state.activeProjectId) {
-        state.searchResults = { embeddings_available: false, results: [], _no_project: true };
-        // Show the project-view shell (no project header data) just to render the search panel
-        hideAllViews();
-        els.projectView.classList.remove('hidden');
-        els.searchTab.classList.remove('hidden');
-        activateTab('search');
-        renderSearch();
-        return;
-    }
     try {
-        const data = await api.get(
-            `/api/projects/${state.activeProjectId}/search/semantic?q=${encodeURIComponent(query)}`
-        );
+        const url = state.activeProjectId
+            ? `/api/projects/${state.activeProjectId}/search/semantic?q=${encodeURIComponent(query)}`
+            : `/api/search/semantic?q=${encodeURIComponent(query)}`;
+        const data = await api.get(url);
         state.searchResults = data;
+        // Show the project-view shell to render the search panel even without a project
+        if (!state.activeProjectId) {
+            hideAllViews();
+            els.projectView.classList.remove('hidden');
+        }
         els.searchTab.classList.remove('hidden');
         activateTab('search');
         renderSearch();
@@ -1250,25 +1246,10 @@ async function init() {
                 alert(err.message);
             }
         },
-        // onCardClick — switch to Tasks tab with the task expanded
+        // onCardClick — navigate to task detail page
         (taskId) => {
-            state.expandedTasks.add(taskId);
-            // Reset filter so the task is visible regardless of its status.
-            state.taskFilter = '';
-            els.taskFilters.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.status === '');
-            });
-            renderTasks();
-            activateTab('tasks');
             const proj = state.projects.find(p => p.id === state.activeProjectId);
-            if (proj) setPath(proj.name, 'tasks', true);
-            // Scroll to task and load notes after the tab paint settles.
-            requestAnimationFrame(() => {
-                const taskEl = document.querySelector(`.task-group [data-task-id="${taskId}"]`)
-                    ?.closest('.task-group');
-                if (taskEl) taskEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                if (!state.taskNotes[taskId]) loadTaskNotes(taskId);
-            });
+            if (proj) selectTaskDetail(proj.name, taskId);
         }
     );
 
@@ -1354,6 +1335,10 @@ async function init() {
         // Navigate to detail pages for task and note results
         if (entityType === 'task') {
             await selectTaskDetail(projectName, entityId);
+            return;
+        }
+        if (entityType === 'task_note') {
+            await selectTaskDetail(projectName, taskId || entityId);
             return;
         }
         if (entityType === 'note') {
