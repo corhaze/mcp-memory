@@ -102,6 +102,35 @@ def _m5_enforce_task_status_constraint(conn: sqlite3.Connection) -> None:
     """)
 
 
+def _m6_fix_status_trigger_raise_syntax(conn: sqlite3.Connection) -> None:
+    """Drop and recreate status validation triggers using a static RAISE() message.
+
+    Some SQLite versions reject || column concatenation inside RAISE() at CREATE
+    time, leaving the DB with a malformed schema. Drop both triggers and recreate
+    them with a plain string literal.
+    """
+    conn.execute("DROP TRIGGER IF EXISTS tasks_status_insert_check")
+    conn.execute("DROP TRIGGER IF EXISTS tasks_status_update_check")
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tasks_status_insert_check
+        BEFORE INSERT ON tasks
+        WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
+        BEGIN
+            SELECT RAISE(ABORT,
+                'Invalid task status. Valid statuses: open, in_progress, blocked, done, cancelled');
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tasks_status_update_check
+        BEFORE UPDATE ON tasks
+        WHEN NEW.status NOT IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')
+        BEGIN
+            SELECT RAISE(ABORT,
+                'Invalid task status. Valid statuses: open, in_progress, blocked, done, cancelled');
+        END;
+    """)
+
+
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
@@ -109,6 +138,7 @@ _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add complex column to tasks",                 _m3_add_complex_column),
     ("Migrate 'completed' status to 'done'",        _m4_migrate_completed_to_done),
     ("Enforce task status constraint",              _m5_enforce_task_status_constraint),
+    ("Fix status trigger RAISE() syntax",           _m6_fix_status_trigger_raise_syntax),
 ]
 
 
