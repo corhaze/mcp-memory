@@ -1179,7 +1179,13 @@ form.summary-form textarea.summary-textarea {
   font-size: 11px;
   color: var(--text-sec);
   padding-left: 2px;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.task-note-text ol,
+.task-note-text ul {
+  list-style-position: inside;
 }
 
 .list-empty {
