@@ -161,7 +161,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             created_at             TEXT NOT NULL,
             updated_at             TEXT NOT NULL,
             FOREIGN KEY(project_id)             REFERENCES projects(id) ON DELETE CASCADE,
-            FOREIGN KEY(supersedes_decision_id) REFERENCES decisions(id)
+            FOREIGN KEY(supersedes_decision_id) REFERENCES decisions(id) ON DELETE SET NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_decisions_project ON decisions(project_id);
@@ -407,6 +407,72 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         END;
         CREATE TRIGGER IF NOT EXISTS tau_summaries AFTER UPDATE ON project_summaries BEGIN
             UPDATE summaries_fts SET summary_text = new.summary_text WHERE id = old.id;
+        END;
+
+        -- ── Orphan cleanup: embeddings ─────────────────────────────────────
+        -- Polymorphic FK (entity_type, entity_id) cannot be enforced by the DB;
+        -- these triggers keep embeddings in sync when entities are deleted.
+        CREATE TRIGGER IF NOT EXISTS tad_tasks_embeddings AFTER DELETE ON tasks BEGIN
+            DELETE FROM embeddings WHERE entity_type='task' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_decisions_embeddings AFTER DELETE ON decisions BEGIN
+            DELETE FROM embeddings WHERE entity_type='decision' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_notes_embeddings AFTER DELETE ON notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='note' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes_embeddings AFTER DELETE ON task_notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='task_note' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes_embeddings AFTER DELETE ON global_notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='global_note' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_chunks_embeddings AFTER DELETE ON document_chunks BEGIN
+            DELETE FROM embeddings WHERE entity_type='chunk' AND entity_id=old.id;
+        END;
+
+        -- ── Orphan cleanup: entity_links and entity_tags ───────────────────
+        -- Polymorphic columns cannot carry real FKs; triggers enforce integrity.
+        CREATE TRIGGER IF NOT EXISTS tad_tasks_links AFTER DELETE ON tasks BEGIN
+            DELETE FROM entity_links
+            WHERE (from_entity_type='task' AND from_entity_id=old.id)
+               OR (to_entity_type='task'   AND to_entity_id=old.id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_decisions_links AFTER DELETE ON decisions BEGIN
+            DELETE FROM entity_links
+            WHERE (from_entity_type='decision' AND from_entity_id=old.id)
+               OR (to_entity_type='decision'   AND to_entity_id=old.id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_notes_links AFTER DELETE ON notes BEGIN
+            DELETE FROM entity_links
+            WHERE (from_entity_type='note' AND from_entity_id=old.id)
+               OR (to_entity_type='note'   AND to_entity_id=old.id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes_links AFTER DELETE ON task_notes BEGIN
+            DELETE FROM entity_links
+            WHERE (from_entity_type='task_note' AND from_entity_id=old.id)
+               OR (to_entity_type='task_note'   AND to_entity_id=old.id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes_links AFTER DELETE ON global_notes BEGIN
+            DELETE FROM entity_links
+            WHERE (from_entity_type='global_note' AND from_entity_id=old.id)
+               OR (to_entity_type='global_note'   AND to_entity_id=old.id);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS tad_tasks_tags AFTER DELETE ON tasks BEGIN
+            DELETE FROM entity_tags WHERE entity_type='task' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_decisions_tags AFTER DELETE ON decisions BEGIN
+            DELETE FROM entity_tags WHERE entity_type='decision' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_notes_tags AFTER DELETE ON notes BEGIN
+            DELETE FROM entity_tags WHERE entity_type='note' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes_tags AFTER DELETE ON task_notes BEGIN
+            DELETE FROM entity_tags WHERE entity_type='task_note' AND entity_id=old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes_tags AFTER DELETE ON global_notes BEGIN
+            DELETE FROM entity_tags WHERE entity_type='global_note' AND entity_id=old.id;
         END;
     """)
     conn.commit()

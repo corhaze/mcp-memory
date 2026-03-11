@@ -131,6 +131,166 @@ def _m6_fix_status_trigger_raise_syntax(conn: sqlite3.Connection) -> None:
     """)
 
 
+def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table_name,)
+    ).fetchone()
+    return row is not None
+
+
+def _m7_add_embedding_orphan_triggers(conn: sqlite3.Connection) -> None:
+    """Add AFTER DELETE triggers to remove orphaned embeddings.
+
+    The embeddings table uses a polymorphic (entity_type, entity_id) key that
+    cannot carry a real FK. These triggers keep embeddings in sync when the
+    backing entity is deleted.
+
+    Skips any table that does not exist in this DB (e.g. old partial schemas).
+    """
+    for entity_table, entity_type in [
+        ("tasks",           "task"),
+        ("decisions",       "decision"),
+        ("notes",           "note"),
+        ("task_notes",      "task_note"),
+        ("global_notes",    "global_note"),
+        ("document_chunks", "chunk"),
+    ]:
+        if not _table_exists(conn, entity_table):
+            continue
+        trigger = f"tad_{entity_table}_embeddings"
+        conn.execute(f"""
+            CREATE TRIGGER IF NOT EXISTS {trigger}
+            AFTER DELETE ON {entity_table} BEGIN
+                DELETE FROM embeddings WHERE entity_type='{entity_type}' AND entity_id=old.id;
+            END;
+        """)
+
+
+def _m8_add_links_and_tags_orphan_triggers(conn: sqlite3.Connection) -> None:
+    """Add AFTER DELETE triggers to remove orphaned entity_links and entity_tags.
+
+    entity_links and entity_tags use polymorphic (entity_type, entity_id) keys
+    that cannot carry real FKs. These triggers enforce referential integrity when
+    entities are deleted.
+
+    Skips any table that does not exist in this DB (e.g. old partial schemas).
+    """
+    for entity_table, entity_type in [
+        ("tasks",        "task"),
+        ("decisions",    "decision"),
+        ("notes",        "note"),
+        ("task_notes",   "task_note"),
+        ("global_notes", "global_note"),
+    ]:
+        if not _table_exists(conn, entity_table):
+            continue
+        if _table_exists(conn, "entity_links"):
+            links_trigger = f"tad_{entity_table}_links"
+            conn.execute(f"""
+                CREATE TRIGGER IF NOT EXISTS {links_trigger}
+                AFTER DELETE ON {entity_table} BEGIN
+                    DELETE FROM entity_links
+                    WHERE (from_entity_type='{entity_type}' AND from_entity_id=old.id)
+                       OR (to_entity_type='{entity_type}'   AND to_entity_id=old.id);
+                END;
+            """)
+        if _table_exists(conn, "entity_tags"):
+            tags_trigger = f"tad_{entity_table}_tags"
+            conn.execute(f"""
+                CREATE TRIGGER IF NOT EXISTS {tags_trigger}
+                AFTER DELETE ON {entity_table} BEGIN
+                    DELETE FROM entity_tags
+                    WHERE entity_type='{entity_type}' AND entity_id=old.id;
+                END;
+            """)
+
+
+def _m9_fix_supersedes_decision_id_fk(conn: sqlite3.Connection) -> None:
+    """Recreate decisions table with ON DELETE SET NULL on supersedes_decision_id.
+
+    SQLite does not support ALTER COLUMN, so we rebuild the table. The rename
+    approach is used (decisions → decisions_old → new decisions) so that the
+    self-referential FK correctly names the final table 'decisions', not a temp name.
+
+    All FTS and orphan-cleanup triggers are recreated after the rebuild.
+    """
+    if not _table_exists(conn, "decisions"):
+        return
+
+    # PRAGMA foreign_keys is a no-op inside a transaction. Flush any pending
+    # DML transaction (e.g. from _set_version of a prior migration) first.
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    # Rename old table; SQLite auto-updates trigger references on the renamed table.
+    conn.execute("ALTER TABLE decisions RENAME TO decisions_old")
+
+    conn.execute("""
+        CREATE TABLE decisions (
+            id                     TEXT PRIMARY KEY,
+            project_id             TEXT NOT NULL,
+            title                  TEXT NOT NULL,
+            decision_text          TEXT NOT NULL,
+            rationale              TEXT,
+            status                 TEXT NOT NULL DEFAULT 'active',
+            supersedes_decision_id TEXT,
+            created_at             TEXT NOT NULL,
+            updated_at             TEXT NOT NULL,
+            FOREIGN KEY(project_id)             REFERENCES projects(id) ON DELETE CASCADE,
+            FOREIGN KEY(supersedes_decision_id) REFERENCES decisions(id) ON DELETE SET NULL
+        )
+    """)
+    conn.execute("INSERT INTO decisions SELECT * FROM decisions_old")
+    # Dropping decisions_old also drops all triggers that were migrated onto it.
+    conn.execute("DROP TABLE decisions_old")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_decisions_project ON decisions(project_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_decisions_status  ON decisions(project_id, status)")
+
+    # Recreate FTS triggers.
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tai_decisions AFTER INSERT ON decisions BEGIN
+            INSERT INTO decisions_fts(id, project_id, title, decision_text, rationale)
+            VALUES (new.id, new.project_id, new.title, new.decision_text, COALESCE(new.rationale, ''));
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_decisions AFTER DELETE ON decisions BEGIN
+            DELETE FROM decisions_fts WHERE id = old.id;
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tau_decisions AFTER UPDATE ON decisions BEGIN
+            UPDATE decisions_fts SET title = new.title,
+                decision_text = new.decision_text,
+                rationale     = COALESCE(new.rationale, '')
+            WHERE id = old.id;
+        END;
+    """)
+    # Recreate orphan-cleanup triggers (added by m7/m8 then dropped with decisions_old).
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_decisions_embeddings AFTER DELETE ON decisions BEGIN
+            DELETE FROM embeddings WHERE entity_type='decision' AND entity_id=old.id;
+        END;
+    """)
+    if _table_exists(conn, "entity_links"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_decisions_links AFTER DELETE ON decisions BEGIN
+                DELETE FROM entity_links
+                WHERE (from_entity_type='decision' AND from_entity_id=old.id)
+                   OR (to_entity_type='decision'   AND to_entity_id=old.id);
+            END;
+        """)
+    if _table_exists(conn, "entity_tags"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_decisions_tags AFTER DELETE ON decisions BEGIN
+                DELETE FROM entity_tags WHERE entity_type='decision' AND entity_id=old.id;
+            END;
+        """)
+
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
@@ -139,6 +299,9 @@ _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Migrate 'completed' status to 'done'",        _m4_migrate_completed_to_done),
     ("Enforce task status constraint",              _m5_enforce_task_status_constraint),
     ("Fix status trigger RAISE() syntax",           _m6_fix_status_trigger_raise_syntax),
+    ("Add orphan-cleanup triggers for embeddings",  _m7_add_embedding_orphan_triggers),
+    ("Add orphan-cleanup triggers for links/tags",  _m8_add_links_and_tags_orphan_triggers),
+    ("Fix supersedes_decision_id ON DELETE SET NULL", _m9_fix_supersedes_decision_id_fk),
 ]
 
 

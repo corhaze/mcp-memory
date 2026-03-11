@@ -42,7 +42,6 @@ from .repository.projects import (
     list_projects,
     update_project,
     delete_project,
-    list_all_project_names,
     add_summary,
     get_current_summary,
     list_summaries,
@@ -100,7 +99,6 @@ from .repository.documents import (
 from .repository.links import (
     create_link,
     get_links_for,
-    list_links,
     delete_link,
 )
 from .repository.tags import (
@@ -129,7 +127,7 @@ __all__ = [
     "db_path", "get_conn", "Project", "ProjectSummary", "Task", "TaskEvent",
     "Decision", "Note", "GlobalNote", "TaskNote", "Document", "DocumentChunk",
     "Embedding", "EntityLink", "Tag", "create_project", "get_project",
-    "list_projects", "update_project", "delete_project", "list_all_project_names",
+    "list_projects", "update_project", "delete_project",
     "add_summary", "get_current_summary", "list_summaries", "create_task",
     "get_task", "list_tasks", "update_task", "delete_task", "get_task_tree",
     "log_task_event", "get_task_events", "create_task_note", "get_task_note",
@@ -142,7 +140,7 @@ __all__ = [
     "delete_global_note", "search_global_notes", "semantic_search_global_notes",
     "semantic_search_notes", "create_document", "get_document", "list_documents",
     "add_chunks", "get_chunks", "semantic_search_chunks", "create_link",
-    "get_links_for", "list_links", "delete_link", "create_tag", "list_tags",
+    "get_links_for", "delete_link", "create_tag", "list_tags",
     "tag_entity", "untag_entity", "get_entities_by_tag", "list_entity_tags",
     "search_tasks", "search_decisions", "search_notes", "search_chunks",
     "semantic_search_all", "get_working_context"
