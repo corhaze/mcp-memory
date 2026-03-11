@@ -22,11 +22,47 @@ def db_path() -> Path:
     return p
 
 
+def _repair_malformed_triggers(path_str: str) -> None:
+    """Remove status triggers that used || in RAISE(), which some SQLite versions reject.
+
+    A malformed trigger in sqlite_master causes every subsequent SQL statement
+    (including PRAGMA) to raise OperationalError. This repair opens the DB with
+    writable_schema=ON to bypass schema validation, deletes the offending triggers,
+    and closes before normal initialisation proceeds. Safe to call on a clean DB.
+    """
+    conn = sqlite3.connect(path_str)
+    try:
+        conn.execute("PRAGMA writable_schema=ON")
+        conn.execute(
+            "DELETE FROM sqlite_master "
+            "WHERE type = 'trigger' "
+            "AND name IN ('tasks_status_insert_check', 'tasks_status_update_check')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @contextlib.contextmanager
 def get_conn() -> Iterator[sqlite3.Connection]:
     """Open (or create) the database, running schema init and migrations once per path."""
     path = db_path()
     path_str = str(path)
+
+    if path_str not in _initialized_paths:
+        with _init_lock:
+            if path_str not in _initialized_paths:  # double-checked locking
+                _repair_malformed_triggers(path_str)
+                init_conn = sqlite3.connect(path_str)
+                init_conn.row_factory = sqlite3.Row
+                init_conn.execute("PRAGMA journal_mode=WAL;")
+                init_conn.execute("PRAGMA foreign_keys = ON;")
+                try:
+                    _init_schema(init_conn)
+                    run_migrations(init_conn)
+                    _initialized_paths.add(path_str)
+                finally:
+                    init_conn.close()
 
     conn = sqlite3.connect(path_str)
     conn.row_factory = sqlite3.Row
@@ -34,13 +70,6 @@ def get_conn() -> Iterator[sqlite3.Connection]:
     conn.execute("PRAGMA foreign_keys = ON;")
 
     try:
-        if path_str not in _initialized_paths:
-            with _init_lock:
-                if path_str not in _initialized_paths:  # double-checked locking
-                    _init_schema(conn)
-                    run_migrations(conn)
-                    _initialized_paths.add(path_str)
-
         with conn:
             yield conn
     finally:
