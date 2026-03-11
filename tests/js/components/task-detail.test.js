@@ -111,4 +111,23 @@ describe('renderTaskDetail()', () => {
         // Only check the specific urgent badge class, not any mention of the word
         expect(html).not.toContain('badge-urgent');
     });
+
+    it('subtask items include data-task-id for click-through navigation', () => {
+        const html = renderTaskDetail(makeTask({
+            subtasks: [{ id: 'sub-abc', title: 'Sub A', status: 'open' }],
+        }));
+        expect(html).toContain('data-task-id="sub-abc"');
+        expect(html).toContain('task-detail-subtask-link');
+    });
+
+    it('renders a parent task link when parent_task_id is present', () => {
+        const html = renderTaskDetail(makeTask({ parent_task_id: 'parent-xyz' }));
+        expect(html).toContain('data-task-id="parent-xyz"');
+        expect(html).toContain('task-detail-parent-link');
+    });
+
+    it('omits parent task link when parent_task_id is null', () => {
+        const html = renderTaskDetail(makeTask({ parent_task_id: null }));
+        expect(html).not.toContain('task-detail-parent-link');
+    });
 });

@@ -2067,10 +2067,29 @@ select.form-control option {
   max-width: 860px;
 }
 
-.task-detail-back {
+.task-detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1.25rem;
+}
+
+.task-detail-back {
   font-size: 0.75rem;
   cursor: pointer;
+}
+
+.task-detail-parent {
+  display: contents;
+}
+
+.task-detail-parent-link {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.task-detail-parent-link:hover {
+  color: var(--green);
 }
 
 .task-detail-header {

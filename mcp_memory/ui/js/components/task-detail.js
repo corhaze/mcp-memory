@@ -5,7 +5,7 @@ import { esc } from '../utils.js';
 function renderSubtaskItem(sub) {
     return `<li class="task-detail-subtask">
       <span class="status-badge badge-${esc(sub.status)}">${esc(sub.status)}</span>
-      <span class="task-detail-subtask-title">${esc(sub.title)}</span>
+      <button class="task-detail-subtask-link task-title-link" data-task-id="${esc(sub.id)}">${esc(sub.title)}</button>
     </li>`;
 }
 
@@ -27,6 +27,12 @@ function renderEventItem(ev) {
 }
 
 export function renderTaskDetail(task) {
+    const parentLinkHtml = task.parent_task_id
+        ? `<div class="task-detail-parent">
+             <button class="task-detail-parent-link task-title-link" data-task-id="${esc(task.parent_task_id)}">↑ Parent task</button>
+           </div>`
+        : '';
+
     const urgentBadge = task.urgent
         ? `<span class="status-badge badge-urgent">urgent</span>`
         : '';
@@ -61,7 +67,10 @@ export function renderTaskDetail(task) {
         : '';
 
     return `<div class="task-detail-container">
-      <button class="task-detail-back btn-secondary">← Back to Tasks</button>
+      <div class="task-detail-nav">
+        <button class="task-detail-back btn-secondary">← Back to Tasks</button>
+        ${parentLinkHtml}
+      </div>
       <header class="task-detail-header">
         <h2 class="task-detail-title">${esc(task.title)}</h2>
         <div class="task-detail-meta">

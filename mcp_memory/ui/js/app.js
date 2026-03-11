@@ -103,10 +103,6 @@ async function selectTaskDetail(projectName, taskId, { updatePath = true } = {})
         const task = await api.get(`/api/projects/${proj?.id ?? projectName}/tasks/${taskId}`);
         if (els.taskDetailContent) {
             els.taskDetailContent.innerHTML = renderTaskDetail(task);
-            // Bind back button
-            els.taskDetailContent.querySelector('.task-detail-back')?.addEventListener('click', () => {
-                if (proj) selectProject(proj.id, 'tasks');
-            });
         }
         if (updatePath) setTaskPath(projectName, taskId);
     } catch (err) {
@@ -593,6 +589,25 @@ function cancelAddSubtaskForm(btn) {
 
 // ── Delegated event handlers (bound once in init) ───────────────────────────
 
+function bindTaskDetailEvents() {
+    if (!els.taskDetailContent) return;
+    els.taskDetailContent.addEventListener('click', e => {
+        const backBtn = e.target.closest('.task-detail-back');
+        if (backBtn) {
+            const proj = state.projects.find(p => p.id === state.activeProjectId);
+            if (proj) selectProject(proj.id, 'tasks');
+            return;
+        }
+
+        const taskLink = e.target.closest('.task-detail-subtask-link, .task-detail-parent-link');
+        if (taskLink) {
+            const taskId = taskLink.dataset.taskId;
+            const proj = state.projects.find(p => p.id === state.activeProjectId);
+            if (proj && taskId) selectTaskDetail(proj.name, taskId);
+        }
+    });
+}
+
 function bindTaskListEvents() {
     els.taskListEl.addEventListener('click', async e => {
         const statusTrigger = e.target.closest('.task-status-trigger');
@@ -1055,6 +1070,7 @@ async function init() {
         });
     }
     bindTaskListEvents();
+    bindTaskDetailEvents();
     bindDecisionListEvents();
     bindNoteListEvents();
 
