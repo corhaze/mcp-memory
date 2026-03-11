@@ -83,4 +83,9 @@ describe('renderNoteItem()', () => {
         const html = renderNoteItem(makeNote({ id: 'note-abc' }));
         expect(html).toContain('data-note-id="note-abc"');
     });
+
+    it('renders the <li> with id="note-{id}" for scroll targeting', () => {
+        const html = renderNoteItem(makeNote({ id: 'note-001' }));
+        expect(html).toContain('id="note-note-001"');
+    });
 });

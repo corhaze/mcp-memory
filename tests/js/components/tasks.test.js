@@ -19,6 +19,7 @@ vi.stubGlobal('marked', { parse: s => `<p>${s}</p>` });
 import {
     renderTaskNotesHtml,
     findTask,
+    renderTaskItem,
 } from '../../../mcp_memory/ui/js/components/tasks.js';
 
 // ---------------------------------------------------------------------------
@@ -117,5 +118,34 @@ describe('findTask()', () => {
     it('handles tasks without a subtasks array', () => {
         const flat = [{ id: 'x' }, { id: 'y' }];
         expect(findTask('y', flat)).toMatchObject({ id: 'y' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// renderTaskItem() — anchor ID
+// ---------------------------------------------------------------------------
+
+function makeTask(overrides = {}) {
+    return {
+        id: 'task-001',
+        title: 'Test task',
+        status: 'open',
+        urgent: false,
+        complex: false,
+        description: null,
+        next_action: null,
+        parent_task_id: null,
+        blocked_by_task_id: null,
+        assigned_agent: null,
+        created_at: '2024-01-10T10:00:00Z',
+        subtasks: [],
+        ...overrides,
+    };
+}
+
+describe('renderTaskItem()', () => {
+    it('renders the <li> with id="task-{id}" for scroll targeting', () => {
+        const html = renderTaskItem(makeTask({ id: 'task-001' }));
+        expect(html).toContain('id="task-task-001"');
     });
 });

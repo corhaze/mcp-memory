@@ -6,7 +6,7 @@ import { esc, formatTime } from '../utils.js';
 
 export function renderDecisionItem(d) {
     return `
-    <li class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
+    <li id="decision-${d.id}" class="decision-item ${d.status === 'superseded' ? 'superseded' : ''}">
       <div class="decision-header">
         <span class="decision-title">${esc(d.title)}</span>
         <span class="entity-id-chip" data-full-id="${d.id}" title="Copy ID"><span class="id-text">#${d.id.slice(0, 8)}</span></span>

@@ -31,7 +31,7 @@ function renderNoteEditForm(note) {
 export function renderNoteItem(n, isExpanded = false) {
     const isEditing = state.editingNoteId === n.id;
     return `
-    <li class="note-item">
+    <li id="note-${n.id}" class="note-item">
       <div class="note-header">
         <button class="task-toggle${isExpanded ? ' open' : ''}" data-id="${n.id}">▶</button>
         <span class="note-title">${esc(n.title)}</span>

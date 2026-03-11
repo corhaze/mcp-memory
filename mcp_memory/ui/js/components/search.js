@@ -2,14 +2,14 @@
 
 import { els } from '../dom.js';
 import { state } from '../state.js';
-import { esc } from '../utils.js';
+import { esc, entityNavTarget } from '../utils.js';
 
 function scoreLabel(score) {
     return (score * 100).toFixed(0) + '%';
 }
 
-function renderResultItem(result) {
-    const { entity_type, score, title, status, note_type, next_action } = result;
+export function renderResultItem(result) {
+    const { entity_type, score, title, status, note_type, next_action, id, project_name, task_id } = result;
 
     const statusBadge = status
         ? `<span class="status-badge badge-${esc(status)}">${esc(status)}</span>`
@@ -23,7 +23,14 @@ function renderResultItem(result) {
         ? `<span class="search-result-next-action">${esc(next_action)}</span>`
         : '';
 
-    return `<li class="search-result-item">
+    const navTarget = entityNavTarget(result);
+    const clickableClass = navTarget ? ' search-result-item--clickable' : '';
+    const dataTaskId = task_id ? ` data-task-id="${esc(task_id)}"` : '';
+
+    return `<li class="search-result-item${clickableClass}"
+      data-entity-id="${esc(id)}"
+      data-entity-type="${esc(entity_type)}"
+      data-project-name="${esc(project_name)}"${dataTaskId}>
       <span class="entity-type-badge badge-${esc(entity_type)}">${esc(entity_type)}</span>
       <span class="search-result-title">${esc(title)}</span>
       ${statusBadge}${noteTypePill}

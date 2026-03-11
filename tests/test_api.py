@@ -517,6 +517,36 @@ class TestUnifiedSemanticSearch:
         assert data["results"] == []
         assert data["query"] == "auth"
 
+    def test_results_include_project_name(self, proj, monkeypatch):
+        """Each search result includes project_name for client-side navigation."""
+        from unittest.mock import MagicMock
+        import mcp_memory.embeddings as _emb
+        import mcp_memory.db as _db
+        from mcp_memory.repository.models import Task
+        from datetime import datetime, timezone
+
+        monkeypatch.setattr(_emb, "_model_available", True)
+
+        fake_task = Task(
+            id="task-abc", project_id=proj["id"], title="Auth task",
+            description=None, status="open", urgent=False, complex=False,
+            parent_task_id=None, assigned_agent=None, blocked_by_task_id=None,
+            next_action=None, due_at=None,
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            completed_at=None, subtasks=[],
+        )
+        monkeypatch.setattr(
+            _db, "semantic_search_all",
+            lambda q, pid, limit: [{"entity_type": "task", "score": 0.9, "entity": fake_task}],
+        )
+
+        r = client.get(f"/api/projects/{proj['id']}/search/semantic?q=auth")
+        assert r.status_code == 200
+        results = r.json()["results"]
+        assert len(results) == 1
+        assert results[0]["project_name"] == proj["name"]
+
     def test_custom_limit_param_accepted(self, proj):
         """Smoke test: explicit limit param is parsed without error.
 

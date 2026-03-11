@@ -417,6 +417,25 @@ body {
   background: var(--bg-raised);
 }
 
+.search-result-item--clickable {
+  cursor: pointer;
+}
+
+.search-result-item--clickable:hover {
+  background: var(--bg-raised);
+  color: var(--accent);
+}
+
+.highlight-flash {
+  animation: highlight-flash 1.5s ease-out;
+}
+
+@keyframes highlight-flash {
+  0%   { background: var(--accent); color: var(--bg); }
+  40%  { background: color-mix(in srgb, var(--accent) 30%, var(--bg-raised)); }
+  100% { background: transparent; }
+}
+
 .search-result-title {
   flex: 1;
   color: var(--text);

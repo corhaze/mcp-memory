@@ -246,7 +246,7 @@ export function renderTaskItem(task, depth = 0) {
     </div>`;
 
   return `
-    <li class="task-group" data-depth="${depth}">
+    <li id="task-${task.id}" class="task-group" data-depth="${depth}">
       <div class="task-item ${task.status}">
         <div class="task-header">
           ${urgentBadge}

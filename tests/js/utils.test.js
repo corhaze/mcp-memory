@@ -6,6 +6,7 @@ import {
     formatTime,
     renderNoteTypeOptions,
     renderStatusOptions,
+    entityNavTarget,
     STATUS_OPTIONS,
     NOTE_TYPES,
 } from '../../mcp_memory/ui/js/utils.js';
@@ -233,5 +234,65 @@ describe('renderStatusOptions()', () => {
     it('selects nothing when current is null', () => {
         const html = renderStatusOptions(null);
         expect(html).not.toContain('selected');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// entityNavTarget()
+// ---------------------------------------------------------------------------
+
+describe('entityNavTarget()', () => {
+    it('returns tasks tab and task anchor for task entity', () => {
+        const result = { entity_type: 'task', id: 'abc123', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toEqual({
+            projectName: 'my-proj',
+            tab: 'tasks',
+            anchor: 'task-abc123',
+        });
+    });
+
+    it('returns decisions tab and decision anchor for decision entity', () => {
+        const result = { entity_type: 'decision', id: 'def456', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toEqual({
+            projectName: 'my-proj',
+            tab: 'decisions',
+            anchor: 'decision-def456',
+        });
+    });
+
+    it('returns notes tab and note anchor for note entity', () => {
+        const result = { entity_type: 'note', id: 'ghi789', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toEqual({
+            projectName: 'my-proj',
+            tab: 'notes',
+            anchor: 'note-ghi789',
+        });
+    });
+
+    it('returns tasks tab and task anchor for task_note (navigate to parent task)', () => {
+        const result = { entity_type: 'task_note', id: 'tn1', task_id: 'parent1', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toEqual({
+            projectName: 'my-proj',
+            tab: 'tasks',
+            anchor: 'task-parent1',
+        });
+    });
+
+    it('returns null projectName for global_note', () => {
+        const result = { entity_type: 'global_note', id: 'gn1', project_name: 'irrelevant' };
+        const target = entityNavTarget(result);
+        expect(target.projectName).toBeNull();
+        expect(target.tab).toBe('notes');
+        expect(target.anchor).toBe('global-note-gn1');
+    });
+
+    it('returns null for chunk (no specific anchor target)', () => {
+        const result = { entity_type: 'chunk', id: 'ch1', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toBeNull();
+    });
+
+    it('returns null for unknown entity type', () => {
+        const result = { entity_type: 'unknown', id: 'x', project_name: 'my-proj' };
+        expect(entityNavTarget(result)).toBeNull();
     });
 });

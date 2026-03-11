@@ -46,14 +46,13 @@ describe('renderDecisionItem()', () => {
 
     it('does NOT add "superseded" class for a non-superseded decision', () => {
         const html = renderDecisionItem(makeDecision({ status: 'active' }));
-        // The <li> class attribute should not contain 'superseded'
-        const liMatch = html.match(/<li class="([^"]+)"/);
+        const liMatch = html.match(/<li [^>]*class="([^"]+)"/);
         expect(liMatch[1]).not.toContain('superseded');
     });
 
     it('adds "superseded" class when status is superseded', () => {
         const html = renderDecisionItem(makeDecision({ status: 'superseded' }));
-        const liMatch = html.match(/<li class="([^"]+)"/);
+        const liMatch = html.match(/<li [^>]*class="([^"]+)"/);
         expect(liMatch[1]).toContain('superseded');
     });
 
@@ -93,5 +92,10 @@ describe('renderDecisionItem()', () => {
     it('renders the supersedes link with truncated id when present', () => {
         const html = renderDecisionItem(makeDecision({ supersedes_decision_id: 'abcdef12-1234-5678-abcd-000000000000' }));
         expect(html).toContain('Supersedes abcdef12');
+    });
+
+    it('renders the <li> with id="decision-{id}" for scroll targeting', () => {
+        const html = renderDecisionItem(makeDecision({ id: 'dec-001' }));
+        expect(html).toContain('id="decision-dec-001"');
     });
 });

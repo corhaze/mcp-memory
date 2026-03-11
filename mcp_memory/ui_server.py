@@ -341,7 +341,7 @@ def unified_semantic_search(
         fields = _SEMANTIC_SEARCH_FIELDS.get(entity_type)
         if fields is None:
             continue
-        shaped = {"entity_type": entity_type, "score": r["score"]}
+        shaped = {"entity_type": entity_type, "score": r["score"], "project_name": proj.name}
         shaped.update({f: getattr(entity, f) for f in fields})
         if entity_type == "task" and entity.next_action:
             shaped["next_action"] = entity.next_action

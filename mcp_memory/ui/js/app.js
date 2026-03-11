@@ -1093,6 +1093,38 @@ async function init() {
         activateTab('summary');
     });
 
+    els.searchResultsList.addEventListener('click', async e => {
+        const item = e.target.closest('.search-result-item--clickable');
+        if (!item) return;
+
+        const entityType = item.dataset.entityType;
+        const entityId = item.dataset.entityId;
+        const projectName = item.dataset.projectName;
+        const taskId = item.dataset.taskId;
+
+        const { entityNavTarget } = await import('./utils.js');
+        const target = entityNavTarget({ entity_type: entityType, id: entityId, project_name: projectName, task_id: taskId });
+        if (!target) return;
+
+        const scrollAndHighlight = () => {
+            const el = document.getElementById(target.anchor);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight-flash');
+            setTimeout(() => el.classList.remove('highlight-flash'), 1500);
+        };
+
+        if (target.projectName === null) {
+            await selectGlobalWorkspace(target.tab, { updatePath: true });
+            setTimeout(scrollAndHighlight, 100);
+        } else {
+            const proj = state.projects.find(p => p.name === target.projectName);
+            if (!proj) return;
+            await selectProject(proj.id, target.tab);
+            setTimeout(scrollAndHighlight, 100);
+        }
+    });
+
     const route = parsePath();
     if (route) {
         if (route.namespace === 'global') {
