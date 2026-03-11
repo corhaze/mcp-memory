@@ -8,6 +8,7 @@ function renderSubtaskItem(sub) {
         <button class="subtask-expand-toggle" data-subtask-id="${esc(sub.id)}" title="Expand">›</button>
         <span class="status-badge badge-${esc(sub.status)}">${esc(sub.status)}</span>
         <button class="task-detail-subtask-link task-title-link" data-task-id="${esc(sub.id)}">${esc(sub.title)}</button>
+        <button class="icon-btn danger delete-subtask-detail" data-task-id="${esc(sub.id)}" title="Delete subtask">✗</button>
       </div>
       <div id="subtask-expansion-${esc(sub.id)}" class="subtask-expansion hidden"></div>
     </li>`;
@@ -102,6 +103,7 @@ export function renderTaskDetail(task) {
           <span class="entity-id-chip" data-full-id="${esc(task.id)}">
             <span class="id-text">${esc(task.id.slice(0, 8))}</span>
           </span>
+          <button class="icon-btn danger delete-task-detail" data-task-id="${esc(task.id)}" title="Delete task">✗ Delete</button>
         </div>
       </header>
       ${descriptionHtml}

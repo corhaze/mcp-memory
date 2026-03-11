@@ -18,6 +18,7 @@ export const state = {
     showAddTaskForm: false,        // Whether the top-level "add task" inline form is visible
     showAddTaskNoteForm: new Set(), // Track which tasks have the add-note inline form open
     taskNotes: {},
+    activeTaskId: null,          // task ID currently shown in the task detail view
     expandedSubtasks: new Set(), // subtask IDs expanded in the task detail view
     subtaskDetails: {},          // taskId → fetched detail object (cache)
     globalNotes: [],

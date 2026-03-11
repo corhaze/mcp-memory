@@ -78,6 +78,7 @@ function hideAllViews() {
 
 async function selectTaskDetail(projectName, taskId, { updatePath = true } = {}) {
     state.activeView = 'task-detail';
+    state.activeTaskId = taskId;
     state.expandedSubtasks.clear();
     state.subtaskDetails = {};
 
@@ -631,6 +632,31 @@ function bindTaskDetailEvents() {
                 container.innerHTML = renderSubtaskExpansion(state.subtaskDetails[subtaskId]);
                 container.classList.remove('hidden');
             }
+            return;
+        }
+
+        const deleteTaskBtn = e.target.closest('.delete-task-detail');
+        if (deleteTaskBtn) {
+            const taskId = deleteTaskBtn.dataset.taskId;
+            if (!confirm('Delete this task?')) return;
+            try {
+                await api.delete(`/api/projects/${state.activeProjectId}/tasks/${taskId}`);
+                const proj = state.projects.find(p => p.id === state.activeProjectId);
+                if (proj) selectProject(proj.id, 'tasks');
+            } catch (err) { alert(err.message); }
+            return;
+        }
+
+        const deleteSubtaskBtn = e.target.closest('.delete-subtask-detail');
+        if (deleteSubtaskBtn) {
+            const taskId = deleteSubtaskBtn.dataset.taskId;
+            if (!confirm('Delete this subtask?')) return;
+            try {
+                await api.delete(`/api/projects/${state.activeProjectId}/tasks/${taskId}`);
+                // Reload the current task detail to reflect the removed subtask
+                const proj = state.projects.find(p => p.id === state.activeProjectId);
+                if (proj) selectTaskDetail(proj.name, state.activeTaskId, { updatePath: false });
+            } catch (err) { alert(err.message); }
             return;
         }
 

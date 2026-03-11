@@ -106,6 +106,20 @@ describe('renderTaskDetail()', () => {
         expect(html).toContain('urgent');
     });
 
+    it('renders a delete button for the task', () => {
+        const html = renderTaskDetail(makeTask({ id: 'task-001' }));
+        expect(html).toContain('delete-task-detail');
+        expect(html).toContain('data-task-id="task-001"');
+    });
+
+    it('renders a delete button for each subtask', () => {
+        const html = renderTaskDetail(makeTask({
+            subtasks: [{ id: 'sub-abc', title: 'Sub A', status: 'open' }],
+        }));
+        expect(html).toContain('delete-subtask-detail');
+        expect(html).toContain('data-task-id="sub-abc"');
+    });
+
     it('omits urgent badge when urgent is false', () => {
         const html = renderTaskDetail(makeTask({ urgent: false }));
         // Only check the specific urgent badge class, not any mention of the word
