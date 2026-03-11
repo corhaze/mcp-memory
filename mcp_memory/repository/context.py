@@ -48,8 +48,9 @@ def get_working_context(project_id: str) -> Dict[str, Any]:
     # 5. Recent notes
     recent_notes_objs = list_notes(proj.id)[:10]
     
-    # 6. Global notes — include full text so agents don't need a second call
-    global_notes_objs = list_global_notes()[:5]
+    # 6. Global notes — only foundation notes are auto-injected into context;
+    #    other types remain searchable but don't consume context window.
+    global_notes_objs = list_global_notes(note_type="foundation")
 
     return {
         "project": {

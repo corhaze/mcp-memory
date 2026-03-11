@@ -122,15 +122,16 @@ def create_global_note(
     Create a global note — not tied to any project.
 
     Global notes capture cross-project coding philosophy, universal style rules,
-    and development standards that apply to all work. Keep them sparse and
-    high-value. They are included in every get_working_context response.
+    and development standards that apply to all work. Only notes with
+    note_type='foundation' are included in get_working_context responses;
+    other types remain searchable but are not auto-injected into context.
 
-    Note types: investigation, implementation, bug, context (default), handover.
+    Note types: foundation, investigation, implementation, bug, context (default), handover.
 
     Args:
         title:     Short note title.
         note_text: The note content.
-        note_type: investigation, implementation, bug, context, handover.
+        note_type: foundation, investigation, implementation, bug, context, handover.
     """
     note = _db.create_global_note(title, note_text, note_type)
     return f"Global note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
@@ -155,11 +156,11 @@ def list_global_notes(note_type: Optional[str] = None) -> str:
     """
     List all global notes (cross-project development philosophy and style rules).
 
-    get_working_context already includes global note text at session start.
-    Use this tool for on-demand lookup or to filter by type.
+    get_working_context only includes foundation-typed notes at session start.
+    Use this tool to see all global notes or filter by type.
 
     Args:
-        note_type: Optional filter — investigation, implementation, bug, context, handover.
+        note_type: Optional filter — foundation, investigation, implementation, bug, context, handover.
     """
     notes = _db.list_global_notes(note_type)
     if not notes:

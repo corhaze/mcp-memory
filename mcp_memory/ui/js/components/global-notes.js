@@ -9,6 +9,7 @@ const GLOBAL_NOTE_FIELDS = [
     { name: 'note_text', label: 'Note', type: 'textarea', required: true },
     {
         name: 'note_type', label: 'Type', type: 'select', options: [
+            { value: 'foundation', label: 'Foundation' },
             { value: 'context', label: 'Context' },
             { value: 'investigation', label: 'Investigation' },
             { value: 'implementation', label: 'Implementation' },

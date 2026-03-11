@@ -6,9 +6,10 @@ mcp = FastMCP(
         "Use this server to persist and recall project context across sessions. "
 
         "SESSION START (MANDATORY): Always call `get_working_context` at the start of every "
-        "session. It returns the current summary, open tasks, linked decisions, and global notes "
-        "(with full text) in one call. Global notes contain cross-project coding philosophy, "
-        "quality standards, and process rules — read them before taking any action. "
+        "session. It returns the current summary, open tasks, linked decisions, and foundation-typed "
+        "global notes (with full text) in one call. Foundation notes contain cross-project coding "
+        "philosophy, quality standards, and process rules — read them before taking any action. "
+        "Non-foundation global notes are still searchable but not auto-injected into context. "
         "Never begin work without orienting yourself first. "
 
         "PROJECT SETUP (MANDATORY): When creating a new project, you MUST immediately: "

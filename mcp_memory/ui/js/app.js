@@ -1140,6 +1140,7 @@ function showGlobalNoteForm(note = null) {
         <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required></div>
         <div class="form-group"><label>Note</label><textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea></div>
         <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
+            <option value="foundation" ${note?.note_type === 'foundation' ? 'selected' : ''}>Foundation</option>
             <option value="context" ${note?.note_type === 'context' || !note ? 'selected' : ''}>Context</option>
             <option value="investigation" ${note?.note_type === 'investigation' ? 'selected' : ''}>Investigation</option>
             <option value="implementation" ${note?.note_type === 'implementation' ? 'selected' : ''}>Implementation</option>

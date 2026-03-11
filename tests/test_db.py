@@ -692,10 +692,10 @@ class TestGlobalNotes:
         assert delete_global_note("no-such-note") is False
 
     def test_working_context_includes_global_notes(self):
-        """Global notes appear in get_working_context regardless of project."""
+        """Only foundation-typed global notes appear in get_working_context."""
         proj = create_project("ctx-global-proj")
-        create_global_note("Global standard", "Write clean code.")
+        create_global_note("Global standard", "Write clean code.", note_type="foundation")
+        create_global_note("Non-foundation", "Other info.", note_type="context")
         ctx = get_working_context(proj.id)
-        assert len(ctx["global_notes"]) >= 1
-        titles = [n["title"] for n in ctx["global_notes"]]
-        assert "Global standard" in titles
+        assert len(ctx["global_notes"]) == 1
+        assert ctx["global_notes"][0]["title"] == "Global standard"

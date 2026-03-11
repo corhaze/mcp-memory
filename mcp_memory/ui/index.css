@@ -33,6 +33,9 @@
   --red: #ff3333;
   --red-dim: #7a0000;
 
+  --purple: #bb86fc;
+  --purple-dim: #7c4dff;
+
   --text: #00ff41;
   --text-sec: #00aa29;
   --text-muted: #336633;
@@ -1299,6 +1302,10 @@ form.summary-form textarea.summary-textarea {
 
 .note-type-event {
   color: var(--amber-dim);
+}
+
+.note-type-foundation {
+  color: var(--purple);
 }
 
 /* ── Entity ID chip (click-to-copy) ──────────────────────────────────────────── */
