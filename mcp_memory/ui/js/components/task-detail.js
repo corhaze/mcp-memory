@@ -96,14 +96,16 @@ export function renderTaskDetail(task) {
         ${parentLinkHtml}
       </div>
       <header class="task-detail-header">
-        <h2 class="task-detail-title">${esc(task.title)}</h2>
+        <div class="task-detail-title-row">
+          <h2 class="task-detail-title">${esc(task.title)}</h2>
+          <button class="icon-btn danger delete-task-detail" data-task-id="${esc(task.id)}" title="Delete task">✗</button>
+        </div>
         <div class="task-detail-meta">
           <span class="status-badge badge-${esc(task.status)}">${esc(task.status)}</span>
           ${urgentBadge}
           <span class="entity-id-chip" data-full-id="${esc(task.id)}">
             <span class="id-text">${esc(task.id.slice(0, 8))}</span>
           </span>
-          <button class="icon-btn danger delete-task-detail" data-task-id="${esc(task.id)}" title="Delete task">✗ Delete</button>
         </div>
       </header>
       ${descriptionHtml}

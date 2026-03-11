@@ -106,9 +106,10 @@ describe('renderTaskDetail()', () => {
         expect(html).toContain('urgent');
     });
 
-    it('renders a delete button for the task', () => {
+    it('renders a delete button for the task in the title row', () => {
         const html = renderTaskDetail(makeTask({ id: 'task-001' }));
         expect(html).toContain('delete-task-detail');
+        expect(html).toContain('task-detail-title-row');
         expect(html).toContain('data-task-id="task-001"');
     });
 
