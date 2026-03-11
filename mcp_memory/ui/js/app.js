@@ -15,7 +15,7 @@ import { renderSearch } from './components/search.js';
 import { renderKanban, bindKanbanEvents } from './components/kanban.js';
 
 import { esc } from './utils.js';
-import { renderTaskDetail } from './components/task-detail.js';
+import { renderTaskDetail, renderSubtaskExpansion } from './components/task-detail.js';
 
 // ── Refresh constants ──────────────────────────────────────────────────────────
 
@@ -78,6 +78,8 @@ function hideAllViews() {
 
 async function selectTaskDetail(projectName, taskId, { updatePath = true } = {}) {
     state.activeView = 'task-detail';
+    state.expandedSubtasks.clear();
+    state.subtaskDetails = {};
 
     // Ensure project data is loaded so nav highlight and back-nav work
     const proj = state.projects.find(p => p.name === projectName);
@@ -591,11 +593,44 @@ function cancelAddSubtaskForm(btn) {
 
 function bindTaskDetailEvents() {
     if (!els.taskDetailContent) return;
-    els.taskDetailContent.addEventListener('click', e => {
+    els.taskDetailContent.addEventListener('click', async e => {
         const backBtn = e.target.closest('.task-detail-back');
         if (backBtn) {
             const proj = state.projects.find(p => p.id === state.activeProjectId);
             if (proj) selectProject(proj.id, 'tasks');
+            return;
+        }
+
+        const expandToggle = e.target.closest('.subtask-expand-toggle');
+        if (expandToggle) {
+            e.stopPropagation();
+            const subtaskId = expandToggle.dataset.subtaskId;
+            const container = document.getElementById(`subtask-expansion-${subtaskId}`);
+            if (!container) return;
+
+            const isExpanded = state.expandedSubtasks.has(subtaskId);
+            if (isExpanded) {
+                state.expandedSubtasks.delete(subtaskId);
+                container.classList.add('hidden');
+                expandToggle.classList.remove('open');
+            } else {
+                state.expandedSubtasks.add(subtaskId);
+                expandToggle.classList.add('open');
+                if (!state.subtaskDetails[subtaskId]) {
+                    container.innerHTML = '<p class="nav-hint" style="padding:0.5rem">Loading…</p>';
+                    container.classList.remove('hidden');
+                    try {
+                        state.subtaskDetails[subtaskId] = await api.get(
+                            `/api/projects/${state.activeProjectId}/tasks/${subtaskId}`
+                        );
+                    } catch {
+                        container.innerHTML = '<p class="nav-hint" style="padding:0.5rem">Failed to load.</p>';
+                        return;
+                    }
+                }
+                container.innerHTML = renderSubtaskExpansion(state.subtaskDetails[subtaskId]);
+                container.classList.remove('hidden');
+            }
             return;
         }
 

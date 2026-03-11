@@ -4,9 +4,32 @@ import { esc } from '../utils.js';
 
 function renderSubtaskItem(sub) {
     return `<li class="task-detail-subtask">
-      <span class="status-badge badge-${esc(sub.status)}">${esc(sub.status)}</span>
-      <button class="task-detail-subtask-link task-title-link" data-task-id="${esc(sub.id)}">${esc(sub.title)}</button>
+      <div class="task-detail-subtask-row">
+        <button class="subtask-expand-toggle" data-subtask-id="${esc(sub.id)}" title="Expand">›</button>
+        <span class="status-badge badge-${esc(sub.status)}">${esc(sub.status)}</span>
+        <button class="task-detail-subtask-link task-title-link" data-task-id="${esc(sub.id)}">${esc(sub.title)}</button>
+      </div>
+      <div id="subtask-expansion-${esc(sub.id)}" class="subtask-expansion hidden"></div>
     </li>`;
+}
+
+export function renderSubtaskExpansion(detail) {
+    const descHtml = detail.description
+        ? `<div class="task-detail-description markdown-body">${marked.parse(detail.description)}</div>`
+        : '';
+
+    const notesHtml = detail.notes?.length
+        ? `<ul class="task-detail-notes-list">${detail.notes.map(renderNoteItem).join('')}</ul>`
+        : '';
+
+    const eventsHtml = detail.events?.length
+        ? `<ul class="task-detail-events-list">${detail.events.map(renderEventItem).join('')}</ul>`
+        : '';
+
+    const body = descHtml + notesHtml + eventsHtml;
+    return body
+        ? `<div class="subtask-expansion-body">${body}</div>`
+        : `<p class="subtask-expansion-empty nav-hint">No details.</p>`;
 }
 
 function renderNoteItem(note) {

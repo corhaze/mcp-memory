@@ -2148,18 +2148,49 @@ select.form-control option {
 }
 
 .task-detail-subtask {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 2px;
 }
 
+.task-detail-subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+}
+
 .task-detail-subtask-title {
   font-size: 0.8rem;
   color: var(--text);
+}
+
+.subtask-expand-toggle {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  transition: transform 0.15s ease;
+  transform: rotate(0deg);
+}
+
+.subtask-expand-toggle.open {
+  transform: rotate(90deg);
+  color: var(--green);
+}
+
+.subtask-expansion {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0.75rem 0.6rem 1.5rem;
+}
+
+.subtask-expansion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 .task-detail-note {

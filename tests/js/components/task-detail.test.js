@@ -6,7 +6,7 @@ vi.mock('../../../mcp_memory/ui/js/state.js', () => ({ state: {} }));
 // marked is a CDN global in the browser; stub it before importing the component.
 vi.stubGlobal('marked', { parse: s => `<p>${s}</p>` });
 
-import { renderTaskDetail } from '../../../mcp_memory/ui/js/components/task-detail.js';
+import { renderTaskDetail, renderSubtaskExpansion } from '../../../mcp_memory/ui/js/components/task-detail.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -129,5 +129,70 @@ describe('renderTaskDetail()', () => {
     it('omits parent task link when parent_task_id is null', () => {
         const html = renderTaskDetail(makeTask({ parent_task_id: null }));
         expect(html).not.toContain('task-detail-parent-link');
+    });
+
+    it('each subtask has an expand toggle button', () => {
+        const html = renderTaskDetail(makeTask({
+            subtasks: [{ id: 'sub-abc', title: 'Sub A', status: 'open' }],
+        }));
+        expect(html).toContain('subtask-expand-toggle');
+        expect(html).toContain('data-subtask-id="sub-abc"');
+    });
+
+    it('each subtask has a hidden expansion container', () => {
+        const html = renderTaskDetail(makeTask({
+            subtasks: [{ id: 'sub-abc', title: 'Sub A', status: 'open' }],
+        }));
+        expect(html).toContain('id="subtask-expansion-sub-abc"');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// renderSubtaskExpansion()
+// ---------------------------------------------------------------------------
+
+describe('renderSubtaskExpansion()', () => {
+    function makeDetail(overrides = {}) {
+        return {
+            id: 'sub-001',
+            title: 'Sub Task',
+            status: 'open',
+            description: null,
+            next_action: null,
+            notes: [],
+            events: [],
+            subtasks: [],
+            ...overrides,
+        };
+    }
+
+    it('renders description when present', () => {
+        const html = renderSubtaskExpansion(makeDetail({ description: 'Do the thing' }));
+        expect(html).toContain('<p>Do the thing</p>');
+    });
+
+    it('omits description when absent', () => {
+        const html = renderSubtaskExpansion(makeDetail({ description: null }));
+        expect(html).not.toContain('task-detail-description');
+    });
+
+    it('renders notes when present', () => {
+        const html = renderSubtaskExpansion(makeDetail({
+            notes: [{ id: 'n1', title: 'Note A', note_text: 'Body', note_type: 'bug' }],
+        }));
+        expect(html).toContain('Note A');
+        expect(html).toContain('bug');
+    });
+
+    it('renders events when present', () => {
+        const html = renderSubtaskExpansion(makeDetail({
+            events: [{ event_type: 'created', event_note: null, created_at: '2024-01-01T00:00:00Z' }],
+        }));
+        expect(html).toContain('created');
+    });
+
+    it('renders a placeholder when nothing to show', () => {
+        const html = renderSubtaskExpansion(makeDetail());
+        expect(html).toContain('subtask-expansion-empty');
     });
 });
