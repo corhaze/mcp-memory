@@ -70,6 +70,48 @@ def _semantic_search_raw(query: str, entity_type: str, project_id: Optional[str]
 
     return sorted(top_k, key=lambda x: x[0], reverse=True)
 
+# ── Re-embed ──────────────────────────────────────────────────────────────────
+
+# (entity_type, sql to fetch (id, project_id, text) for all rows)
+_REEMBED_QUERIES: list[tuple[str, str]] = [
+    ("task",        "SELECT t.id, t.project_id, t.title || ' ' || COALESCE(t.description, '') AS text FROM tasks t"),
+    ("decision",    "SELECT t.id, t.project_id, t.title || ' ' || t.decision_text || ' ' || COALESCE(t.rationale, '') AS text FROM decisions t"),
+    ("note",        "SELECT t.id, t.project_id, t.title || ' ' || t.note_text AS text FROM notes t"),
+    ("task_note",   "SELECT t.id, t.project_id, t.title || ' ' || t.note_text AS text FROM task_notes t"),
+    ("global_note", "SELECT t.id, NULL AS project_id, t.title || ' ' || t.note_text AS text FROM global_notes t"),
+    ("chunk",       "SELECT t.id, t.project_id, t.chunk_text AS text FROM document_chunks t"),
+]
+
+_REEMBED_MISSING_FILTER = (
+    " WHERE NOT EXISTS ("
+    "  SELECT 1 FROM embeddings WHERE entity_type = ? AND entity_id = t.id"
+    " )"
+)
+
+
+def reembed_all(conn: sqlite3.Connection, force: bool = False) -> dict[str, int]:
+    """Generate embeddings for entities that are missing them (or all, if force=True).
+
+    Returns a dict mapping entity_type to the number of embeddings generated.
+    Returns all-zero counts immediately when the embedding model is unavailable.
+    """
+    counts: dict[str, int] = {entity_type: 0 for entity_type, _ in _REEMBED_QUERIES}
+    if not _emb.is_available():
+        return counts
+
+    for entity_type, base_sql in _REEMBED_QUERIES:
+        if force:
+            rows = conn.execute(base_sql).fetchall()
+        else:
+            rows = conn.execute(base_sql + _REEMBED_MISSING_FILTER, (entity_type,)).fetchall()
+
+        for row in rows:
+            _store_embedding(conn, row["project_id"], entity_type, row["id"], row["text"])
+            counts[entity_type] += 1
+
+    return counts
+
+
 # ── FTS5 Keyword Search ────────────────────────────────────────────────────────
 
 def search_tasks(query: str, project_id: Optional[str] = None) -> List[Task]:

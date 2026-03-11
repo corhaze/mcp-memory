@@ -512,6 +512,22 @@ def delete_global_note(note_id: str) -> Dict[str, str]:
     return {"deleted": note_id}
 
 
+# ── Reembed ───────────────────────────────────────────────────────────────────
+
+class ReembedRequest(BaseModel):
+    force: bool = False
+
+
+@app.post("/api/reembed")
+def reembed(req: ReembedRequest = ReembedRequest()) -> Dict[str, int]:
+    if not _emb.is_available():
+        raise HTTPException(status_code=400, detail="Embeddings are not enabled")
+    from mcp_memory.repository.connection import get_conn
+    from mcp_memory.repository.search import reembed_all
+    with get_conn() as conn:
+        return reembed_all(conn, force=req.force)
+
+
 # ── Static UI + SPA catch-all ─────────────────────────────────────────────────
 # Catch-all: serve static files if they exist, otherwise serve index.html so
 # that client-side routes like /mcp-memory or /blog/decisions work on refresh.

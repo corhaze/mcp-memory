@@ -2,6 +2,8 @@ from typing import List, Optional
 from .mcp import mcp
 import mcp_memory.db as _db
 from mcp_memory import embeddings as _emb
+from mcp_memory.repository.connection import get_conn
+from mcp_memory.repository.search import reembed_all as _reembed_all
 
 _EMBEDDINGS_UNAVAILABLE = (
     "Semantic search is unavailable — embedding model not loaded. "
@@ -244,3 +246,28 @@ def semantic_search_all(
             lines.append(f"  (unknown entity type)")
 
     return f"{len(results)} result(s):\n" + "\n".join(lines)
+
+
+@mcp.tool()
+def reembed(force: bool = False) -> str:
+    """
+    Regenerate embeddings for entities that are missing them.
+
+    Useful after importing a database created without embeddings enabled,
+    or after changing the embedding model.
+
+    Args:
+        force: If True, regenerate embeddings for all entities, not just
+               those that are missing them. Defaults to False.
+    """
+    if not _emb.is_available():
+        return (
+            "Embeddings are unavailable — set MCP_MEMORY_ENABLE_EMBEDDINGS=1 "
+            "and restart the server to use this tool."
+        )
+    with get_conn() as conn:
+        counts = _reembed_all(conn, force=force)
+    total = sum(counts.values())
+    lines = [f"  {entity_type}: {n}" for entity_type, n in counts.items() if n > 0]
+    summary = "\n".join(lines) if lines else "  (nothing to embed)"
+    return f"Re-embedded {total} entity/entities:\n{summary}"
