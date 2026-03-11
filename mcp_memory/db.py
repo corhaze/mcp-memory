@@ -121,6 +121,10 @@ from .repository.search import (
 from .repository.context import (
     get_working_context,
 )
+from .repository.enrichment import (
+    enrich_in_progress,
+    enrich_done,
+)
 
 # Export everything for standard db usage
 __all__ = [
@@ -143,5 +147,6 @@ __all__ = [
     "get_links_for", "delete_link", "create_tag", "list_tags",
     "tag_entity", "untag_entity", "get_entities_by_tag", "list_entity_tags",
     "search_tasks", "search_decisions", "search_notes", "search_chunks",
-    "semantic_search_all", "get_working_context"
+    "semantic_search_all", "get_working_context",
+    "enrich_in_progress", "enrich_done",
 ]

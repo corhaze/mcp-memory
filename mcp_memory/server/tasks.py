@@ -1,6 +1,7 @@
 from typing import Optional
 from .mcp import mcp
 import mcp_memory.db as _db
+from mcp_memory.repository.enrichment import enrich_in_progress, enrich_done
 
 # ── Tasks ─────────────────────────────────────────────────────────────────────
 
@@ -158,7 +159,17 @@ def update_task(
                            assigned_agent, blocked_by_task_id, next_action, due_at)
     if not task:
         return f"Task '{task_id}' not found."
-    return f"Updated task '{task.title}' — status: {task.status}"
+
+    lines = [f"Updated task '{task.title}' — status: {task.status}"]
+
+    if status == "in_progress":
+        context = enrich_in_progress(task)
+        lines.extend(_format_in_progress_context(context))
+    elif status == "done":
+        gaps = enrich_done(task)
+        lines.extend(_format_done_gaps(gaps))
+
+    return "\n".join(lines)
 
 
 @mcp.tool()
@@ -211,3 +222,59 @@ def get_task_events(task_id: str, limit: int = 20) -> str:
     lines = [f"[{ev.created_at[:16]}] {ev.event_type}: {ev.event_note or ''}"
              for ev in events]
     return f"{len(events)} event(s):\n" + "\n".join(lines)
+
+
+# ── Enrichment formatting ────────────────────────────────────────────────────
+
+def _format_in_progress_context(context: dict) -> list[str]:
+    """Format enrichment context for in_progress transitions."""
+    lines: list[str] = []
+
+    for label, key in [
+        ("Related decisions", "related_decisions"),
+        ("Related notes", "related_notes"),
+        ("Related task notes", "related_task_notes"),
+    ]:
+        items = context.get(key, [])
+        if items:
+            lines.append(f"\n{label}:")
+            for item in items:
+                score = item.get("score", 0)
+                title = item.get("title", "—")
+                lines.append(f"  [{score:.2f}] {title} ({item['id'][:8]})")
+
+    linked = context.get("linked_entities", [])
+    if linked:
+        lines.append("\nLinked entities:")
+        for link in linked:
+            title = link.get("title") or "—"
+            lines.append(
+                f"  [{link['link_type']}] {link['entity_type']}: "
+                f"{title} ({link['entity_id'][:8]})"
+            )
+
+    if not lines:
+        lines.append("\nNo related context found.")
+
+    return lines
+
+
+def _format_done_gaps(gaps: dict) -> list[str]:
+    """Format gap detection for done transitions."""
+    lines: list[str] = []
+
+    if gaps.get("missing_task_notes"):
+        lines.append(
+            "\n⚠ No task notes found — consider documenting findings "
+            "with create_task_note before closing."
+        )
+    if gaps.get("missing_linked_decisions"):
+        lines.append(
+            "\n⚠ No linked decisions — if this task involved a design "
+            "choice, record it with create_decision and create_link."
+        )
+
+    if not lines:
+        lines.append("\nDocumentation looks good — task notes and decisions recorded.")
+
+    return lines
