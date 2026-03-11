@@ -4,14 +4,13 @@ import { els } from '../dom.js';
 import { state } from '../state.js';
 import { esc } from '../utils.js';
 
-const COLUMNS = ['open', 'in_progress', 'blocked', 'done', 'cancelled'];
+const COLUMNS = ['open', 'in_progress', 'blocked', 'done'];
 
 const COLUMN_LABELS = {
     open: 'Open',
     in_progress: 'In Progress',
     blocked: 'Blocked',
     done: 'Done',
-    cancelled: 'Cancelled',
 };
 
 // Module-level drag state
