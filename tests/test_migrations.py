@@ -308,6 +308,206 @@ class TestFreshInitSchema:
         assert count == 0
         assert db_file.exists()
 
+# ── Migration 7: embedding orphan-cleanup triggers ────────────────────────────
+
+class TestMigration7EmbeddingOrphanTriggers:
+    def test_triggers_created_on_fresh_db(self, fresh_conn):
+        run_migrations(fresh_conn)
+        triggers = {
+            r["name"]
+            for r in fresh_conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'").fetchall()
+        }
+        for name in [
+            "tad_tasks_embeddings", "tad_decisions_embeddings", "tad_notes_embeddings",
+            "tad_task_notes_embeddings", "tad_global_notes_embeddings", "tad_chunks_embeddings",
+        ]:
+            assert name in triggers, f"Missing trigger: {name}"
+
+    def test_deleting_task_removes_its_embedding(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO tasks(id,project_id,title,status,created_at,updated_at) "
+            "VALUES ('t1','p1','task','open','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO embeddings(id,project_id,entity_type,entity_id,embedding_model,embedding_vector,created_at) "
+            "VALUES ('e1','p1','task','t1','model',X'00','now')"
+        )
+        fresh_conn.commit()
+
+        fresh_conn.execute("DELETE FROM tasks WHERE id='t1'")
+        fresh_conn.commit()
+
+        count = fresh_conn.execute("SELECT COUNT(*) FROM embeddings WHERE entity_id='t1'").fetchone()[0]
+        assert count == 0
+
+    def test_deleting_note_removes_its_embedding(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO notes(id,project_id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('n1','p1','note','text','context','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO embeddings(id,project_id,entity_type,entity_id,embedding_model,embedding_vector,created_at) "
+            "VALUES ('e1','p1','note','n1','model',X'00','now')"
+        )
+        fresh_conn.commit()
+
+        fresh_conn.execute("DELETE FROM notes WHERE id='n1'")
+        fresh_conn.commit()
+
+        count = fresh_conn.execute("SELECT COUNT(*) FROM embeddings WHERE entity_id='n1'").fetchone()[0]
+        assert count == 0
+
+
+# ── Migration 8: entity_links / entity_tags orphan-cleanup triggers ───────────
+
+class TestMigration8LinksTagsOrphanTriggers:
+    def test_triggers_created_on_fresh_db(self, fresh_conn):
+        run_migrations(fresh_conn)
+        triggers = {
+            r["name"]
+            for r in fresh_conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'").fetchall()
+        }
+        for name in [
+            "tad_tasks_links", "tad_decisions_links", "tad_notes_links",
+            "tad_task_notes_links", "tad_global_notes_links",
+            "tad_tasks_tags", "tad_decisions_tags", "tad_notes_tags",
+            "tad_task_notes_tags", "tad_global_notes_tags",
+        ]:
+            assert name in triggers, f"Missing trigger: {name}"
+
+    def test_deleting_task_removes_its_links(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO tasks(id,project_id,title,status,created_at,updated_at) "
+            "VALUES ('t1','p1','task','open','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO notes(id,project_id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('n1','p1','note','text','context','now','now')"
+        )
+        # link from task to note and note back to task
+        fresh_conn.execute(
+            "INSERT INTO entity_links(id,project_id,from_entity_type,from_entity_id,link_type,to_entity_type,to_entity_id,created_at) "
+            "VALUES ('l1','p1','task','t1','relates_to','note','n1','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO entity_links(id,project_id,from_entity_type,from_entity_id,link_type,to_entity_type,to_entity_id,created_at) "
+            "VALUES ('l2','p1','note','n1','explains','task','t1','now')"
+        )
+        fresh_conn.commit()
+
+        fresh_conn.execute("DELETE FROM tasks WHERE id='t1'")
+        fresh_conn.commit()
+
+        remaining = fresh_conn.execute("SELECT id FROM entity_links").fetchall()
+        assert len(remaining) == 0
+
+    def test_deleting_entity_removes_its_tags(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO tasks(id,project_id,title,status,created_at,updated_at) "
+            "VALUES ('t1','p1','task','open','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO tags(id,project_id,name) VALUES ('tag1','p1','backend')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO entity_tags(entity_type,entity_id,tag_id) VALUES ('task','t1','tag1')"
+        )
+        fresh_conn.commit()
+
+        fresh_conn.execute("DELETE FROM tasks WHERE id='t1'")
+        fresh_conn.commit()
+
+        count = fresh_conn.execute("SELECT COUNT(*) FROM entity_tags WHERE entity_id='t1'").fetchone()[0]
+        assert count == 0
+
+
+# ── Migration 9: supersedes_decision_id ON DELETE SET NULL ────────────────────
+
+class TestMigration9SupersedesDecisionFk:
+    def test_data_preserved_after_table_recreation(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO decisions(id,project_id,title,decision_text,status,created_at,updated_at) "
+            "VALUES ('d1','p1','Dec 1','text','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO decisions(id,project_id,title,decision_text,status,supersedes_decision_id,created_at,updated_at) "
+            "VALUES ('d2','p1','Dec 2','text','active','d1','now','now')"
+        )
+        fresh_conn.commit()
+
+        rows = fresh_conn.execute("SELECT id FROM decisions ORDER BY id").fetchall()
+        assert [r["id"] for r in rows] == ["d1", "d2"]
+
+    def test_deleting_superseded_decision_nullifies_fk(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.commit()  # flush pending transaction so PRAGMA takes effect
+        fresh_conn.execute("PRAGMA foreign_keys = ON")
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO decisions(id,project_id,title,decision_text,status,created_at,updated_at) "
+            "VALUES ('d1','p1','Old Dec','text','superseded','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO decisions(id,project_id,title,decision_text,status,supersedes_decision_id,created_at,updated_at) "
+            "VALUES ('d2','p1','New Dec','text','active','d1','now','now')"
+        )
+        fresh_conn.commit()
+
+        fresh_conn.execute("DELETE FROM decisions WHERE id='d1'")
+        fresh_conn.commit()
+
+        row = fresh_conn.execute("SELECT supersedes_decision_id FROM decisions WHERE id='d2'").fetchone()
+        assert row["supersedes_decision_id"] is None
+
+    def test_fts_triggers_still_work_after_table_recreation(self, fresh_conn):
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO decisions(id,project_id,title,decision_text,status,created_at,updated_at) "
+            "VALUES ('d1','p1','Searchable','important choice','active','now','now')"
+        )
+        fresh_conn.commit()
+
+        rows = fresh_conn.execute(
+            "SELECT id FROM decisions_fts WHERE decisions_fts MATCH 'Searchable'"
+        ).fetchall()
+        assert len(rows) == 1
+
+        fresh_conn.execute("DELETE FROM decisions WHERE id='d1'")
+        fresh_conn.commit()
+
+        rows = fresh_conn.execute(
+            "SELECT id FROM decisions_fts WHERE decisions_fts MATCH 'Searchable'"
+        ).fetchall()
+        assert len(rows) == 0
+
+
+# ── Fresh-init schema completeness ─────────────────────────────────────────────
+
     def test_schema_init_runs_only_once_per_path(self, tmp_path, monkeypatch):
         """Schema init and migrations must not repeat on every get_conn() call."""
         import unittest.mock as mock
