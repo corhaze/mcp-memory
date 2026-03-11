@@ -16,6 +16,8 @@ export const els = {
     noteListEl: $('note-list'),
     timelineListEl: $('timeline-list'),
     globalView: $('global-view'),
+    taskDetailView: $('task-detail-view'),
+    taskDetailContent: $('task-detail-content'),
     globalWorkspaceBtn: $('global-workspace-btn'),
     globalNoteListMain: $('global-note-list-main'),
     searchInput: $('global-search-input'),

@@ -15,6 +15,12 @@ export function parsePath() {
     }
 
     const projectName = decodeURIComponent(parts[0]);
+
+    // /{project}/tasks/{taskId} — task detail route
+    if (parts[1] === 'tasks' && parts[2]) {
+        return { namespace: 'task', projectName, taskId: parts[2] };
+    }
+
     const tab = VALID_TABS.includes(parts[1]) ? parts[1] : 'summary';
     return { namespace: 'project', projectName, tab };
 }
@@ -25,6 +31,15 @@ export function setPath(projectName, tab, replace = false) {
         history.replaceState({ namespace: 'project', projectName, tab }, '', url);
     } else {
         history.pushState({ namespace: 'project', projectName, tab }, '', url);
+    }
+}
+
+export function setTaskPath(projectName, taskId, replace = false) {
+    const url = `/${encodeURIComponent(projectName)}/tasks/${taskId}`;
+    if (replace) {
+        history.replaceState({ namespace: 'task', projectName, taskId }, '', url);
+    } else {
+        history.pushState({ namespace: 'task', projectName, taskId }, '', url);
     }
 }
 

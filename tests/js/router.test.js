@@ -97,6 +97,40 @@ describe('parsePath()', () => {
             expect(parsePath().tab).toBe(tab);
         }
     });
+
+    it('returns task namespace for /{project}/tasks/{taskId}', () => {
+        location.pathname = '/my-project/tasks/abc-123';
+        expect(parsePath()).toEqual({ namespace: 'task', projectName: 'my-project', taskId: 'abc-123' });
+    });
+
+    it('URL-decodes project name in task detail route', () => {
+        location.pathname = '/my%20project/tasks/abc-123';
+        expect(parsePath()).toEqual({ namespace: 'task', projectName: 'my project', taskId: 'abc-123' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// setTaskPath()
+// ---------------------------------------------------------------------------
+
+describe('setTaskPath()', () => {
+    let pushState;
+    let replaceState;
+
+    beforeEach(() => {
+        pushState = vi.fn();
+        replaceState = vi.fn();
+        vi.stubGlobal('history', { pushState, replaceState });
+    });
+
+    it('calls history.pushState with /{project}/tasks/{taskId}', async () => {
+        const { setTaskPath } = await import('../../mcp_memory/ui/js/router.js');
+        setTaskPath('my-project', 'abc-123');
+        expect(pushState).toHaveBeenCalledOnce();
+        const [state, , url] = pushState.mock.calls[0];
+        expect(url).toBe('/my-project/tasks/abc-123');
+        expect(state).toMatchObject({ namespace: 'task', projectName: 'my-project', taskId: 'abc-123' });
+    });
 });
 
 // ---------------------------------------------------------------------------

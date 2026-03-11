@@ -251,7 +251,7 @@ export function renderTaskItem(task, depth = 0) {
         <div class="task-header">
           ${urgentBadge}
           <div class="task-title-area">
-            <div class="task-title">${statusIcon} ${esc(task.title)}</div>
+            <div class="task-title">${statusIcon} <button class="task-title-link" data-task-id="${esc(task.id)}">${esc(task.title)}</button></div>
             <div class="task-meta">
               <span class="entity-id-chip" data-full-id="${esc(task.id)}" title="Copy ID"><span class="id-text">#${task.id.slice(0, 8)}</span></span>
               ${complexBadge}

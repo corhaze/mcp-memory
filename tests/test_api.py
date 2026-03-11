@@ -465,6 +465,51 @@ class TestGlobalSearch:
         assert len(r.json()["tasks"]) == 2
 
 
+# ── Task Detail ───────────────────────────────────────────────────────────────
+
+class TestTaskDetailEndpoint:
+    def test_returns_task_fields(self, proj, task):
+        r = client.get(f"/api/projects/{proj['id']}/tasks/{task['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["id"] == task["id"]
+        assert data["title"] == task["title"]
+        assert data["status"] == task["status"]
+
+    def test_returns_404_for_unknown_task(self, proj):
+        r = client.get(f"/api/projects/{proj['id']}/tasks/nonexistent")
+        assert r.status_code == 404
+
+    def test_returns_404_for_unknown_project(self, task):
+        r = client.get(f"/api/projects/nonexistent/tasks/{task['id']}")
+        assert r.status_code == 404
+
+    def test_includes_subtasks(self, proj, task):
+        client.post(f"/api/projects/{proj['id']}/tasks",
+                    json={"title": "Subtask A", "parent_task_id": task["id"]})
+        r = client.get(f"/api/projects/{proj['id']}/tasks/{task['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["subtasks"]) == 1
+        assert data["subtasks"][0]["title"] == "Subtask A"
+
+    def test_includes_task_notes(self, proj, task):
+        client.post(f"/api/tasks/{task['id']}/notes",
+                    json={"title": "Note 1", "note_text": "Body", "note_type": "bug"})
+        r = client.get(f"/api/projects/{proj['id']}/tasks/{task['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["notes"]) == 1
+        assert data["notes"][0]["title"] == "Note 1"
+
+    def test_includes_events(self, proj, task):
+        r = client.get(f"/api/projects/{proj['id']}/tasks/{task['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert "events" in data
+        assert len(data["events"]) >= 1
+
+
 # ── Unified Semantic Search ────────────────────────────────────────────────────
 
 class TestUnifiedSemanticSearch:

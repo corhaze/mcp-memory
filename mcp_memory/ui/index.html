@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mcp-memory Explorer</title>
-  <link rel="stylesheet" href="/index.css?v=10" />
+  <link rel="stylesheet" href="/index.css?v=11" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -194,6 +194,11 @@
         </section>
       </div>
 
+      <!-- Task detail view (replaces project view for a single task) -->
+      <div id="task-detail-view" class="hidden">
+        <div id="task-detail-content"></div>
+      </div>
+
       <div id="global-view" class="hidden">
         <header id="global-header">
           <div class="project-title-row">
@@ -242,7 +247,7 @@
     </div>
   </div>
 
-  <script type="module" src="/js/app.js?v=6"></script>
+  <script type="module" src="/js/app.js?v=7"></script>
 </body>
 
 </html>

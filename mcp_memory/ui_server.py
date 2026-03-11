@@ -392,6 +392,28 @@ def create_task(project_id: str, req: TaskCreate) -> Dict[str, Any]:
     )
     return task.to_dict()
 
+@app.get("/api/projects/{project_id}/tasks/{task_id}")
+def get_task_detail(project_id: str, task_id: str) -> Dict[str, Any]:
+    """Return full detail for a single task: fields, subtasks, notes, and events."""
+    _project_or_404(project_id)
+    task = _db.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    notes = _db.list_task_notes(task_id)
+    events = _db.get_task_events(task_id)
+    data = task.to_dict()
+    data["notes"] = [n.to_dict() for n in notes]
+    data["events"] = [
+        {
+            "event_type": ev.event_type,
+            "event_note": ev.event_note,
+            "created_at": ev.created_at,
+        }
+        for ev in events
+    ]
+    return data
+
+
 @app.patch("/api/projects/{project_id}/tasks/{task_id}")
 def update_task(project_id: str, task_id: str, req: TaskUpdate) -> Dict[str, Any]:
     task = _db.update_task(

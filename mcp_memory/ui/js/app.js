@@ -3,7 +3,7 @@
 import { els, $ } from './dom.js';
 import { state } from './state.js';
 import { api } from './api.js';
-import { parsePath, setPath, setGlobalPath, VALID_TABS } from './router.js';
+import { parsePath, setPath, setGlobalPath, setTaskPath, VALID_TABS } from './router.js';
 import { showModal, hideModal, handleModalSave } from './components/modal.js';
 import { renderProjectNav, updateNavHighlight, showProjectEmptyState, renderProjectHeader } from './components/projects.js';
 import { renderTasks, findTask, renderAddTopTaskForm, renderTaskNotesHtml } from './components/tasks.js';
@@ -15,6 +15,7 @@ import { renderSearch } from './components/search.js';
 import { renderKanban, bindKanbanEvents } from './components/kanban.js';
 
 import { esc } from './utils.js';
+import { renderTaskDetail } from './components/task-detail.js';
 
 // ── Refresh constants ──────────────────────────────────────────────────────────
 
@@ -54,8 +55,7 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
     const gwBtn = document.getElementById('global-workspace-btn');
     if (gwBtn) gwBtn.classList.add('active');
 
-    els.emptyState.classList.add('hidden');
-    els.projectView.classList.add('hidden');
+    hideAllViews();
     if (els.globalView) els.globalView.classList.remove('hidden');
     els.searchInput.disabled = true;
 
@@ -66,6 +66,53 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
 
     if (updatePath) {
         setGlobalPath(tab);
+    }
+}
+
+function hideAllViews() {
+    els.emptyState.classList.add('hidden');
+    els.projectView.classList.add('hidden');
+    if (els.globalView) els.globalView.classList.add('hidden');
+    if (els.taskDetailView) els.taskDetailView.classList.add('hidden');
+}
+
+async function selectTaskDetail(projectName, taskId, { updatePath = true } = {}) {
+    state.activeView = 'task-detail';
+
+    // Ensure project data is loaded so nav highlight and back-nav work
+    const proj = state.projects.find(p => p.name === projectName);
+    if (proj && state.activeProjectId !== proj.id) {
+        // Load project data silently so the back button can return to correct tab
+        state.activeProjectId = proj.id;
+        try {
+            const { tasks, decisions, notes, timeline } = await fetchProjectData(proj.id);
+            state.tasks = tasks || [];
+            state.decisions = decisions || [];
+            state.notes = notes || [];
+            state.timeline = timeline || [];
+        } catch { /* silent */ }
+    }
+
+    updateNavHighlight(proj?.id ?? null);
+    els.globalWorkspaceBtn?.classList.remove('active');
+
+    hideAllViews();
+    if (els.taskDetailView) els.taskDetailView.classList.remove('hidden');
+
+    try {
+        const task = await api.get(`/api/projects/${proj?.id ?? projectName}/tasks/${taskId}`);
+        if (els.taskDetailContent) {
+            els.taskDetailContent.innerHTML = renderTaskDetail(task);
+            // Bind back button
+            els.taskDetailContent.querySelector('.task-detail-back')?.addEventListener('click', () => {
+                if (proj) selectProject(proj.id, 'tasks');
+            });
+        }
+        if (updatePath) setTaskPath(projectName, taskId);
+    } catch (err) {
+        if (els.taskDetailContent) {
+            els.taskDetailContent.innerHTML = `<p class="nav-hint">Failed to load task: ${esc(err.message)}</p>`;
+        }
     }
 }
 
@@ -301,9 +348,8 @@ async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     updateNavHighlight(id);
     els.globalWorkspaceBtn?.classList.remove('active');
 
-    els.emptyState.classList.add('hidden');
+    hideAllViews();
     els.projectView.classList.remove('hidden');
-    if (els.globalView) els.globalView.classList.add('hidden');
     els.searchInput.disabled = false;
 
     showRefreshIndicator();
@@ -573,6 +619,15 @@ function bindTaskListEvents() {
             } catch (err) {
                 alert(err.message);
             }
+            return;
+        }
+
+        const taskTitleLink = e.target.closest('.task-title-link');
+        if (taskTitleLink) {
+            e.stopPropagation();
+            const taskId = taskTitleLink.dataset.taskId;
+            const proj = state.projects.find(p => p.id === state.activeProjectId);
+            if (proj) selectTaskDetail(proj.name, taskId);
             return;
         }
 
@@ -1114,6 +1169,12 @@ async function init() {
             setTimeout(() => el.classList.remove('highlight-flash'), 1500);
         };
 
+        // Navigate to task detail page for task results
+        if (entityType === 'task') {
+            await selectTaskDetail(projectName, entityId);
+            return;
+        }
+
         if (target.projectName === null) {
             await selectGlobalWorkspace(target.tab, { updatePath: true });
             setTimeout(scrollAndHighlight, 100);
@@ -1129,6 +1190,8 @@ async function init() {
     if (route) {
         if (route.namespace === 'global') {
             await selectGlobalWorkspace(route.tab, { updatePath: false });
+        } else if (route.namespace === 'task') {
+            await selectTaskDetail(route.projectName, route.taskId, { updatePath: false });
         } else {
             const proj = state.projects.find(p => p.name === route.projectName);
             if (proj) {
@@ -1143,6 +1206,8 @@ async function init() {
         if (s) {
             if (s.namespace === 'global') {
                 await selectGlobalWorkspace(s.tab || 'notes', { updatePath: false });
+            } else if (s.namespace === 'task') {
+                await selectTaskDetail(s.projectName, s.taskId, { updatePath: false });
             } else if (s.projectName) {
                 const proj = state.projects.find(p => p.name === s.projectName);
                 if (proj) await selectProject(proj.id, s.tab || 'summary', { updatePath: false });
