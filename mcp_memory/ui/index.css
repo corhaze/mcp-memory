@@ -1540,27 +1540,11 @@ textarea.form-control {
   min-height: 80px;
 }
 
-select.form-control {
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-color: var(--bg);
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2007/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300aa29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-position: calc(100% - 10px) center;
-  background-size: 16px;
-  background-repeat: no-repeat;
-  padding-right: 32px;
-}
-
-select.form-control option {
-  background-color: var(--bg);
-  color: var(--text);
-}
-
 /* Native select — styled to match the terminal theme */
 select.form-control {
   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   background-color: var(--bg-raised);
   color: var(--text);
   border: 1px solid var(--border);
