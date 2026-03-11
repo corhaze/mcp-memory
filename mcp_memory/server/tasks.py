@@ -162,12 +162,13 @@ def update_task(
 
     lines = [f"Updated task '{task.title}' — status: {task.status}"]
 
-    if status == "in_progress":
-        context = enrich_in_progress(task)
-        lines.extend(_format_in_progress_context(context))
-    elif status == "done":
-        gaps = enrich_done(task)
-        lines.extend(_format_done_gaps(gaps))
+    if not task.parent_task_id:
+        if status == "in_progress":
+            context = enrich_in_progress(task)
+            lines.extend(_format_in_progress_context(context))
+        elif status == "done":
+            gaps = enrich_done(task)
+            lines.extend(_format_done_gaps(gaps))
 
     return "\n".join(lines)
 
