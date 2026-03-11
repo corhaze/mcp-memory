@@ -3,7 +3,7 @@
 import { els, $ } from './dom.js';
 import { state } from './state.js';
 import { api } from './api.js';
-import { parsePath, setPath, setGlobalPath, setTaskPath, VALID_TABS } from './router.js';
+import { parsePath, setPath, setGlobalPath, setTaskPath, setNotePath, setGlobalNotePath, VALID_TABS } from './router.js';
 import { showModal, hideModal, handleModalSave } from './components/modal.js';
 import { renderProjectNav, updateNavHighlight, showProjectEmptyState, renderProjectHeader } from './components/projects.js';
 import { renderTasks, findTask, renderAddTopTaskForm, renderTaskNotesHtml } from './components/tasks.js';
@@ -16,6 +16,7 @@ import { renderKanban, bindKanbanEvents } from './components/kanban.js';
 
 import { esc } from './utils.js';
 import { renderTaskDetail, renderSubtaskExpansion } from './components/task-detail.js';
+import { renderNoteDetail } from './components/note-detail.js';
 
 // ── Refresh constants ──────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ function hideAllViews() {
     els.projectView.classList.add('hidden');
     if (els.globalView) els.globalView.classList.add('hidden');
     if (els.taskDetailView) els.taskDetailView.classList.add('hidden');
+    if (els.noteDetailView) els.noteDetailView.classList.add('hidden');
 }
 
 async function selectTaskDetail(projectName, taskId, { updatePath = true } = {}) {
@@ -119,6 +121,56 @@ async function selectTaskDetail(projectName, taskId, { updatePath = true } = {})
     } catch (err) {
         if (els.taskDetailContent) {
             els.taskDetailContent.innerHTML = `<p class="nav-hint">Failed to load task: ${esc(err.message)}</p>`;
+        }
+    }
+}
+
+async function selectNoteDetail(projectName, noteId, { isGlobal = false, updatePath = true } = {}) {
+    state.activeView = 'note-detail';
+    state.activeNoteId = noteId;
+
+    if (!isGlobal) {
+        const proj = state.projects.find(p => p.name === projectName);
+        if (proj && state.activeProjectId !== proj.id) {
+            state.activeProjectId = proj.id;
+            try {
+                const { tasks, decisions, notes, timeline } = await fetchProjectData(proj.id);
+                state.tasks = tasks || [];
+                state.decisions = decisions || [];
+                state.notes = notes || [];
+                state.timeline = timeline || [];
+            } catch { /* silent */ }
+        }
+        updateNavHighlight(proj?.id ?? null);
+        els.globalWorkspaceBtn?.classList.remove('active');
+    } else {
+        state.activeProjectId = null;
+        document.querySelectorAll('.project-nav-item').forEach(el => el.classList.remove('active'));
+        const gwBtn = document.getElementById('global-workspace-btn');
+        if (gwBtn) gwBtn.classList.add('active');
+    }
+
+    hideAllViews();
+    if (els.noteDetailView) els.noteDetailView.classList.remove('hidden');
+
+    try {
+        const url = isGlobal
+            ? `/api/global-notes/${noteId}`
+            : `/api/projects/${state.activeProjectId ?? projectName}/notes/${noteId}`;
+        const note = await api.get(url);
+        if (els.noteDetailContent) {
+            els.noteDetailContent.innerHTML = renderNoteDetail(note, { isGlobal });
+        }
+        if (updatePath) {
+            if (isGlobal) {
+                setGlobalNotePath(noteId);
+            } else {
+                setNotePath(projectName, noteId);
+            }
+        }
+    } catch (err) {
+        if (els.noteDetailContent) {
+            els.noteDetailContent.innerHTML = `<p class="nav-hint">Failed to load note: ${esc(err.message)}</p>`;
         }
     }
 }
@@ -689,6 +741,38 @@ function bindTaskDetailEvents() {
     });
 }
 
+function bindNoteDetailEvents() {
+    if (!els.noteDetailContent) return;
+    els.noteDetailContent.addEventListener('click', async e => {
+        const backBtn = e.target.closest('.note-detail-back');
+        if (backBtn) {
+            if (state.activeProjectId) {
+                const proj = state.projects.find(p => p.id === state.activeProjectId);
+                if (proj) selectProject(proj.id, 'notes');
+            } else {
+                await selectGlobalWorkspace('notes');
+            }
+            return;
+        }
+
+        const deleteBtn = e.target.closest('.delete-note-detail');
+        if (deleteBtn) {
+            const noteId = deleteBtn.dataset.noteId;
+            if (!confirm('Delete this note?')) return;
+            try {
+                if (state.activeProjectId) {
+                    await api.delete(`/api/projects/${state.activeProjectId}/notes/${noteId}`);
+                    const proj = state.projects.find(p => p.id === state.activeProjectId);
+                    if (proj) selectProject(proj.id, 'notes');
+                } else {
+                    await api.delete(`/api/global-notes/${noteId}`);
+                    await selectGlobalWorkspace('notes');
+                }
+            } catch (err) { alert(err.message); }
+        }
+    });
+}
+
 function bindTaskListEvents() {
     els.taskListEl.addEventListener('click', async e => {
         const statusTrigger = e.target.closest('.task-status-trigger');
@@ -1152,6 +1236,7 @@ async function init() {
     }
     bindTaskListEvents();
     bindTaskDetailEvents();
+    bindNoteDetailEvents();
     bindDecisionListEvents();
     bindNoteListEvents();
 
@@ -1266,9 +1351,17 @@ async function init() {
             setTimeout(() => el.classList.remove('highlight-flash'), 1500);
         };
 
-        // Navigate to task detail page for task results
+        // Navigate to detail pages for task and note results
         if (entityType === 'task') {
             await selectTaskDetail(projectName, entityId);
+            return;
+        }
+        if (entityType === 'note') {
+            await selectNoteDetail(projectName, entityId);
+            return;
+        }
+        if (entityType === 'global_note') {
+            await selectNoteDetail(null, entityId, { isGlobal: true });
             return;
         }
 
@@ -1289,6 +1382,10 @@ async function init() {
             await selectGlobalWorkspace(route.tab, { updatePath: false });
         } else if (route.namespace === 'task') {
             await selectTaskDetail(route.projectName, route.taskId, { updatePath: false });
+        } else if (route.namespace === 'note') {
+            await selectNoteDetail(route.projectName, route.noteId, { updatePath: false });
+        } else if (route.namespace === 'global_note') {
+            await selectNoteDetail(null, route.noteId, { isGlobal: true, updatePath: false });
         } else {
             const proj = state.projects.find(p => p.name === route.projectName);
             if (proj) {
@@ -1305,6 +1402,10 @@ async function init() {
                 await selectGlobalWorkspace(s.tab || 'notes', { updatePath: false });
             } else if (s.namespace === 'task') {
                 await selectTaskDetail(s.projectName, s.taskId, { updatePath: false });
+            } else if (s.namespace === 'note') {
+                await selectNoteDetail(s.projectName, s.noteId, { updatePath: false });
+            } else if (s.namespace === 'global_note') {
+                await selectNoteDetail(null, s.noteId, { isGlobal: true, updatePath: false });
             } else if (s.projectName) {
                 const proj = state.projects.find(p => p.name === s.projectName);
                 if (proj) await selectProject(proj.id, s.tab || 'summary', { updatePath: false });

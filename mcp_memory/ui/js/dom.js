@@ -18,6 +18,8 @@ export const els = {
     globalView: $('global-view'),
     taskDetailView: $('task-detail-view'),
     taskDetailContent: $('task-detail-content'),
+    noteDetailView: $('note-detail-view'),
+    noteDetailContent: $('note-detail-content'),
     globalWorkspaceBtn: $('global-workspace-btn'),
     globalNoteListMain: $('global-note-list-main'),
     searchInput: $('global-search-input'),

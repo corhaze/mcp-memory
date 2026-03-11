@@ -458,6 +458,19 @@ def delete_decision(project_id: str, decision_id: str) -> Dict[str, str]:
 
 # ── Notes ──────────────────────────────────────────────────────────────────────
 
+@app.get("/api/projects/{project_id}/notes/{note_id}")
+def get_note_detail(project_id: str, note_id: str) -> Dict[str, Any]:
+    """Return full detail for a single note including linked entities."""
+    _project_or_404(project_id)
+    note = _db.get_note(note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    data = note.to_dict()
+    links = _db.get_links_for("note", note_id)
+    data["links"] = [lnk.to_dict() for lnk in links]
+    return data
+
+
 @app.post("/api/projects/{project_id}/notes")
 def create_note(project_id: str, req: NoteCreate) -> Dict[str, Any]:
     proj = _project_or_404(project_id)
@@ -517,6 +530,18 @@ def get_global_notes(note_type: Optional[str] = None) -> List[Dict[str, Any]]:
 def create_global_note(req: GlobalNoteCreate) -> Dict[str, Any]:
     note = _db.create_global_note(req.title, req.note_text, req.note_type)
     return note.to_dict()
+
+
+@app.get("/api/global-notes/{note_id}")
+def get_global_note_detail(note_id: str) -> Dict[str, Any]:
+    """Return full detail for a single global note including linked entities."""
+    note = _db.get_global_note(note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Global note not found")
+    data = note.to_dict()
+    links = _db.get_links_for("global_note", note_id)
+    data["links"] = [lnk.to_dict() for lnk in links]
+    return data
 
 
 @app.patch("/api/global-notes/{note_id}")

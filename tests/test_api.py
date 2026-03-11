@@ -272,6 +272,19 @@ class TestNoteEndpoints:
         r = client.delete(f"/api/projects/{proj['id']}/notes/bad-id")
         assert r.status_code == 404
 
+    def test_get_note_detail(self, proj, note):
+        r = client.get(f"/api/projects/{proj['id']}/notes/{note['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["id"] == note["id"]
+        assert data["title"] == note["title"]
+        assert "links" in data
+        assert isinstance(data["links"], list)
+
+    def test_get_note_detail_404(self, proj):
+        r = client.get(f"/api/projects/{proj['id']}/notes/bad-id")
+        assert r.status_code == 404
+
 
 # ── Task Notes ────────────────────────────────────────────────────────────────
 
@@ -363,6 +376,21 @@ class TestGlobalNoteEndpoints:
 
     def test_delete_global_note_404(self):
         r = client.delete("/api/global-notes/bad-id")
+        assert r.status_code == 404
+
+    def test_get_global_note_detail(self):
+        r = client.post("/api/global-notes",
+                        json={"title": "Detail test", "note_text": "Body"})
+        note_id = r.json()["id"]
+        r2 = client.get(f"/api/global-notes/{note_id}")
+        assert r2.status_code == 200
+        data = r2.json()
+        assert data["id"] == note_id
+        assert data["title"] == "Detail test"
+        assert "links" in data
+
+    def test_get_global_note_detail_404(self):
+        r = client.get("/api/global-notes/bad-id")
         assert r.status_code == 404
 
 

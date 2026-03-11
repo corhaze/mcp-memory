@@ -10,6 +10,10 @@ export function parsePath() {
     if (!parts.length) return null;
 
     if (parts[0] === 'global') {
+        // /global/notes/{noteId} — global note detail route
+        if (parts[1] === 'notes' && parts[2]) {
+            return { namespace: 'global_note', noteId: parts[2] };
+        }
         const tab = VALID_GLOBAL_TABS.includes(parts[1]) ? parts[1] : 'notes';
         return { namespace: 'global', tab };
     }
@@ -19,6 +23,11 @@ export function parsePath() {
     // /{project}/tasks/{taskId} — task detail route
     if (parts[1] === 'tasks' && parts[2]) {
         return { namespace: 'task', projectName, taskId: parts[2] };
+    }
+
+    // /{project}/notes/{noteId} — note detail route
+    if (parts[1] === 'notes' && parts[2]) {
+        return { namespace: 'note', projectName, noteId: parts[2] };
     }
 
     const tab = VALID_TABS.includes(parts[1]) ? parts[1] : 'summary';
@@ -40,6 +49,24 @@ export function setTaskPath(projectName, taskId, replace = false) {
         history.replaceState({ namespace: 'task', projectName, taskId }, '', url);
     } else {
         history.pushState({ namespace: 'task', projectName, taskId }, '', url);
+    }
+}
+
+export function setNotePath(projectName, noteId, replace = false) {
+    const url = `/${encodeURIComponent(projectName)}/notes/${noteId}`;
+    if (replace) {
+        history.replaceState({ namespace: 'note', projectName, noteId }, '', url);
+    } else {
+        history.pushState({ namespace: 'note', projectName, noteId }, '', url);
+    }
+}
+
+export function setGlobalNotePath(noteId, replace = false) {
+    const url = `/global/notes/${noteId}`;
+    if (replace) {
+        history.replaceState({ namespace: 'global_note', noteId }, '', url);
+    } else {
+        history.pushState({ namespace: 'global_note', noteId }, '', url);
     }
 }
 
