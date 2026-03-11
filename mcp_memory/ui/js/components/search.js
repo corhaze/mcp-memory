@@ -30,7 +30,7 @@ export function renderResultItem(result) {
     return `<li class="search-result-item${clickableClass}"
       data-entity-id="${esc(id)}"
       data-entity-type="${esc(entity_type)}"
-      data-project-name="${esc(project_name)}"${dataTaskId}>
+      data-project-name="${esc(project_name || '')}"${dataTaskId}>
       <span class="entity-type-badge badge-${esc(entity_type)}">${esc(entity_type)}</span>
       <span class="search-result-title">${esc(title)}</span>
       ${statusBadge}${noteTypePill}
@@ -42,15 +42,6 @@ export function renderResultItem(result) {
 export function renderSearch() {
     const rs = state.searchResults;
     if (!rs) return;
-
-    if (rs._no_project) {
-        els.searchEmbeddingsNotice.textContent =
-            'Select a project to search.';
-        els.searchEmbeddingsNotice.classList.remove('hidden');
-        els.searchEmptyState.classList.add('hidden');
-        els.searchResultsList.innerHTML = '';
-        return;
-    }
 
     const embeddingsUnavailable = rs.embeddings_available === false;
     if (embeddingsUnavailable) {

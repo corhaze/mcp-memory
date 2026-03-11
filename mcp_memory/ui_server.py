@@ -188,10 +188,18 @@ def list_projects() -> List[Dict[str, Any]]:
 
 @app.get("/api/projects/{project_id}")
 def get_project_context(project_id: str) -> Dict[str, Any]:
-    """Working context for a project (summary + active tasks + decisions + notes)."""
+    """Lightweight project context for the UI: project metadata + current summary."""
     proj = _project_or_404(project_id)
-    ctx = _db.get_working_context(proj.id)
-    return ctx
+    summary = _db.get_current_summary(proj.id)
+    return {
+        "project": {
+            "id": proj.id,
+            "name": proj.name,
+            "status": proj.status,
+            "description": proj.description,
+        },
+        "summary": summary.summary_text if summary else None,
+    }
 
 
 @app.get("/api/projects/{project_id}/tasks")
@@ -243,21 +251,27 @@ def get_notes(
 def get_timeline(project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     """Recent task events for a project (acts as a worklog timeline)."""
     proj = _project_or_404(project_id)
-    # Gather all top-level tasks and collect their recent events
-    tasks = _db.list_tasks(proj.id, parent_task_id=None)
-    events = []
-    for task in tasks:
-        for ev in _db.get_task_events(task.id, limit=20):
-            events.append({
-                "task_id": ev.task_id,
-                "task_title": task.title,
-                "event_type": ev.event_type,
-                "event_note": ev.event_note,
-                "created_at": ev.created_at,
-            })
-    # Sort all events newest-first
-    events.sort(key=lambda e: e["created_at"], reverse=True)
-    return events[:limit]
+    from mcp_memory.repository.connection import get_conn
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT e.task_id, t.title AS task_title, "
+            "       e.event_type, e.event_note, e.created_at "
+            "FROM task_events e "
+            "JOIN tasks t ON t.id = e.task_id "
+            "WHERE t.project_id = ? "
+            "ORDER BY e.created_at DESC LIMIT ?",
+            (proj.id, limit),
+        ).fetchall()
+    return [
+        {
+            "task_id": r["task_id"],
+            "task_title": r["task_title"],
+            "event_type": r["event_type"],
+            "event_note": r["event_note"],
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
 @app.get("/api/search")
 def search(q: str, project_id: Optional[str] = None, limit: int = 10) -> Dict[str, Any]:
     """
@@ -342,6 +356,63 @@ def unified_semantic_search(
         if fields is None:
             continue
         shaped = {"entity_type": entity_type, "score": r["score"], "project_name": proj.name}
+        shaped.update({f: getattr(entity, f) for f in fields})
+        if entity_type == "task" and entity.next_action:
+            shaped["next_action"] = entity.next_action
+        results.append(shaped)
+
+    return {
+        "query": q,
+        "embeddings_available": embeddings_available,
+        "results": results,
+    }
+
+
+@app.get("/api/search/semantic")
+def global_semantic_search(
+    q: str = Query(..., min_length=1, description="Semantic search query"),
+    limit: int = 15,
+) -> Dict[str, Any]:
+    """
+    Unified semantic search across ALL projects and global notes.
+
+    Same response shape as the project-scoped endpoint but resolves
+    project_name per result (null for global_note entities).
+    """
+    embeddings_available = _emb.is_available()
+
+    if not q.strip() or not embeddings_available:
+        return {
+            "query": q,
+            "embeddings_available": embeddings_available,
+            "results": [],
+        }
+
+    raw_results = _db.semantic_search_all(q, project_id=None, limit=limit)
+
+    # Build a project_id → name lookup for results that have a project_id.
+    project_ids = {getattr(r["entity"], "project_id", None) for r in raw_results}
+    project_ids.discard(None)
+    project_map: dict[str, str] = {}
+    if project_ids:
+        for pid in project_ids:
+            proj = _db.get_project(pid)
+            if proj:
+                project_map[pid] = proj.name
+
+    results: List[Dict[str, Any]] = []
+    for r in raw_results:
+        entity_type = r["entity_type"]
+        entity = r["entity"]
+        fields = _SEMANTIC_SEARCH_FIELDS.get(entity_type)
+        if fields is None:
+            continue
+        pid = getattr(entity, "project_id", None)
+        shaped = {
+            "entity_type": entity_type,
+            "score": r["score"],
+            "project_name": project_map.get(pid) if pid else None,
+        }
         shaped.update({f: getattr(entity, f) for f in fields})
         if entity_type == "task" and entity.next_action:
             shaped["next_action"] = entity.next_action

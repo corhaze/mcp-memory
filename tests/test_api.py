@@ -632,3 +632,65 @@ class TestUnifiedSemanticSearch:
         assert data["embeddings_available"] is False
         assert data["results"] == []
         assert data["query"] == "auth"
+
+
+# ── Global Semantic Search ────────────────────────────────────────────────────
+
+class TestGlobalSemanticSearch:
+    """Tests for GET /api/search/semantic (no project_id required)."""
+
+    def test_returns_200_when_embeddings_unavailable(self):
+        r = client.get("/api/search/semantic?q=anything")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["embeddings_available"] is False
+        assert data["results"] == []
+
+    def test_empty_query_rejected(self):
+        r = client.get("/api/search/semantic?q=")
+        assert r.status_code == 422
+
+    def test_response_shape(self):
+        r = client.get("/api/search/semantic?q=test")
+        assert r.status_code == 200
+        data = r.json()
+        assert "query" in data
+        assert "embeddings_available" in data
+        assert "results" in data
+
+    def test_results_include_project_name_per_entity(self, proj, monkeypatch):
+        """Global results resolve project_name from entity's project_id."""
+        from unittest.mock import MagicMock
+        import mcp_memory.embeddings as _emb
+        import mcp_memory.db as _db
+        from mcp_memory.repository.models import Task, GlobalNote
+        from datetime import datetime, timezone
+
+        monkeypatch.setattr(_emb, "_model_available", True)
+
+        now = datetime.now(timezone.utc).isoformat()
+        fake_task = Task(
+            id="task-abc", project_id=proj["id"], title="Auth task",
+            description=None, status="open", urgent=False, complex=False,
+            parent_task_id=None, assigned_agent=None, blocked_by_task_id=None,
+            next_action=None, due_at=None,
+            created_at=now, updated_at=now, completed_at=None, subtasks=[],
+        )
+        fake_global = GlobalNote(
+            id="gn-abc", title="Code standards", note_text="Be clean",
+            note_type="context", created_at=now, updated_at=now,
+        )
+        monkeypatch.setattr(
+            _db, "semantic_search_all",
+            lambda q, project_id, limit: [
+                {"entity_type": "task", "score": 0.9, "entity": fake_task},
+                {"entity_type": "global_note", "score": 0.8, "entity": fake_global},
+            ],
+        )
+
+        r = client.get("/api/search/semantic?q=auth")
+        assert r.status_code == 200
+        results = r.json()["results"]
+        assert len(results) == 2
+        assert results[0]["project_name"] == proj["name"]
+        assert results[1]["project_name"] is None
