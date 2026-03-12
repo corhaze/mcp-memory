@@ -1,9 +1,52 @@
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import { MemoryRouter } from 'react-router-dom';
+import { AppRoutes } from './App';
+import { AppProvider } from './src/context/AppContext';
 
-describe('App', () => {
-  it('renders the hello message', () => {
-    render(<App />);
-    expect(screen.getByText('Hello from React')).toBeInTheDocument();
+function renderAt(path) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <AppProvider>
+        <AppRoutes />
+      </AppProvider>
+    </MemoryRouter>
+  );
+}
+
+describe('Router', () => {
+  it('renders empty state at /', () => {
+    renderAt('/');
+    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+  });
+
+  it('renders global workspace at /global', () => {
+    renderAt('/global');
+    expect(screen.getByTestId('global-workspace')).toBeInTheDocument();
+  });
+
+  it('renders note detail at /global/notes/abc', () => {
+    renderAt('/global/notes/abc');
+    expect(screen.getByTestId('note-detail')).toBeInTheDocument();
+  });
+
+  it('renders project view at /some-project', () => {
+    renderAt('/some-project');
+    expect(screen.getByTestId('project-view')).toBeInTheDocument();
+  });
+
+  it('renders project view at /some-project/tasks', () => {
+    renderAt('/some-project/tasks');
+    expect(screen.getByTestId('project-view')).toBeInTheDocument();
+  });
+
+  it('renders task detail at /some-project/tasks/t1', () => {
+    renderAt('/some-project/tasks/t1');
+    expect(screen.getByTestId('task-detail')).toBeInTheDocument();
+  });
+
+  it('renders note detail at /some-project/notes/n1', () => {
+    renderAt('/some-project/notes/n1');
+    expect(screen.getByTestId('note-detail')).toBeInTheDocument();
   });
 });
