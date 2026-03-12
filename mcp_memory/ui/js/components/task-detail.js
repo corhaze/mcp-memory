@@ -34,8 +34,9 @@ export function renderSubtaskExpansion(detail) {
 }
 
 function renderNoteItem(note) {
+    const pill = note.note_type ? `<span class="note-type-pill">${esc(note.note_type)}</span>` : '';
     return `<li class="task-detail-note">
-      <span class="note-type-pill">${esc(note.note_type)}</span>
+      ${pill}
       <span class="task-detail-note-title">${esc(note.title)}</span>
       <div class="task-detail-note-body">${marked.parse(note.note_text || '')}</div>
     </li>`;

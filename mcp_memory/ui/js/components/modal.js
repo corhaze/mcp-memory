@@ -30,9 +30,9 @@ export async function handleModalSave({
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
 
-    // Only map empty strings to null for ID fields (e.g., parent_task_id, blocked_by_task_id)
+    // Map empty strings to null for ID fields and note_type
     for (const key in data) {
-        if (data[key] === '' && key.endsWith('_id')) {
+        if (data[key] === '' && (key.endsWith('_id') || key === 'note_type')) {
             data[key] = null;
         }
     }

@@ -236,7 +236,7 @@ def get_task_events(task_id: str, limit: int = 50) -> List[TaskEvent]:
 # ── Task Notes ─────────────────────────────────────────────────────────────────
 
 def create_task_note(project_id: str, task_id: str, title: str,
-                     note_text: str, note_type: str = "context") -> TaskNote:
+                     note_text: str, note_type: Optional[str] = None) -> TaskNote:
     now = _now()
     nid = str(uuid4())
     with get_conn() as conn:

@@ -282,7 +282,6 @@ class TestNoteTools:
     def test_create_note(self, proj_id):
         result = srv_notes.create_note(proj_id, "My note", "Note body", "bug")
         assert "My note" in result
-        assert "bug" in result
 
     def test_create_note_project_not_found(self):
         result = srv_notes.create_note("bad-proj", "Title", "Body")
@@ -290,7 +289,7 @@ class TestNoteTools:
 
     def test_get_note(self, proj_id):
         r = srv_notes.create_note(proj_id, "Finding", "Important context", "investigation")
-        nid = r.split("id: ")[1].split(",")[0]
+        nid = r.split("id: ")[1].rstrip(")")
         result = srv_notes.get_note(nid)
         assert "Finding" in result
         assert "Important context" in result
@@ -313,7 +312,6 @@ class TestNoteTools:
     def test_create_task_note(self, proj_id, task_id):
         result = srv_notes.create_task_note(task_id, "Task finding", "Found a bug", "bug")
         assert "Task finding" in result
-        assert "bug" in result
 
     def test_create_task_note_task_not_found(self):
         result = srv_notes.create_task_note("bad-id", "Title", "Body")

@@ -107,7 +107,7 @@ class Note:
     project_id: str
     title: str
     note_text: str
-    note_type: str
+    note_type: Optional[str]
     created_at: str
     updated_at: str
 
@@ -127,7 +127,7 @@ class GlobalNote:
     id: str
     title: str
     note_text: str
-    note_type: str
+    note_type: Optional[str]
     created_at: str
     updated_at: str
 
@@ -148,7 +148,7 @@ class TaskNote:
     task_id: str
     title: str
     note_text: str
-    note_type: str
+    note_type: Optional[str]
     created_at: str
     updated_at: str
 

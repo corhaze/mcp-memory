@@ -52,7 +52,7 @@ export function renderNoteDetail(note, { isGlobal = false } = {}) {
           <button class="icon-btn danger delete-note-detail" data-note-id="${esc(note.id)}" title="Delete note">✗</button>
         </div>
         <div class="note-detail-meta">
-          <span class="note-type-pill">${esc(note.note_type)}</span>
+          ${note.note_type ? `<span class="note-type-pill">${esc(note.note_type)}</span>` : ''}
           <span class="entity-id-chip" data-full-id="${esc(note.id)}">
             <span class="id-text">${esc(note.id.slice(0, 8))}</span>
           </span>

@@ -9,12 +9,8 @@ const GLOBAL_NOTE_FIELDS = [
     { name: 'note_text', label: 'Note', type: 'textarea', required: true },
     {
         name: 'note_type', label: 'Type', type: 'select', options: [
+            { value: '', label: 'None' },
             { value: 'foundation', label: 'Foundation' },
-            { value: 'context', label: 'Context' },
-            { value: 'investigation', label: 'Investigation' },
-            { value: 'implementation', label: 'Implementation' },
-            { value: 'bug', label: 'Bug' },
-            { value: 'handover', label: 'Handover' },
         ]
     },
 ];
@@ -46,7 +42,7 @@ export function renderGlobalNotes(options = {}) {
                     <div class="task-title-area">
                         <div class="task-title">${esc(n.title)}</div>
                         <div class="task-meta">
-                            <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+                            ${n.note_type ? `<span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>` : ''}
                         </div>
                     </div>
                 </div>

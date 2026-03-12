@@ -142,7 +142,7 @@ class DecisionUpdate(BaseModel):
 class NoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = None
@@ -152,12 +152,12 @@ class NoteUpdate(BaseModel):
 class TaskNoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class GlobalNoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class GlobalNoteUpdate(BaseModel):
     title: Optional[str] = None

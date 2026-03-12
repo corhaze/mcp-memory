@@ -173,7 +173,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             project_id TEXT NOT NULL,
             title      TEXT NOT NULL,
             note_text  TEXT NOT NULL,
-            note_type  TEXT NOT NULL DEFAULT 'context',
+            note_type  TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -338,7 +338,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             id         TEXT PRIMARY KEY,
             title      TEXT NOT NULL,
             note_text  TEXT NOT NULL,
-            note_type  TEXT NOT NULL DEFAULT 'context',
+            note_type  TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -367,7 +367,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             task_id    TEXT NOT NULL,
             title      TEXT NOT NULL,
             note_text  TEXT NOT NULL,
-            note_type  TEXT NOT NULL DEFAULT 'context',
+            note_type  TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,

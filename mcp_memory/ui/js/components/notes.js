@@ -2,7 +2,7 @@
 
 import { els } from '../dom.js';
 import { state } from '../state.js';
-import { esc, formatTime, renderNoteTypeOptions } from '../utils.js';
+import { esc, formatTime } from '../utils.js';
 
 function renderNoteEditForm(note) {
     const isEditing = state.editingNoteId === note.id;
@@ -15,10 +15,6 @@ function renderNoteEditForm(note) {
       <div class="form-group">
         <label>Note Text</label>
         <textarea name="note_text" class="form-control note-edit-text">${esc(note.note_text || '')}</textarea>
-      </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select name="note_type" class="form-control">${renderNoteTypeOptions(note.note_type)}</select>
       </div>
       <div class="form-error" style="display:none"></div>
       <div class="form-actions">
@@ -41,7 +37,7 @@ export function renderNoteItem(n, isExpanded = false) {
           <button class="icon-btn edit-note" data-id="${n.id}">✎</button>
           <button class="icon-btn danger delete-note" data-id="${n.id}">✗</button>
         </div>
-        <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+        ${n.note_type ? `<span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>` : ''}
       </div>
       <div class="note-body${isExpanded ? '' : ' hidden'}">
         ${renderNoteEditForm(n)}

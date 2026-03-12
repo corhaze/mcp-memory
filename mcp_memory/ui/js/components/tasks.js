@@ -3,7 +3,7 @@
 import { els } from '../dom.js';
 import { state } from '../state.js';
 import { api } from '../api.js';
-import { esc, statusEmoji, formatTime, STATUS_OPTIONS, renderNoteTypeOptions, renderStatusOptions } from '../utils.js';
+import { esc, statusEmoji, formatTime, STATUS_OPTIONS, renderStatusOptions } from '../utils.js';
 
 export function renderTasks() {
   const filtered = state.taskFilter
@@ -164,12 +164,6 @@ function renderAddTaskNoteForm(taskId) {
           <label>Note</label>
           <textarea class="note-text-input form-control" rows="3" placeholder="Note content (markdown)"></textarea>
         </div>
-        <div class="form-group">
-          <label>Type</label>
-          <select class="note-type-select form-control">
-            ${renderNoteTypeOptions('context')}
-          </select>
-        </div>
         <div class="form-error" style="display:none"></div>
         <div class="form-actions">
           <button type="submit" class="btn-submit">Add Note</button>
@@ -282,7 +276,7 @@ export function renderTaskNotesHtml(taskId, notes) {
   const items = notes.map(n => `
         <li class="task-note-item">
           <div class="task-note-header">
-            <span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>
+            ${n.note_type ? `<span class="note-type-pill note-type-${n.note_type}">${n.note_type}</span>` : ''}
             <span class="task-note-title">${esc(n.title)}</span>
             <button class="icon-btn danger delete-task-note" data-note-id="${n.id}" data-task-id="${taskId}">✕</button>
           </div>

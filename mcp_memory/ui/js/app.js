@@ -248,7 +248,6 @@ async function submitAddTaskNoteForm(form) {
 
     const title = form.querySelector('.note-title-input').value.trim();
     const noteText = form.querySelector('.note-text-input').value.trim();
-    const noteType = form.querySelector('.note-type-select').value;
 
     if (!title) {
         errorDiv.textContent = 'Title is required';
@@ -261,7 +260,7 @@ async function submitAddTaskNoteForm(form) {
     submitBtn.disabled = true;
 
     try {
-        await api.post(`/api/tasks/${taskId}/notes`, { title, note_text: noteText, note_type: noteType });
+        await api.post(`/api/tasks/${taskId}/notes`, { title, note_text: noteText });
         state.showAddTaskNoteForm.delete(taskId);
         await loadTaskNotes(taskId);
     } catch (err) {
@@ -924,11 +923,12 @@ async function submitNoteEditForm(form) {
         return;
     }
 
+    const noteTypeEl = form.querySelector('[name="note_type"]');
     const data = {
         title,
         note_text: form.querySelector('[name="note_text"]').value.trim(),
-        note_type: form.querySelector('[name="note_type"]').value,
     };
+    if (noteTypeEl) data.note_type = noteTypeEl.value || null;
 
     const submitBtn = form.querySelector('.btn-submit');
     submitBtn.textContent = 'Saving…';
@@ -1099,13 +1099,6 @@ function showNoteForm(note = null) {
     <form data-type="note" data-id="${note ? note.id : ''}">
         <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required></div>
         <div class="form-group"><label>Note Text</label><textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea></div>
-        <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
-            <option value="context" ${note?.note_type === 'context' || !note ? 'selected' : ''}>Context</option>
-            <option value="investigation" ${note?.note_type === 'investigation' ? 'selected' : ''}>Investigation</option>
-            <option value="implementation" ${note?.note_type === 'implementation' ? 'selected' : ''}>Implementation</option>
-            <option value="bug" ${note?.note_type === 'bug' ? 'selected' : ''}>Bug</option>
-            <option value="handover" ${note?.note_type === 'handover' ? 'selected' : ''}>Handover</option>
-        </select></div>
     </form>`;
     showModal(note ? 'Edit Note' : 'New Note', html);
 }
@@ -1125,12 +1118,8 @@ function showGlobalNoteForm(note = null) {
         <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required></div>
         <div class="form-group"><label>Note</label><textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea></div>
         <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
+            <option value="" ${!note?.note_type ? 'selected' : ''}>None</option>
             <option value="foundation" ${note?.note_type === 'foundation' ? 'selected' : ''}>Foundation</option>
-            <option value="context" ${note?.note_type === 'context' || !note ? 'selected' : ''}>Context</option>
-            <option value="investigation" ${note?.note_type === 'investigation' ? 'selected' : ''}>Investigation</option>
-            <option value="implementation" ${note?.note_type === 'implementation' ? 'selected' : ''}>Implementation</option>
-            <option value="bug" ${note?.note_type === 'bug' ? 'selected' : ''}>Bug</option>
-            <option value="handover" ${note?.note_type === 'handover' ? 'selected' : ''}>Handover</option>
         </select></div>
     </form>`;
     showModal(note ? 'Edit Global Note' : 'New Global Note', html);

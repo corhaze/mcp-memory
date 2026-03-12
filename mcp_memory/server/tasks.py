@@ -88,7 +88,8 @@ def get_task(task_id: str) -> str:
     if notes:
         lines.append(f"\nNotes ({len(notes)}):")
         for n in notes:
-            lines.append(f"  [{n.note_type}] {n.title} ({n.id})")
+            label = f"[{n.note_type}] " if n.note_type else ""
+            lines.append(f"  {label}{n.title} ({n.id})")
     return "\n".join(lines)
 
 

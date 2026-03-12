@@ -59,13 +59,15 @@ def get_working_context(project_id: str) -> str:
     if ctx["recent_notes"]:
         lines.append("## Recent Notes")
         for n in ctx["recent_notes"]:
-            lines.append(f"  [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            label = f"[{n['note_type']}] " if n.get("note_type") else ""
+            lines.append(f"  {label}{n['title']} ({n['id'][:8]})")
         lines.append("")
 
     if ctx.get("global_notes"):
         lines.append("## Global Notes (cross-project philosophy — read before implementing)")
         for n in ctx["global_notes"]:
-            lines.append(f"\n### [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            label = f"[{n['note_type']}] " if n.get("note_type") else ""
+            lines.append(f"\n### {label}{n['title']} ({n['id'][:8]})")
             lines.append(n["note_text"])
         lines.append("")
 
