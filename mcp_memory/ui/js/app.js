@@ -1029,6 +1029,78 @@ function bindNoteListEvents() {
             await submitNoteEditForm(form);
         }
     });
+
+    // Inline add-note form
+    els.addNoteFormContainer.addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target.closest('#add-note-inline-form');
+        if (!form) return;
+        const title = form.querySelector('[name="title"]').value.trim();
+        const noteText = form.querySelector('[name="note_text"]').value.trim();
+        if (!title) return;
+        const submitBtn = form.querySelector('.btn-submit');
+        submitBtn.textContent = 'Saving…';
+        submitBtn.disabled = true;
+        try {
+            await api.post(`/api/projects/${state.activeProjectId}/notes`, { title, note_text: noteText });
+            state.showAddNoteForm = false;
+            els.addNoteFormContainer.classList.add('hidden');
+            els.addNoteFormContainer.innerHTML = '';
+            await refreshNotes();
+        } catch (err) {
+            const errorDiv = form.querySelector('.form-error');
+            errorDiv.textContent = err.message || 'Failed to create note';
+            errorDiv.style.display = 'block';
+            submitBtn.textContent = 'Create Note';
+            submitBtn.disabled = false;
+        }
+    });
+
+    els.addNoteFormContainer.addEventListener('click', e => {
+        if (e.target.closest('.btn-cancel-add-note')) {
+            state.showAddNoteForm = false;
+            els.addNoteFormContainer.classList.add('hidden');
+            els.addNoteFormContainer.innerHTML = '';
+        }
+    });
+}
+
+function bindGlobalNoteFormEvents() {
+    els.addGlobalNoteFormContainer.addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target.closest('#add-global-note-inline-form');
+        if (!form) return;
+        const title = form.querySelector('[name="title"]').value.trim();
+        const noteText = form.querySelector('[name="note_text"]').value.trim();
+        const noteType = form.querySelector('[name="note_type"]').value || null;
+        if (!title) return;
+        const submitBtn = form.querySelector('.btn-submit');
+        submitBtn.textContent = 'Saving…';
+        submitBtn.disabled = true;
+        try {
+            const data = { title, note_text: noteText };
+            if (noteType) data.note_type = noteType;
+            await api.post('/api/global-notes', data);
+            state.showAddGlobalNoteForm = false;
+            els.addGlobalNoteFormContainer.classList.add('hidden');
+            els.addGlobalNoteFormContainer.innerHTML = '';
+            await loadGlobalNotes();
+        } catch (err) {
+            const errorDiv = form.querySelector('.form-error');
+            errorDiv.textContent = err.message || 'Failed to create note';
+            errorDiv.style.display = 'block';
+            submitBtn.textContent = 'Create Note';
+            submitBtn.disabled = false;
+        }
+    });
+
+    els.addGlobalNoteFormContainer.addEventListener('click', e => {
+        if (e.target.closest('.btn-cancel-add-global-note')) {
+            state.showAddGlobalNoteForm = false;
+            els.addGlobalNoteFormContainer.classList.add('hidden');
+            els.addGlobalNoteFormContainer.innerHTML = '';
+        }
+    });
 }
 
 // ── Forms & CRUD (Proxy to modal handlers) ──────────────────────────────────
@@ -1136,13 +1208,50 @@ async function deleteDecision(id) {
     } catch (err) { alert(err.message); }
 }
 
-function showNoteForm(note = null) {
-    const html = `
-    <form data-type="note" data-id="${note ? note.id : ''}">
-        <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required></div>
-        <div class="form-group"><label>Note Text</label><textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea></div>
-    </form>`;
-    showModal(note ? 'Edit Note' : 'New Note', html);
+function toggleAddNoteForm() {
+    state.showAddNoteForm = !state.showAddNoteForm;
+    if (state.showAddNoteForm) {
+        els.addNoteFormContainer.innerHTML = `
+        <form id="add-note-inline-form" class="add-subtask-form">
+            <div class="form-group"><label>Title *</label><input name="title" class="form-control" placeholder="Note title" required></div>
+            <div class="form-group"><label>Note Text *</label><textarea name="note_text" class="form-control" rows="3" placeholder="Note content (markdown)" required></textarea></div>
+            <div class="form-error" style="display:none"></div>
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Create Note</button>
+                <button type="button" class="btn-cancel btn-cancel-add-note">Cancel</button>
+            </div>
+        </form>`;
+        els.addNoteFormContainer.classList.remove('hidden');
+        els.addNoteFormContainer.querySelector('[name="title"]')?.focus();
+    } else {
+        els.addNoteFormContainer.classList.add('hidden');
+        els.addNoteFormContainer.innerHTML = '';
+    }
+}
+
+function toggleAddGlobalNoteForm() {
+    state.showAddGlobalNoteForm = !state.showAddGlobalNoteForm;
+    if (state.showAddGlobalNoteForm) {
+        els.addGlobalNoteFormContainer.innerHTML = `
+        <form id="add-global-note-inline-form" class="add-subtask-form">
+            <div class="form-group"><label>Title *</label><input name="title" class="form-control" placeholder="Note title" required></div>
+            <div class="form-group"><label>Note *</label><textarea name="note_text" class="form-control" rows="3" placeholder="Note content (markdown)" required></textarea></div>
+            <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
+                <option value="">None</option>
+                <option value="foundation">Foundation</option>
+            </select></div>
+            <div class="form-error" style="display:none"></div>
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Create Note</button>
+                <button type="button" class="btn-cancel btn-cancel-add-global-note">Cancel</button>
+            </div>
+        </form>`;
+        els.addGlobalNoteFormContainer.classList.remove('hidden');
+        els.addGlobalNoteFormContainer.querySelector('[name="title"]')?.focus();
+    } else {
+        els.addGlobalNoteFormContainer.classList.add('hidden');
+        els.addGlobalNoteFormContainer.innerHTML = '';
+    }
 }
 
 async function deleteNote(id) {
@@ -1151,20 +1260,6 @@ async function deleteNote(id) {
         await api.delete(`/api/projects/${state.activeProjectId}/notes/${id}`);
         await refreshNotes();
     } catch (err) { alert(err.message); }
-}
-
-
-function showGlobalNoteForm(note = null) {
-    const html = `
-    <form data-type="global_note" data-id="${note ? note.id : ''}">
-        <div class="form-group"><label>Title</label><input name="title" class="form-control" value="${note ? esc(note.title) : ''}" required></div>
-        <div class="form-group"><label>Note</label><textarea name="note_text" class="form-control" required>${note ? esc(note.note_text) : ''}</textarea></div>
-        <div class="form-group"><label>Type</label><select name="note_type" class="form-control">
-            <option value="" ${!note?.note_type ? 'selected' : ''}>None</option>
-            <option value="foundation" ${note?.note_type === 'foundation' ? 'selected' : ''}>Foundation</option>
-        </select></div>
-    </form>`;
-    showModal(note ? 'Edit Global Note' : 'New Global Note', html);
 }
 
 async function deleteGlobalNote(id) {
@@ -1209,7 +1304,7 @@ async function init() {
         }
     });
 
-    els.addGlobalNoteBtn.addEventListener('click', () => showGlobalNoteForm());
+    els.addGlobalNoteBtn.addEventListener('click', () => toggleAddGlobalNoteForm());
 
     // Make sure we catch clicks even if dom.js is cached by the browser
     document.addEventListener('click', (e) => {
@@ -1252,6 +1347,7 @@ async function init() {
     bindNoteDetailEvents();
     bindDecisionListEvents();
     bindNoteListEvents();
+    bindGlobalNoteFormEvents();
 
     bindKanbanEvents(
         // onStatusChange — PATCH status then refresh with board tab active
@@ -1279,7 +1375,7 @@ async function init() {
 
     els.addTaskBtn.addEventListener('click', () => showAddTopTaskForm());
     els.addDecisionBtn.addEventListener('click', () => showDecisionForm());
-    els.addNoteBtn.addEventListener('click', () => showNoteForm());
+    els.addNoteBtn.addEventListener('click', () => toggleAddNoteForm());
 
     els.modalClose.addEventListener('click', hideModal);
     els.modalCancel.addEventListener('click', hideModal);
@@ -1290,9 +1386,6 @@ async function init() {
             onProjectUpdate: async () => { state.projects = await api.get('/api/projects'); renderProjectNav(selectProject); },
             onTaskUpdate: () => refreshTasks(),
             onDecisionUpdate: () => refreshDecisions(),
-            onNoteUpdate: () => refreshNotes(),
-            onTaskNoteUpdate: (taskId) => loadTaskNotes(taskId),
-            onGlobalNoteUpdate: () => loadGlobalNotes()
         }).finally(() => { els.modalSave.disabled = false; });
     });
     els.modalOverlay.addEventListener('click', e => { if (e.target === els.modalOverlay) hideModal(); });

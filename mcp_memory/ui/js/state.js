@@ -16,6 +16,8 @@ export const state = {
     editingTaskId: null,           // ID of the task currently showing its inline edit form
     editingNoteId: null,           // ID of the project note currently showing its inline edit form
     showAddTaskForm: false,        // Whether the top-level "add task" inline form is visible
+    showAddNoteForm: false,        // Whether the inline "add note" form is visible
+    showAddGlobalNoteForm: false,  // Whether the inline "add global note" form is visible
     showAddTaskNoteForm: new Set(), // Track which tasks have the add-note inline form open
     taskNotes: {},
     activeTaskId: null,          // task ID currently shown in the task detail view

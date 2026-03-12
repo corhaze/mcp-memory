@@ -19,9 +19,6 @@ export async function handleModalSave({
     onProjectUpdate,
     onTaskUpdate,
     onDecisionUpdate,
-    onNoteUpdate,
-    onTaskNoteUpdate,
-    onGlobalNoteUpdate
 }) {
     const form = els.modalBody.querySelector('form');
     if (!form) return;
@@ -30,9 +27,9 @@ export async function handleModalSave({
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
 
-    // Map empty strings to null for ID fields and note_type
+    // Map empty strings to null for ID fields
     for (const key in data) {
-        if (data[key] === '' && (key.endsWith('_id') || key === 'note_type')) {
+        if (data[key] === '' && key.endsWith('_id')) {
             data[key] = null;
         }
     }
@@ -55,19 +52,6 @@ export async function handleModalSave({
             if (id) await api.patch(`/api/projects/${state.activeProjectId}/decisions/${id}`, data);
             else await api.post(`/api/projects/${state.activeProjectId}/decisions`, data);
             if (onDecisionUpdate) await onDecisionUpdate();
-        } else if (type === 'note') {
-            if (id) await api.patch(`/api/projects/${state.activeProjectId}/notes/${id}`, data);
-            else await api.post(`/api/projects/${state.activeProjectId}/notes`, data);
-            if (onNoteUpdate) await onNoteUpdate();
-        } else if (type === 'task_note') {
-            const taskId = form.dataset.taskId;
-            await api.post(`/api/tasks/${taskId}/notes`, data);
-            if (onTaskNoteUpdate) await onTaskNoteUpdate(taskId);
-        } else if (type === 'global_note') {
-            const id = form.dataset.id;
-            if (id) await api.patch(`/api/global-notes/${id}`, data);
-            else await api.post('/api/global-notes', data);
-            if (onGlobalNoteUpdate) await onGlobalNoteUpdate();
         }
         hideModal();
     } catch (err) {
