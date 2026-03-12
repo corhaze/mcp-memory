@@ -22,10 +22,14 @@ export const updateProject = (id, data) => request(`/api/projects/${id}`, 'PATCH
 export const deleteProject = (id) => request(`/api/projects/${id}`, 'DELETE');
 
 // Project Summary
-export const getProjectSummary = (projectId) =>
-  request(`/api/projects/${projectId}/summary`);
-export const updateProjectSummary = (projectId, text) =>
-  request(`/api/projects/${projectId}/summary`, 'POST', { text });
+// Note: summary is fetched via getProject() which returns { project, summary }.
+// There is no separate GET endpoint for summary.
+export const getProjectSummary = async (projectId) => {
+  const data = await request(`/api/projects/${projectId}`);
+  return data.summary ?? null;
+};
+export const updateProjectSummary = (projectId, summaryText) =>
+  request(`/api/projects/${projectId}/summary`, 'POST', { summary_text: summaryText });
 
 // Tasks
 export const getProjectTasks = (projectId) =>
@@ -36,7 +40,8 @@ export const updateTask = (projectId, taskId, data) =>
   request(`/api/projects/${projectId}/tasks/${taskId}`, 'PATCH', data);
 export const deleteTask = (projectId, taskId) =>
   request(`/api/projects/${projectId}/tasks/${taskId}`, 'DELETE');
-export const getTask = (taskId) => request(`/api/tasks/${taskId}`);
+export const getTask = (projectId, taskId) =>
+  request(`/api/projects/${projectId}/tasks/${taskId}`);
 
 // Task Notes
 export const getTaskNotes = (taskId) => request(`/api/tasks/${taskId}/notes`);

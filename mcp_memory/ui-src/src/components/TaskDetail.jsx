@@ -12,12 +12,12 @@ import * as api from '../api';
 export default function TaskDetail() {
   const { projectName, taskId } = useParams();
   const navigate = useNavigate();
-  const { task, loading, error, refresh } = useTask(taskId);
   const { projects } = useProjects();
   const state = useAppState();
   const dispatch = useAppDispatch();
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
+  const { task, loading, error, refresh } = useTask(project?.id, taskId);
   const isEditing = state.editingTaskId === taskId;
 
   async function handleStatusChange(newStatus) {
