@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useProjects } from '../hooks/useProjects';
+import SearchInput from './SearchInput';
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -19,14 +20,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="sidebar-search">
-        <input
-          type="text"
-          placeholder="Search all projects..."
-          aria-label="Search"
-          disabled
-        />
-      </div>
+      <SearchInput />
 
       <div className="global-notes-section">
         <button

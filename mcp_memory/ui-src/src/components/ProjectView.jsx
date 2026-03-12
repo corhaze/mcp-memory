@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects } from '../hooks/useProjects';
 import { useProjectData } from '../hooks/useProjectData';
 import StatusBadge from './StatusBadge';
@@ -8,6 +8,7 @@ import SummaryPanel from './SummaryPanel';
 import DecisionPanel from './DecisionPanel';
 import NotePanel from './NotePanel';
 import TimelinePanel from './TimelinePanel';
+import SearchResults from './SearchResults';
 
 const TABS = [
   { name: 'summary', label: 'Summary' },
@@ -68,6 +69,8 @@ function TabContent({ activeTab, project, projectName, data }) {
 export default function ProjectView() {
   const { projectName, tab } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q');
   const { projects, loading: projectsLoading } = useProjects();
   const activeTab = tab || 'summary';
 
@@ -101,7 +104,11 @@ export default function ProjectView() {
 
       <TabBar tabs={TABS} activeTab={activeTab} onTabClick={handleTabClick} />
 
-      {dataLoading ? (
+      {searchQuery ? (
+        <section className="panel" data-testid="panel-search">
+          <SearchResults query={searchQuery} projectId={project.id} />
+        </section>
+      ) : dataLoading ? (
         <div className="panel"><p className="nav-hint">Loading...</p></div>
       ) : error ? (
         <div className="panel"><p className="nav-hint">Error: {error}</p></div>
