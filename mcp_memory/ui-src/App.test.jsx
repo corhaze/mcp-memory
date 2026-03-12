@@ -1,8 +1,32 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppRoutes } from './App';
 import { AppProvider } from './src/context/AppContext';
+
+// Mock useProjects to avoid real API calls from Layout/Sidebar
+vi.mock('./src/hooks/useProjects', () => ({
+  useProjects: () => ({
+    projects: [{ id: '1', name: 'some-project', status: 'active' }],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
+
+// Mock useProjectData to avoid real API calls from ProjectView
+vi.mock('./src/hooks/useProjectData', () => ({
+  useProjectData: () => ({
+    tasks: [],
+    decisions: [],
+    notes: [],
+    timeline: [],
+    summary: null,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
 
 function renderAt(path) {
   return render(
@@ -10,7 +34,7 @@ function renderAt(path) {
       <AppProvider>
         <AppRoutes />
       </AppProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 

@@ -1,36 +1,21 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './src/context/AppContext';
-
-function EmptyState() {
-  return <div data-testid="empty-state">EmptyState</div>;
-}
-
-function GlobalWorkspace() {
-  return <div data-testid="global-workspace">GlobalWorkspace</div>;
-}
-
-function NoteDetail() {
-  return <div data-testid="note-detail">NoteDetail</div>;
-}
-
-function ProjectView() {
-  return <div data-testid="project-view">ProjectView</div>;
-}
-
-function TaskDetail() {
-  return <div data-testid="task-detail">TaskDetail</div>;
-}
+import Layout from './src/components/Layout';
+import EmptyState from './src/components/EmptyState';
+import ProjectView from './src/components/ProjectView';
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<EmptyState />} />
-      <Route path="/global" element={<GlobalWorkspace />} />
-      <Route path="/global/notes/:noteId" element={<NoteDetail />} />
-      <Route path="/:projectName" element={<ProjectView />} />
-      <Route path="/:projectName/:tab" element={<ProjectView />} />
-      <Route path="/:projectName/tasks/:taskId" element={<TaskDetail />} />
-      <Route path="/:projectName/notes/:noteId" element={<NoteDetail />} />
+      <Route element={<Layout />}>
+        <Route index element={<EmptyState />} />
+        <Route path="global" element={<div data-testid="global-workspace">Global Workspace placeholder</div>} />
+        <Route path="global/notes/:noteId" element={<div data-testid="note-detail">Global Note Detail placeholder</div>} />
+        <Route path=":projectName" element={<ProjectView />} />
+        <Route path=":projectName/:tab" element={<ProjectView />} />
+        <Route path=":projectName/tasks/:taskId" element={<div data-testid="task-detail">Task Detail placeholder</div>} />
+        <Route path=":projectName/notes/:noteId" element={<div data-testid="note-detail">Note Detail placeholder</div>} />
+      </Route>
     </Routes>
   );
 }
