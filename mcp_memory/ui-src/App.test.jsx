@@ -28,6 +28,17 @@ vi.mock('./src/hooks/useProjectData', () => ({
   }),
 }));
 
+// Mock API calls used by NoteDetail
+vi.mock('./src/api', () => ({
+  getGlobalNote: vi.fn(() => Promise.resolve({ id: 'abc', title: 'Test', note_text: 'Body', note_type: null })),
+  getProjectNotes: vi.fn(() => Promise.resolve([{ id: 'n1', title: 'Test', note_text: 'Body', note_type: null }])),
+  getProjects: vi.fn(() => Promise.resolve([])),
+  getProjectTasks: vi.fn(() => Promise.resolve([])),
+  getProjectDecisions: vi.fn(() => Promise.resolve([])),
+  getTimeline: vi.fn(() => Promise.resolve([])),
+  getProjectSummary: vi.fn(() => Promise.resolve(null)),
+}));
+
 function renderAt(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -49,9 +60,9 @@ describe('Router', () => {
     expect(screen.getByTestId('global-workspace')).toBeInTheDocument();
   });
 
-  it('renders note detail at /global/notes/abc', () => {
+  it('renders note detail at /global/notes/abc', async () => {
     renderAt('/global/notes/abc');
-    expect(screen.getByTestId('note-detail')).toBeInTheDocument();
+    expect(await screen.findByTestId('note-detail')).toBeInTheDocument();
   });
 
   it('renders project view at /some-project', () => {
@@ -69,8 +80,8 @@ describe('Router', () => {
     expect(screen.getByTestId('task-detail')).toBeInTheDocument();
   });
 
-  it('renders note detail at /some-project/notes/n1', () => {
+  it('renders note detail at /some-project/notes/n1', async () => {
     renderAt('/some-project/notes/n1');
-    expect(screen.getByTestId('note-detail')).toBeInTheDocument();
+    expect(await screen.findByTestId('note-detail')).toBeInTheDocument();
   });
 });
