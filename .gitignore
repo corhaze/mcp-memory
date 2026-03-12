@@ -48,3 +48,4 @@ node_modules/
 
 # User-specific Claude Code settings (machine-specific permissions)
 .claude/settings.local.json
+mcp_memory/ui/assets/

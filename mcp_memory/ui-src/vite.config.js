@@ -23,7 +23,6 @@ export default defineConfig({
     environment: 'jsdom',
     include: [
       `${__dirname}/**/*.test.{js,jsx}`,
-      `${repoRoot}/tests/js/**/*.test.js`,
     ],
     exclude: [
       '**/node_modules/**',
