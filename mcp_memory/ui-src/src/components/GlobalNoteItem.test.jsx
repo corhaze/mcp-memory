@@ -53,7 +53,7 @@ describe('GlobalNoteItem', () => {
   it('edit toggle shows form fields', () => {
     renderItem();
     fireEvent.click(screen.getByText('Test Global Note'));
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByTitle('Edit'));
     expect(screen.getByTestId('global-note-edit-form')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Test Global Note')).toBeInTheDocument();
   });

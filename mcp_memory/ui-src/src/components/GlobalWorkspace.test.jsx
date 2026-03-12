@@ -63,7 +63,7 @@ describe('GlobalWorkspace', () => {
 
   it('Add Note button shows form', () => {
     renderWorkspace();
-    fireEvent.click(screen.getByText('Add Note'));
+    fireEvent.click(screen.getByText('+ Add Note'));
     expect(screen.getByTestId('global-note-form')).toBeInTheDocument();
   });
 });

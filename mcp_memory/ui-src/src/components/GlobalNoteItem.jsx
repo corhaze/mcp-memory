@@ -65,13 +65,18 @@ export default function GlobalNoteItem({ note, onRefresh }) {
   return (
     <div className="note-item" data-testid={`global-note-${note.id}`}>
       <div className="note-header" onClick={toggleExpand} role="button" tabIndex={0}>
+        <button className={`task-toggle${isExpanded ? ' open' : ''}`} type="button">▶</button>
         <span className="note-title">{note.title}</span>
-        {note.note_type && (
-          <span className="note-type-pill">{note.note_type}</span>
-        )}
-        <span className="note-time">
+        <span className="note-date" style={{ fontSize: '10px', color: 'var(--text-dim)', marginLeft: 'auto', marginRight: '10px' }}>
           {formatRelativeTime(note.updated_at || note.created_at)}
         </span>
+        <div className="header-actions" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="icon-btn" onClick={startEdit} title="Edit">✎</button>
+          <button type="button" className="icon-btn danger" onClick={handleDelete} title="Delete">✗</button>
+        </div>
+        {note.note_type && (
+          <span className={`note-type-pill note-type-${note.note_type}`}>{note.note_type}</span>
+        )}
       </div>
 
       {isExpanded && (
@@ -113,16 +118,11 @@ export default function GlobalNoteItem({ note, onRefresh }) {
               </div>
             </form>
           ) : (
-            <>
-              <MarkdownBody content={note.note_text} />
-              <div className="item-actions">
-                <Link to={`/global/notes/${note.id}`} className="btn btn-sm">
-                  View Detail &rarr;
-                </Link>
-                <button className="btn btn-sm" onClick={startEdit}>Edit</button>
-                <button className="btn btn-sm btn-danger" onClick={handleDelete}>Delete</button>
+            <div className="note-view-content">
+              <div className="note-text">
+                <MarkdownBody content={note.note_text} />
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

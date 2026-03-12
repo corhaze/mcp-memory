@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import * as api from '../api';
 import TaskNoteForm from './TaskNoteForm';
 
-export default function TaskNoteList({ taskId, notes: notesProp }) {
+export default function TaskNoteList({ taskId, notes: notesProp, bare = false }) {
   const [notes, setNotes] = useState(notesProp ?? null);
   const [showForm, setShowForm] = useState(false);
 
@@ -30,7 +30,7 @@ export default function TaskNoteList({ taskId, notes: notesProp }) {
 
   return (
     <div className="task-notes" data-testid="task-note-list">
-      <h4>Notes ({notes.length})</h4>
+      {!bare && <h4>Notes ({notes.length})</h4>}
       {notes.length === 0 && <p className="nav-hint">No notes yet.</p>}
       {notes.map((note) => (
         <div key={note.id} className="task-note-item">
@@ -43,7 +43,7 @@ export default function TaskNoteList({ taskId, notes: notesProp }) {
           {note.note_text && <p className="task-note-body">{note.note_text}</p>}
         </div>
       ))}
-      {showForm ? (
+      {!bare && (showForm ? (
         <TaskNoteForm
           taskId={taskId}
           onSuccess={handleNoteSuccess}
@@ -57,7 +57,7 @@ export default function TaskNoteList({ taskId, notes: notesProp }) {
         >
           + Add Note
         </button>
-      )}
+      ))}
     </div>
   );
 }

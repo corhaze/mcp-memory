@@ -1,14 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { entityNavTarget } from '../utils';
 
-const TYPE_LABELS = {
-  task: 'Task',
-  decision: 'Decision',
-  note: 'Note',
-  global_note: 'Global Note',
-  task_note: 'Task Note',
-};
-
 export default function SearchResultItem({ result }) {
   const navigate = useNavigate();
   const target = entityNavTarget(result);
@@ -22,34 +14,37 @@ export default function SearchResultItem({ result }) {
     }
   }
 
-  const score = result.score != null ? Math.round(result.score * 100) : null;
+  const score = result.score != null ? Math.round(result.score * 100) + '%' : null;
+  const clickableClass = target ? ' search-result-item--clickable' : '';
 
   return (
-    <div
-      className="search-result-item"
+    <li
+      className={`search-result-item${clickableClass}`}
       onClick={handleClick}
-      role="button"
-      tabIndex={0}
+      data-entity-id={result.id}
+      data-entity-type={result.entity_type}
+      data-project-name={result.project_name || ''}
       data-testid={`search-result-${result.id}`}
     >
-      <div className="search-result-header">
-        <span className="search-result-type">
-          {TYPE_LABELS[result.entity_type] || result.entity_type}
-        </span>
-        <span className="search-result-title">{result.title}</span>
-        {score !== null && (
-          <span className="search-result-score">{score}%</span>
-        )}
-      </div>
+      <span className={`entity-type-badge badge-${result.entity_type}`}>
+        {result.entity_type}
+      </span>
       {result.project_name && (
         <span className="search-result-project">{result.project_name}</span>
       )}
+      <span className="search-result-title">{result.title}</span>
       {result.status && (
-        <span className={`status-badge status-${result.status}`}>{result.status}</span>
+        <span className={`status-badge badge-${result.status}`}>{result.status}</span>
       )}
       {result.note_type && (
         <span className="note-type-pill">{result.note_type}</span>
       )}
-    </div>
+      {score !== null && (
+        <span className="search-result-score">{score}</span>
+      )}
+      {result.next_action && (
+        <span className="search-result-next-action">{result.next_action}</span>
+      )}
+    </li>
   );
 }

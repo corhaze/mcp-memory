@@ -19,34 +19,16 @@ export default function SearchInput() {
     navigate(`${basePath}?q=${encodeURIComponent(q)}`);
   }
 
-  function handleClear() {
-    setValue('');
-    const basePath = projectName ? `/${projectName}` : isGlobal ? '/global' : '/';
-    navigate(basePath);
-  }
-
   return (
     <div className="sidebar-search">
-      <div className="search-input-wrapper">
-        <input
-          type="text"
-          placeholder="Search all projects..."
-          aria-label="Search"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        {value && (
-          <button
-            className="search-clear-btn"
-            onClick={handleClear}
-            aria-label="Clear search"
-            type="button"
-          >
-            &times;
-          </button>
-        )}
-      </div>
+      <input
+        type="text"
+        placeholder="Search all projects..."
+        aria-label="Search"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
     </div>
   );
 }

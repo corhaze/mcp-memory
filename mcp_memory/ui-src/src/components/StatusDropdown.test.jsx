@@ -15,7 +15,7 @@ describe('StatusDropdown', () => {
 
     await user.click(screen.getByRole('button', { name: /open/ }));
 
-    const options = screen.getAllByRole('button').filter((b) => b.classList.contains('status-option'));
+    const options = document.querySelectorAll('.status-option');
     expect(options).toHaveLength(5);
   });
 
@@ -25,9 +25,7 @@ describe('StatusDropdown', () => {
     render(<StatusDropdown currentStatus="open" onStatusChange={onStatusChange} />);
 
     await user.click(screen.getByRole('button', { name: /open/ }));
-    const doneOption = screen.getAllByRole('button').find(
-      (b) => b.classList.contains('status-option') && b.textContent.includes('done')
-    );
+    const doneOption = document.querySelector('.status-option[data-value="done"]');
     await user.click(doneOption);
 
     expect(onStatusChange).toHaveBeenCalledWith('done');
@@ -39,8 +37,8 @@ describe('StatusDropdown', () => {
 
     await user.click(screen.getByRole('button', { name: /open/ }));
 
-    const options = screen.getAllByRole('button').filter((b) => b.classList.contains('status-option'));
-    const labels = options.map((o) => o.textContent);
+    const options = document.querySelectorAll('.status-option');
+    const labels = [...options].map((o) => o.textContent);
     expect(labels.some((l) => l.includes('open'))).toBe(true);
     expect(labels.some((l) => l.includes('in_progress'))).toBe(true);
     expect(labels.some((l) => l.includes('blocked'))).toBe(true);

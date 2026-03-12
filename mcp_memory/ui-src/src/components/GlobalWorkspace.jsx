@@ -27,25 +27,27 @@ export default function GlobalWorkspace() {
         <div className="project-title-row">
           <h2>Global Workspace</h2>
         </div>
+        <p className="project-description">Cross-project notes and standards</p>
       </header>
 
       <TabBar tabs={TABS} activeTab="notes" onTabClick={() => {}} />
 
       <section className="panel" data-testid="panel-notes">
         <div className="panel-toolbar">
-          <div className="filter-bar">
+          <div className="filter-group">
             {FILTERS.map((f) => (
               <button
                 key={f}
-                className={`btn btn-sm ${globalNoteFilter === f ? 'active' : ''}`}
+                type="button"
+                className={`filter-btn${globalNoteFilter === f ? ' active' : ''}`}
                 onClick={() => dispatch({ type: 'SET_GLOBAL_NOTE_FILTER', value: f })}
               >
                 {FILTER_LABELS[f]}
               </button>
             ))}
           </div>
-          <button className="btn btn-primary btn-sm" onClick={toggleAddForm}>
-            {showAddGlobalNoteForm ? 'Cancel' : 'Add Note'}
+          <button type="button" className="filter-btn" onClick={toggleAddForm}>
+            {showAddGlobalNoteForm ? 'Cancel' : '+ Add Note'}
           </button>
         </div>
 

@@ -76,6 +76,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+a {
+  color: var(--green);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--green-dim);
+}
+
 ::selection {
   background: var(--green-muted);
   color: var(--green);

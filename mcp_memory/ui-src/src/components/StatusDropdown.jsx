@@ -37,19 +37,18 @@ export default function StatusDropdown({ currentStatus, onStatusChange }) {
         {statusEmoji(currentStatus)} {currentStatus}
       </button>
       {open && (
-        <ul className="task-status-options">
+        <div className="task-status-options">
           {STATUS_OPTIONS.map((status) => (
-            <li key={status}>
-              <button
-                className={`status-option ${status === currentStatus ? 'active' : ''}`}
-                onClick={(e) => handleOptionClick(e, status)}
-                type="button"
-              >
-                {statusEmoji(status)} {status}
-              </button>
-            </li>
+            <div
+              key={status}
+              className={`status-option badge-${status}${status === currentStatus ? ' active' : ''}`}
+              data-value={status}
+              onClick={(e) => handleOptionClick(e, status)}
+            >
+              {status}
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

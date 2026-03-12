@@ -11,7 +11,7 @@ import TimelinePanel from './TimelinePanel';
 import KanbanBoard from './KanbanBoard';
 import SearchResults from './SearchResults';
 
-const TABS = [
+const BASE_TABS = [
   { name: 'summary', label: 'Summary' },
   { name: 'tasks', label: 'Tasks' },
   { name: 'board', label: 'Board' },
@@ -82,14 +82,22 @@ export default function ProjectView() {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q');
   const { projects, loading: projectsLoading } = useProjects();
-  const activeTab = tab || 'summary';
+  const activeTab = searchQuery ? 'search' : (tab || 'summary');
+  const tabs = searchQuery
+    ? [...BASE_TABS, { name: 'search', label: 'Search' }]
+    : BASE_TABS;
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
   const data = useProjectData(project?.id ?? null);
   const { loading: dataLoading, error } = data;
 
   function handleTabClick(tabName) {
+    if (tabName === 'search') return;
     navigate(`/${projectName}/${tabName}`);
+  }
+
+  function clearSearch() {
+    navigate(`/${projectName}/summary`);
   }
 
   if (projectsLoading || (!project && !projects)) {
@@ -112,11 +120,11 @@ export default function ProjectView() {
         )}
       </header>
 
-      <TabBar tabs={TABS} activeTab={activeTab} onTabClick={handleTabClick} />
+      <TabBar tabs={tabs} activeTab={activeTab} onTabClick={handleTabClick} />
 
       {searchQuery ? (
         <section className="panel" data-testid="panel-search">
-          <SearchResults query={searchQuery} projectId={project.id} />
+          <SearchResults query={searchQuery} projectId={project.id} onClear={clearSearch} />
         </section>
       ) : dataLoading ? (
         <div className="panel"><p className="nav-hint">Loading...</p></div>

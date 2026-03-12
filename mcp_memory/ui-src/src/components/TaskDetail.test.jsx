@@ -65,7 +65,7 @@ describe('TaskDetail', () => {
 
     renderTaskDetail();
 
-    const backLink = screen.getByText(/Back to tasks/);
+    const backLink = screen.getByText(/Back to Tasks/);
     expect(backLink).toBeInTheDocument();
     expect(backLink.closest('a')).toHaveAttribute('href', '/my-project/tasks');
   });

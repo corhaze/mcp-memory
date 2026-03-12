@@ -1,7 +1,7 @@
 import { useSearch } from '../hooks/useSearch';
 import SearchResultItem from './SearchResultItem';
 
-export default function SearchResults({ query, projectId }) {
+export default function SearchResults({ query, projectId, onClear }) {
   const { results, loading, error } = useSearch(query, projectId);
 
   if (loading) {
@@ -21,23 +21,36 @@ export default function SearchResults({ query, projectId }) {
 
   return (
     <div data-testid="search-results">
-      <h3 className="search-results-heading">
-        Results for &ldquo;{query}&rdquo; ({items.length})
-      </h3>
+      <div className="panel-toolbar">
+        <div className="panel-info">
+          <span className="panel-label">Semantic Search Results</span>
+        </div>
+        <div className="filter-group">
+          {onClear && (
+            <button type="button" className="filter-btn" onClick={onClear}>
+              Clear Search
+            </button>
+          )}
+        </div>
+      </div>
 
-      {!embeddingsAvailable && (
-        <p className="nav-hint">
-          Embeddings are not available. Install FastEmbed for semantic search.
-        </p>
-      )}
+      <div className="search-results">
+        {!embeddingsAvailable && (
+          <p className="search-embeddings-notice">
+            Semantic search unavailable — keyword search not yet supported in UI.
+          </p>
+        )}
 
-      {items.length === 0 ? (
-        <p className="nav-hint">No results found.</p>
-      ) : (
-        items.map((r) => (
-          <SearchResultItem key={`${r.entity_type}-${r.id}`} result={r} />
-        ))
-      )}
+        <ul className="search-results-list" aria-live="polite">
+          {items.map((r) => (
+            <SearchResultItem key={`${r.entity_type}-${r.id}`} result={r} />
+          ))}
+        </ul>
+
+        {items.length === 0 && embeddingsAvailable && (
+          <p className="nav-hint" style={{ padding: '1rem' }}>No results found.</p>
+        )}
+      </div>
     </div>
   );
 }
