@@ -514,11 +514,9 @@ async function performSearch(query) {
             : `/api/search/semantic?q=${encodeURIComponent(query)}`;
         const data = await api.get(url);
         state.searchResults = data;
-        // Show the project-view shell to render the search panel even without a project
-        if (!state.activeProjectId) {
-            hideAllViews();
-            els.projectView.classList.remove('hidden');
-        }
+        // Ensure project-view shell is visible (search panel lives inside it)
+        hideAllViews();
+        els.projectView.classList.remove('hidden');
         els.searchTab.classList.remove('hidden');
         activateTab('search');
         renderSearch();
