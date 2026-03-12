@@ -59,14 +59,6 @@ async function selectGlobalWorkspace(tab = 'notes', { updatePath = true } = {}) 
     hideAllViews();
     if (els.globalView) els.globalView.classList.remove('hidden');
     els.searchInput.disabled = false;
-    els.searchInput.placeholder = 'Search all projects...';
-
-    // "Current project" mode makes no sense without an active project
-    const currentBtn = document.querySelector('.toggle-btn[data-mode="current"]');
-    const allBtn = document.querySelector('.toggle-btn[data-mode="all"]');
-    if (currentBtn) { currentBtn.disabled = true; currentBtn.classList.remove('active'); }
-    if (allBtn) { allBtn.disabled = false; allBtn.classList.add('active'); }
-    state.searchMode = 'all';
 
     activateTab('global-notes');
 
@@ -411,9 +403,6 @@ async function selectProject(id, tab = 'summary', { updatePath = true } = {}) {
     els.projectView.classList.remove('hidden');
     els.searchInput.disabled = false;
 
-    // Restore both search mode toggles
-    document.querySelectorAll('.toggle-btn').forEach(b => b.disabled = false);
-
     showRefreshIndicator();
     try {
         const { ctx, tasks, decisions, notes, timeline } = await fetchProjectData(id);
@@ -509,9 +498,7 @@ function bindFilters() {
 
 async function performSearch(query) {
     try {
-        const url = state.activeProjectId
-            ? `/api/projects/${state.activeProjectId}/search/semantic?q=${encodeURIComponent(query)}`
-            : `/api/search/semantic?q=${encodeURIComponent(query)}`;
+        const url = `/api/search/semantic?q=${encodeURIComponent(query)}`;
         const data = await api.get(url);
         state.searchResults = data;
         // Ensure project-view shell is visible (search panel lives inside it)
@@ -1278,23 +1265,6 @@ async function init() {
         }).finally(() => { els.modalSave.disabled = false; });
     });
     els.modalOverlay.addEventListener('click', e => { if (e.target === els.modalOverlay) hideModal(); });
-
-    // Search mode toggle
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const mode = btn.dataset.mode;
-            state.searchMode = mode;
-
-            // Update active state
-            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Update search input placeholder
-            const placeholder = mode === 'current' ? 'Search current project...' : 'Search all projects...';
-            els.searchInput.placeholder = placeholder;
-        });
-    });
 
     els.searchInput.addEventListener('keyup', e => {
         if (e.key === 'Enter') {

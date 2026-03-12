@@ -23,6 +23,10 @@ export function renderResultItem(result) {
         ? `<span class="search-result-next-action">${esc(next_action)}</span>`
         : '';
 
+    const projectPill = project_name
+        ? `<span class="search-result-project">${esc(project_name)}</span>`
+        : '';
+
     const navTarget = entityNavTarget(result);
     const clickableClass = navTarget ? ' search-result-item--clickable' : '';
     const dataTaskId = task_id ? ` data-task-id="${esc(task_id)}"` : '';
@@ -32,6 +36,7 @@ export function renderResultItem(result) {
       data-entity-type="${esc(entity_type)}"
       data-project-name="${esc(project_name || '')}"${dataTaskId}>
       <span class="entity-type-badge badge-${esc(entity_type)}">${esc(entity_type)}</span>
+      ${projectPill}
       <span class="search-result-title">${esc(title)}</span>
       ${statusBadge}${noteTypePill}
       <span class="search-result-score">${esc(scoreLabel(score))}</span>
