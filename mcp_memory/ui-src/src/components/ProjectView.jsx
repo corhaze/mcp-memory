@@ -8,6 +8,7 @@ import SummaryPanel from './SummaryPanel';
 import DecisionPanel from './DecisionPanel';
 import NotePanel from './NotePanel';
 import TimelinePanel from './TimelinePanel';
+import KanbanBoard from './KanbanBoard';
 import SearchResults from './SearchResults';
 
 const TABS = [
@@ -34,6 +35,15 @@ function TabContent({ activeTab, project, projectName, data }) {
         <TaskPanel
           tasks={data.tasks}
           projectId={project.id}
+          onRefresh={data.refreshTasks}
+        />
+      );
+    case 'board':
+      return (
+        <KanbanBoard
+          tasks={data.tasks}
+          projectId={project.id}
+          projectName={projectName}
           onRefresh={data.refreshTasks}
         />
       );
