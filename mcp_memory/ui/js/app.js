@@ -687,6 +687,29 @@ function bindTaskDetailEvents() {
             return;
         }
 
+        const editBtn = e.target.closest('.edit-task-detail');
+        if (editBtn) {
+            const form = els.taskDetailContent.querySelector('.task-detail-edit-form');
+            const viewContent = els.taskDetailContent.querySelector('.task-detail-view-content');
+            if (form && viewContent) {
+                const isHidden = form.classList.contains('hidden');
+                form.classList.toggle('hidden', !isHidden);
+                viewContent.classList.toggle('hidden', isHidden);
+            }
+            return;
+        }
+
+        const cancelEditBtn = e.target.closest('.btn-cancel-detail-edit');
+        if (cancelEditBtn) {
+            const form = els.taskDetailContent.querySelector('.task-detail-edit-form');
+            const viewContent = els.taskDetailContent.querySelector('.task-detail-view-content');
+            if (form && viewContent) {
+                form.classList.add('hidden');
+                viewContent.classList.remove('hidden');
+            }
+            return;
+        }
+
         const deleteTaskBtn = e.target.closest('.delete-task-detail');
         if (deleteTaskBtn) {
             const taskId = deleteTaskBtn.dataset.taskId;
@@ -718,6 +741,25 @@ function bindTaskDetailEvents() {
             const proj = state.projects.find(p => p.id === state.activeProjectId);
             if (proj && taskId) selectTaskDetail(proj.name, taskId);
         }
+    });
+
+    els.taskDetailContent.addEventListener('submit', async e => {
+        const form = e.target.closest('.task-detail-edit-form');
+        if (!form) return;
+        e.preventDefault();
+        const taskId = form.dataset.taskId;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.urgent = !!data.urgent;
+        data.complex = !!data.complex;
+        for (const key in data) {
+            if (data[key] === '' && key.endsWith('_id')) data[key] = null;
+        }
+        try {
+            await api.patch(`/api/projects/${state.activeProjectId}/tasks/${taskId}`, data);
+            const proj = state.projects.find(p => p.id === state.activeProjectId);
+            if (proj) await selectTaskDetail(proj.name, taskId, { updatePath: false });
+        } catch (err) { alert(err.message); }
     });
 }
 

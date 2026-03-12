@@ -1,6 +1,7 @@
 /* components/task-detail.js — Task detail page rendering */
 
 import { esc } from '../utils.js';
+import { renderTaskFormFields } from './tasks.js';
 
 function renderSubtaskItem(sub) {
     return `<li class="task-detail-subtask">
@@ -99,6 +100,7 @@ export function renderTaskDetail(task) {
       <header class="task-detail-header">
         <div class="task-detail-title-row">
           <h2 class="task-detail-title">${esc(task.title)}</h2>
+          <button class="icon-btn edit-task-detail" data-task-id="${esc(task.id)}" title="Edit task">✎</button>
           <button class="icon-btn danger delete-task-detail" data-task-id="${esc(task.id)}" title="Delete task">✗</button>
         </div>
         <div class="task-detail-meta">
@@ -109,8 +111,17 @@ export function renderTaskDetail(task) {
           </span>
         </div>
       </header>
-      ${descriptionHtml}
-      ${nextActionHtml}
+      <form class="task-detail-edit-form hidden" data-task-id="${esc(task.id)}">
+        ${renderTaskFormFields(task)}
+        <div class="form-actions">
+          <button type="submit" class="btn-submit">Save</button>
+          <button type="button" class="btn-cancel btn-cancel-detail-edit" data-task-id="${esc(task.id)}">Cancel</button>
+        </div>
+      </form>
+      <div class="task-detail-view-content">
+        ${descriptionHtml}
+        ${nextActionHtml}
+      </div>
       ${subtasksHtml}
       ${notesHtml}
       ${eventsHtml}

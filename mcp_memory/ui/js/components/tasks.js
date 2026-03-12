@@ -85,7 +85,7 @@ function renderAddSubtaskForm(parentTaskId, taskDepth) {
 }
 
 
-function renderTaskFormFields(task) {
+export function renderTaskFormFields(task) {
   const isEdit = Boolean(task);
   const v = field => isEdit ? esc(task[field] || '') : '';
   const chk = field => isEdit && task[field] ? 'checked' : '';
