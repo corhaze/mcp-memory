@@ -291,6 +291,222 @@ def _m9_fix_supersedes_decision_id_fk(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA foreign_keys = ON")
 
 
+def _m10_make_note_type_nullable(conn: sqlite3.Connection) -> None:
+    """Make note_type nullable on notes, global_notes, and task_notes.
+
+    Existing DBs have note_type TEXT NOT NULL DEFAULT 'context'. The code
+    schema says DEFAULT NULL. Rebuild each table to drop the NOT NULL
+    constraint so notes can be created without a type tag.
+    """
+    _m10_rebuild_notes(conn)
+    _m10_rebuild_global_notes(conn)
+    _m10_rebuild_task_notes(conn)
+
+
+def _m10_rebuild_notes(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "notes"):
+        return
+    col = next((r for r in conn.execute("PRAGMA table_info(notes)") if r["name"] == "note_type"), None)
+    if not col or not col["notnull"]:
+        return
+
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute("ALTER TABLE notes RENAME TO notes_old")
+    conn.execute("""
+        CREATE TABLE notes (
+            id         TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            title      TEXT NOT NULL,
+            note_text  TEXT NOT NULL,
+            note_type  TEXT DEFAULT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+    """)
+    conn.execute("INSERT INTO notes SELECT * FROM notes_old")
+    conn.execute("DROP TABLE notes_old")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notes_project ON notes(project_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notes_type    ON notes(project_id, note_type)")
+    # Recreate FTS triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tai_notes AFTER INSERT ON notes BEGIN
+            INSERT INTO notes_fts(id, project_id, title, note_text)
+            VALUES (new.id, new.project_id, new.title, new.note_text);
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_notes AFTER DELETE ON notes BEGIN
+            DELETE FROM notes_fts WHERE id = old.id;
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tau_notes AFTER UPDATE ON notes BEGIN
+            UPDATE notes_fts SET title = new.title, note_text = new.note_text
+            WHERE id = old.id;
+        END;
+    """)
+    # Recreate orphan-cleanup triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_notes_embeddings AFTER DELETE ON notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='note' AND entity_id=old.id;
+        END;
+    """)
+    if _table_exists(conn, "entity_links"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_notes_links AFTER DELETE ON notes BEGIN
+                DELETE FROM entity_links
+                WHERE (from_entity_type='note' AND from_entity_id=old.id)
+                   OR (to_entity_type='note'   AND to_entity_id=old.id);
+            END;
+        """)
+    if _table_exists(conn, "entity_tags"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_notes_tags AFTER DELETE ON notes BEGIN
+                DELETE FROM entity_tags WHERE entity_type='note' AND entity_id=old.id;
+            END;
+        """)
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _m10_rebuild_global_notes(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "global_notes"):
+        return
+    col = next((r for r in conn.execute("PRAGMA table_info(global_notes)") if r["name"] == "note_type"), None)
+    if not col or not col["notnull"]:
+        return
+
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute("ALTER TABLE global_notes RENAME TO global_notes_old")
+    conn.execute("""
+        CREATE TABLE global_notes (
+            id         TEXT PRIMARY KEY,
+            title      TEXT NOT NULL,
+            note_text  TEXT NOT NULL,
+            note_type  TEXT DEFAULT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    conn.execute("INSERT INTO global_notes SELECT * FROM global_notes_old")
+    conn.execute("DROP TABLE global_notes_old")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_global_notes_type ON global_notes(note_type)")
+    # Recreate FTS triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tai_global_notes AFTER INSERT ON global_notes BEGIN
+            INSERT INTO global_notes_fts(id, title, note_text)
+            VALUES (new.id, new.title, new.note_text);
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes AFTER DELETE ON global_notes BEGIN
+            DELETE FROM global_notes_fts WHERE id = old.id;
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tau_global_notes AFTER UPDATE ON global_notes BEGIN
+            UPDATE global_notes_fts SET title = new.title, note_text = new.note_text
+            WHERE id = old.id;
+        END;
+    """)
+    # Recreate orphan-cleanup triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_global_notes_embeddings AFTER DELETE ON global_notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='global_note' AND entity_id=old.id;
+        END;
+    """)
+    if _table_exists(conn, "entity_links"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_global_notes_links AFTER DELETE ON global_notes BEGIN
+                DELETE FROM entity_links
+                WHERE (from_entity_type='global_note' AND from_entity_id=old.id)
+                   OR (to_entity_type='global_note'   AND to_entity_id=old.id);
+            END;
+        """)
+    if _table_exists(conn, "entity_tags"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_global_notes_tags AFTER DELETE ON global_notes BEGIN
+                DELETE FROM entity_tags WHERE entity_type='global_note' AND entity_id=old.id;
+            END;
+        """)
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _m10_rebuild_task_notes(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "task_notes"):
+        return
+    col = next((r for r in conn.execute("PRAGMA table_info(task_notes)") if r["name"] == "note_type"), None)
+    if not col or not col["notnull"]:
+        return
+
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute("ALTER TABLE task_notes RENAME TO task_notes_old")
+    conn.execute("""
+        CREATE TABLE task_notes (
+            id         TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            task_id    TEXT NOT NULL,
+            title      TEXT NOT NULL,
+            note_text  TEXT NOT NULL,
+            note_type  TEXT DEFAULT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            FOREIGN KEY(task_id)    REFERENCES tasks(id)    ON DELETE CASCADE
+        )
+    """)
+    conn.execute("INSERT INTO task_notes SELECT * FROM task_notes_old")
+    conn.execute("DROP TABLE task_notes_old")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_task_notes_task    ON task_notes(task_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_task_notes_project ON task_notes(project_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_task_notes_type    ON task_notes(task_id, note_type)")
+    # Recreate FTS triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tai_task_notes AFTER INSERT ON task_notes BEGIN
+            INSERT INTO task_notes_fts(id, project_id, task_id, title, note_text)
+            VALUES (new.id, new.project_id, new.task_id, new.title, new.note_text);
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes AFTER DELETE ON task_notes BEGIN
+            DELETE FROM task_notes_fts WHERE id = old.id;
+        END;
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tau_task_notes AFTER UPDATE ON task_notes BEGIN
+            UPDATE task_notes_fts SET title = new.title, note_text = new.note_text
+            WHERE id = old.id;
+        END;
+    """)
+    # Recreate orphan-cleanup triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS tad_task_notes_embeddings AFTER DELETE ON task_notes BEGIN
+            DELETE FROM embeddings WHERE entity_type='task_note' AND entity_id=old.id;
+        END;
+    """)
+    if _table_exists(conn, "entity_links"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_task_notes_links AFTER DELETE ON task_notes BEGIN
+                DELETE FROM entity_links
+                WHERE (from_entity_type='task_note' AND from_entity_id=old.id)
+                   OR (to_entity_type='task_note'   AND to_entity_id=old.id);
+            END;
+        """)
+    if _table_exists(conn, "entity_tags"):
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS tad_task_notes_tags AFTER DELETE ON task_notes BEGIN
+                DELETE FROM entity_tags WHERE entity_type='task_note' AND entity_id=old.id;
+            END;
+        """)
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
 # Ordered list of (description, migration_fn). Index + 1 == migration version.
 _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add urgent column to tasks",                  _m1_add_urgent_column),
@@ -302,6 +518,7 @@ _MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("Add orphan-cleanup triggers for embeddings",  _m7_add_embedding_orphan_triggers),
     ("Add orphan-cleanup triggers for links/tags",  _m8_add_links_and_tags_orphan_triggers),
     ("Fix supersedes_decision_id ON DELETE SET NULL", _m9_fix_supersedes_decision_id_fk),
+    ("Make note_type nullable on notes, global_notes, task_notes", _m10_make_note_type_nullable),
 ]
 
 

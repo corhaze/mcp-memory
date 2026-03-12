@@ -532,3 +532,115 @@ class TestMigration9SupersedesDecisionFk:
         assert mock_init.call_count == 1, (
             f"_init_schema called {mock_init.call_count} times; expected exactly 1"
         )
+
+
+# ── Migration 10: note_type nullable ─────────────────────────────────────────
+
+class TestMigration10NoteTypeNullable:
+    def test_note_type_becomes_nullable_on_all_note_tables(self, fresh_conn):
+        """After migration, note_type should be nullable on notes, global_notes, task_notes."""
+        # Simulate the old NOT NULL constraint by rebuilding tables before migrating
+        fresh_conn.executescript("""
+            DROP TABLE IF EXISTS notes;
+            CREATE TABLE notes (
+                id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
+                title TEXT NOT NULL, note_text TEXT NOT NULL,
+                note_type TEXT NOT NULL DEFAULT 'context',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            DROP TABLE IF EXISTS global_notes;
+            CREATE TABLE global_notes (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL, note_text TEXT NOT NULL,
+                note_type TEXT NOT NULL DEFAULT 'context',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            DROP TABLE IF EXISTS task_notes;
+            CREATE TABLE task_notes (
+                id TEXT PRIMARY KEY, project_id TEXT NOT NULL, task_id TEXT NOT NULL,
+                title TEXT NOT NULL, note_text TEXT NOT NULL,
+                note_type TEXT NOT NULL DEFAULT 'context',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+            );
+        """)
+        # Verify NOT NULL before migration
+        for table in ("notes", "global_notes", "task_notes"):
+            col = next(r for r in fresh_conn.execute(f"PRAGMA table_info({table})") if r["name"] == "note_type")
+            assert col["notnull"] == 1, f"{table}.note_type should be NOT NULL before migration"
+
+        run_migrations(fresh_conn)
+
+        for table in ("notes", "global_notes", "task_notes"):
+            col = next(r for r in fresh_conn.execute(f"PRAGMA table_info({table})") if r["name"] == "note_type")
+            assert col["notnull"] == 0, f"{table}.note_type should be nullable after migration"
+
+    def test_null_note_type_accepted_after_migration(self, fresh_conn):
+        """Should be able to insert notes with NULL note_type after migration."""
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO projects(id,name,status,created_at,updated_at) VALUES ('p1','proj','active','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO notes(id,project_id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('n1','p1','test','text',NULL,'now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO global_notes(id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('gn1','test','text',NULL,'now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO tasks(id,project_id,title,status,created_at,updated_at) "
+            "VALUES ('t1','p1','task','open','now','now')"
+        )
+        fresh_conn.execute(
+            "INSERT INTO task_notes(id,project_id,task_id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('tn1','p1','t1','test','text',NULL,'now','now')"
+        )
+        fresh_conn.commit()
+
+        assert fresh_conn.execute("SELECT note_type FROM notes WHERE id='n1'").fetchone()["note_type"] is None
+        assert fresh_conn.execute("SELECT note_type FROM global_notes WHERE id='gn1'").fetchone()["note_type"] is None
+        assert fresh_conn.execute("SELECT note_type FROM task_notes WHERE id='tn1'").fetchone()["note_type"] is None
+
+    def test_existing_data_preserved_after_migration(self, fresh_conn):
+        """Existing notes with note_type values should survive the table rebuild."""
+        fresh_conn.executescript("""
+            DROP TABLE IF EXISTS global_notes;
+            CREATE TABLE global_notes (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL, note_text TEXT NOT NULL,
+                note_type TEXT NOT NULL DEFAULT 'context',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            INSERT INTO global_notes(id,title,note_text,note_type,created_at,updated_at)
+            VALUES ('gn1','My Note','content','foundation','now','now');
+        """)
+
+        run_migrations(fresh_conn)
+
+        row = fresh_conn.execute("SELECT * FROM global_notes WHERE id='gn1'").fetchone()
+        assert row["title"] == "My Note"
+        assert row["note_type"] == "foundation"
+
+    def test_fts_triggers_work_after_migration(self, fresh_conn):
+        """FTS triggers should still fire after the table rebuild."""
+        run_migrations(fresh_conn)
+        fresh_conn.execute(
+            "INSERT INTO global_notes(id,title,note_text,note_type,created_at,updated_at) "
+            "VALUES ('gn1','Searchable Title','body text',NULL,'now','now')"
+        )
+        fresh_conn.commit()
+
+        rows = fresh_conn.execute(
+            "SELECT id FROM global_notes_fts WHERE global_notes_fts MATCH 'Searchable'"
+        ).fetchall()
+        assert len(rows) == 1
+
+    def test_skipped_when_already_nullable(self, fresh_conn):
+        """Migration should be a no-op on a fresh schema where note_type is already nullable."""
+        run_migrations(fresh_conn)
+        # Verify still nullable (no error)
+        for table in ("notes", "global_notes", "task_notes"):
+            col = next(r for r in fresh_conn.execute(f"PRAGMA table_info({table})") if r["name"] == "note_type")
+            assert col["notnull"] == 0
