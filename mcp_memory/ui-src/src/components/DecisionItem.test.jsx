@@ -49,14 +49,14 @@ describe('DecisionItem', () => {
     expect(screen.getByText(/Modern and well-supported/)).toBeInTheDocument();
   });
 
-  it('renders superseded-by when present', () => {
-    renderItem({ ...mockDecision, superseded_by: 'dec-99' });
-    expect(screen.getByText(/dec-99/)).toBeInTheDocument();
+  it('renders supersedes info when present', () => {
+    renderItem({ ...mockDecision, supersedes_decision_id: 'dec-99abc' });
+    expect(screen.getByText(/dec-99ab/)).toBeInTheDocument();
   });
 
-  it('edit button shows form', () => {
+  it('edit icon button shows form', () => {
     renderItem();
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByTitle('Edit'));
     expect(screen.getByTestId('decision-form')).toBeInTheDocument();
   });
 
@@ -65,7 +65,7 @@ describe('DecisionItem', () => {
     window.confirm = vi.fn(() => true);
     renderItem(mockDecision, onRefresh);
 
-    fireEvent.click(screen.getByText('Delete'));
+    fireEvent.click(screen.getByTitle('Delete'));
     expect(window.confirm).toHaveBeenCalled();
     // wait for async delete
     await vi.waitFor(() => {
@@ -77,7 +77,7 @@ describe('DecisionItem', () => {
   it('delete does nothing if user cancels confirm', () => {
     window.confirm = vi.fn(() => false);
     renderItem();
-    fireEvent.click(screen.getByText('Delete'));
+    fireEvent.click(screen.getByTitle('Delete'));
     expect(api.deleteDecision).not.toHaveBeenCalled();
   });
 });

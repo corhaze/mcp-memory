@@ -37,20 +37,23 @@ export default function TaskPanel({ tasks, projectId, onRefresh }) {
 
   return (
     <div data-testid="task-panel">
-      <div className="filter-bar">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            className={`filter-btn ${state.taskFilter === f.value ? 'active' : ''}`}
-            onClick={() => handleFilterClick(f.value)}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="panel-toolbar">
+        <div className="filter-group">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              className={`filter-btn${state.taskFilter === f.value ? ' active' : ''}`}
+              data-status={f.value || undefined}
+              onClick={() => handleFilterClick(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
-          className="btn btn-primary"
+          className="filter-btn"
           onClick={handleToggleAddForm}
         >
           {state.showAddTaskForm ? 'Cancel' : '+ Add Task'}

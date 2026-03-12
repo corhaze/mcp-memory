@@ -51,12 +51,10 @@ describe('NoteItem', () => {
     expect(screen.getByText('Some content here.')).toBeInTheDocument();
   });
 
-  it('View Detail link present when expanded', () => {
+  it('shows note content when expanded', () => {
     renderItem();
     fireEvent.click(screen.getByText('Test Note'));
-    const link = screen.getByText(/View Detail/);
-    expect(link).toBeInTheDocument();
-    expect(link.closest('a')).toHaveAttribute('href', '/my-project/notes/n1');
+    expect(screen.getByText('Some content here.')).toBeInTheDocument();
   });
 
   it('does not render type pill when note_type is null', () => {

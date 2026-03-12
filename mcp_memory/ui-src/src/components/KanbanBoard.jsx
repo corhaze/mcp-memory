@@ -27,21 +27,23 @@ function groupTasksByStatus(tasks) {
     }
   }
 
-  // Limit done column to 5 most recent
-  groups.done.sort((a, b) => {
+  // Limit done column to 5 most recent, but track total
+  const allDone = groups.done;
+  allDone.sort((a, b) => {
     const dateA = a.completed_at || a.created_at || '';
     const dateB = b.completed_at || b.created_at || '';
     return dateB.localeCompare(dateA);
   });
-  groups.done = groups.done.slice(0, DONE_LIMIT);
+  const totalDone = allDone.length;
+  groups.done = allDone.slice(0, DONE_LIMIT);
 
-  return groups;
+  return { groups, totalDone };
 }
 
 export default function KanbanBoard({ tasks, projectId, projectName, onRefresh }) {
   const navigate = useNavigate();
 
-  const groups = groupTasksByStatus(tasks);
+  const { groups, totalDone } = groupTasksByStatus(tasks);
 
   async function handleDrop(taskId, status) {
     await api.updateTask(projectId, taskId, { status });
@@ -60,6 +62,7 @@ export default function KanbanBoard({ tasks, projectId, projectName, onRefresh }
           status={col.status}
           title={col.title}
           tasks={groups[col.status]}
+          totalCount={col.status === 'done' ? totalDone : null}
           onDrop={handleDrop}
           onCardClick={handleCardClick}
         />

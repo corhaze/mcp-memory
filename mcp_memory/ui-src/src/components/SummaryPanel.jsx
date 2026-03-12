@@ -58,14 +58,16 @@ export default function SummaryPanel({ summary, projectId, onRefresh }) {
 
   return (
     <div data-testid="summary-panel">
+      <div className="summary-toolbar">
+        <button className="filter-btn" onClick={startEdit}>✎ EDIT</button>
+      </div>
       {summaryText ? (
-        <MarkdownBody content={summaryText} />
+        <div className="project-summary">
+          <MarkdownBody content={summaryText} />
+        </div>
       ) : (
         <p className="nav-hint">No summary yet.</p>
       )}
-      <div className="item-actions">
-        <button className="btn btn-sm" onClick={startEdit}>Edit</button>
-      </div>
     </div>
   );
 }

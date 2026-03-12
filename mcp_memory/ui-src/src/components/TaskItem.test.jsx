@@ -32,42 +32,50 @@ function renderTaskItem(props = {}) {
 }
 
 describe('TaskItem', () => {
-  it('collapsed: shows title, status badge, toggle arrow', () => {
+  it('collapsed: shows title, status, and toggle arrow', () => {
     renderTaskItem();
 
     expect(screen.getByText('Test task')).toBeInTheDocument();
-    const badge = screen.getByTestId('task-item-t1').querySelector('.status-badge');
-    expect(badge).toHaveTextContent('open');
-    // Collapsed arrow
-    expect(screen.getByLabelText('Expand task')).toBeInTheDocument();
+    // Status dropdown trigger visible in header
+    const triggers = screen.getAllByRole('button');
+    const statusTrigger = triggers.find((b) => b.classList.contains('task-status-trigger'));
+    expect(statusTrigger).toBeTruthy();
+    // Toggle arrow
+    const toggle = screen.getByTestId('task-item-t1').querySelector('.task-toggle');
+    expect(toggle).toBeInTheDocument();
   });
 
   it('click toggle expands the task', async () => {
     const user = userEvent.setup();
     renderTaskItem();
 
-    await user.click(screen.getByLabelText('Expand task'));
+    const toggle = screen.getByTestId('task-item-t1').querySelector('.task-toggle');
+    await user.click(toggle);
 
-    // Now should show collapse label
-    expect(screen.getByLabelText('Collapse task')).toBeInTheDocument();
+    // Should show expanded toggle
+    expect(toggle).toHaveClass('open');
     // Description should be visible
     expect(screen.getByText('A task description')).toBeInTheDocument();
   });
 
-  it('shows urgent badge when task is urgent', () => {
+  it('shows urgent dot when task is urgent', () => {
     renderTaskItem({ task: { ...mockTask, urgent: true } });
-    expect(screen.getByText('urgent')).toBeInTheDocument();
+    const urgentDot = screen.getByTestId('task-item-t1').querySelector('.urgent-dot');
+    expect(urgentDot).toBeInTheDocument();
   });
 
-  it('expanded: shows status dropdown and action buttons', async () => {
+  it('expanded: shows status dropdown and icon action buttons', async () => {
     const user = userEvent.setup();
     renderTaskItem();
 
-    await user.click(screen.getByLabelText('Expand task'));
+    const toggle = screen.getByTestId('task-item-t1').querySelector('.task-toggle');
+    await user.click(toggle);
 
-    expect(screen.getByText('Edit')).toBeInTheDocument();
-    expect(screen.getByText('Delete')).toBeInTheDocument();
-    expect(screen.getByText('Add Subtask')).toBeInTheDocument();
+    // Icon buttons for edit and delete
+    expect(screen.getByTitle('Edit')).toBeInTheDocument();
+    expect(screen.getByTitle('Delete')).toBeInTheDocument();
+    // Add subtask button
+    expect(screen.getByText('+ Add subtask')).toBeInTheDocument();
     // Status dropdown trigger
     const triggers = screen.getAllByRole('button');
     const statusTrigger = triggers.find((b) => b.classList.contains('task-status-trigger'));

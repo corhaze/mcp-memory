@@ -31,6 +31,8 @@ export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
       : task.next_action
     : null;
 
+  const hasMetaBadges = task.urgent || task.complex || (task.subtasks && task.subtasks.length > 0);
+
   return (
     <div
       className="kanban-card"
@@ -41,10 +43,17 @@ export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
       onDragEnd={handleDragEnd}
       onClick={handleClick}
     >
-      <span className="kanban-card-title">{task.title}</span>
-      {task.urgent && <span className="badge badge-urgent">urgent</span>}
-      {truncatedAction && (
-        <span className="kanban-card-action">{truncatedAction}</span>
+      <div className="kanban-card-title">{task.title}</div>
+      {hasMetaBadges && (
+        <div className="kanban-card-meta">
+          {task.urgent && <span className="urgent-dot" title="Urgent" />}
+          {task.complex && <span className="complex-badge" title="Complex">COMPLEX</span>}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <span className="kanban-subtask-summary">
+              {task.subtasks.filter((s) => s.status === 'done').length}/{task.subtasks.length}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

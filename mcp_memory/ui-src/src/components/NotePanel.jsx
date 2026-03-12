@@ -20,11 +20,12 @@ export default function NotePanel({ notes, projectId, projectName, onRefresh }) 
   return (
     <div data-testid="note-panel">
       <div className="panel-toolbar">
-        <div className="filter-bar">
+        <div className="filter-group">
           {FILTERS.map((f) => (
             <button
               key={f}
-              className={`btn btn-sm ${noteFilter === f ? 'active' : ''}`}
+              type="button"
+              className={`filter-btn${noteFilter === f ? ' active' : ''}`}
               onClick={() => dispatch({ type: 'SET_NOTE_FILTER', value: f })}
             >
               {FILTER_LABELS[f]}
@@ -32,10 +33,11 @@ export default function NotePanel({ notes, projectId, projectName, onRefresh }) 
           ))}
         </div>
         <button
-          className="btn btn-primary btn-sm"
+          type="button"
+          className="filter-btn"
           onClick={toggleAddForm}
         >
-          {showAddNoteForm ? 'Cancel' : 'Add Note'}
+          {showAddNoteForm ? 'Cancel' : '+ Add Note'}
         </button>
       </div>
 

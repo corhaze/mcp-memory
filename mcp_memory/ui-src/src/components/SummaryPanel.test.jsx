@@ -26,7 +26,7 @@ describe('SummaryPanel', () => {
 
   it('edit toggle shows textarea', () => {
     render(<SummaryPanel summary="Hello world" projectId="p1" onRefresh={vi.fn()} />);
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('✎ EDIT'));
     expect(screen.getByTestId('summary-textarea')).toBeInTheDocument();
     expect(screen.getByTestId('summary-textarea').value).toBe('Hello world');
   });
@@ -34,7 +34,7 @@ describe('SummaryPanel', () => {
   it('save calls API and refreshes', async () => {
     const onRefresh = vi.fn();
     render(<SummaryPanel summary="Old text" projectId="p1" onRefresh={onRefresh} />);
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('✎ EDIT'));
     fireEvent.change(screen.getByTestId('summary-textarea'), {
       target: { value: 'New text' },
     });
@@ -48,7 +48,7 @@ describe('SummaryPanel', () => {
 
   it('cancel discards changes', () => {
     render(<SummaryPanel summary="Original" projectId="p1" onRefresh={vi.fn()} />);
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('✎ EDIT'));
     fireEvent.change(screen.getByTestId('summary-textarea'), {
       target: { value: 'Changed' },
     });
