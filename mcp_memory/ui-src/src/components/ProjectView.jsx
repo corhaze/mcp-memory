@@ -4,6 +4,10 @@ import { useProjectData } from '../hooks/useProjectData';
 import StatusBadge from './StatusBadge';
 import TabBar from './TabBar';
 import TaskPanel from './TaskPanel';
+import SummaryPanel from './SummaryPanel';
+import DecisionPanel from './DecisionPanel';
+import NotePanel from './NotePanel';
+import TimelinePanel from './TimelinePanel';
 
 const TABS = [
   { name: 'summary', label: 'Summary' },
@@ -14,6 +18,53 @@ const TABS = [
   { name: 'timeline', label: 'Timeline' },
 ];
 
+function TabContent({ activeTab, project, projectName, data }) {
+  switch (activeTab) {
+    case 'summary':
+      return (
+        <SummaryPanel
+          summary={data.summary}
+          projectId={project.id}
+          onRefresh={data.refreshSummary}
+        />
+      );
+    case 'tasks':
+      return (
+        <TaskPanel
+          tasks={data.tasks}
+          projectId={project.id}
+          onRefresh={data.refreshTasks}
+        />
+      );
+    case 'decisions':
+      return (
+        <DecisionPanel
+          decisions={data.decisions}
+          projectId={project.id}
+          onRefresh={data.refreshDecisions}
+        />
+      );
+    case 'notes':
+      return (
+        <NotePanel
+          notes={data.notes}
+          projectId={project.id}
+          projectName={projectName}
+          onRefresh={data.refreshNotes}
+        />
+      );
+    case 'timeline':
+      return (
+        <TimelinePanel
+          timeline={data.timeline}
+          projectName={projectName}
+        />
+      );
+    default:
+      return <div>Tab: {activeTab}</div>;
+  }
+}
+
 export default function ProjectView() {
   const { projectName, tab } = useParams();
   const navigate = useNavigate();
@@ -21,19 +72,11 @@ export default function ProjectView() {
   const activeTab = tab || 'summary';
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
-  const { tasks, loading: dataLoading, error, refreshTasks } = useProjectData(project?.id ?? null);
+  const data = useProjectData(project?.id ?? null);
+  const { loading: dataLoading, error } = data;
 
   function handleTabClick(tabName) {
     navigate(`/${projectName}/${tabName}`);
-  }
-
-  function renderTabContent(tab) {
-    switch (tab) {
-      case 'tasks':
-        return <TaskPanel tasks={tasks} projectId={project.id} onRefresh={refreshTasks} />;
-      default:
-        return <div>Tab: {tab}</div>;
-    }
   }
 
   if (projectsLoading || (!project && !projects)) {
@@ -64,7 +107,12 @@ export default function ProjectView() {
         <div className="panel"><p className="nav-hint">Error: {error}</p></div>
       ) : (
         <section className="panel" data-testid={`panel-${activeTab}`}>
-          {renderTabContent(activeTab)}
+          <TabContent
+            activeTab={activeTab}
+            project={project}
+            projectName={projectName}
+            data={data}
+          />
         </section>
       )}
     </div>
