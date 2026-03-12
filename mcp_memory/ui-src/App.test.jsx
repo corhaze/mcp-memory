@@ -25,6 +25,17 @@ vi.mock('./src/hooks/useProjectData', () => ({
     loading: false,
     error: null,
     refresh: vi.fn(),
+    refreshTasks: vi.fn(),
+  }),
+}));
+
+// Mock useTask to avoid real API calls from TaskDetail
+vi.mock('./src/hooks/useTask', () => ({
+  useTask: () => ({
+    task: { id: 't1', title: 'Mock task', status: 'open', subtasks: [], notes: [], events: [] },
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
   }),
 }));
 

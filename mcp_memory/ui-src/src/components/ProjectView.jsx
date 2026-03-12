@@ -3,6 +3,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useProjectData } from '../hooks/useProjectData';
 import StatusBadge from './StatusBadge';
 import TabBar from './TabBar';
+import TaskPanel from './TaskPanel';
 
 const TABS = [
   { name: 'summary', label: 'Summary' },
@@ -20,10 +21,19 @@ export default function ProjectView() {
   const activeTab = tab || 'summary';
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
-  const { loading: dataLoading, error } = useProjectData(project?.id ?? null);
+  const { tasks, loading: dataLoading, error, refreshTasks } = useProjectData(project?.id ?? null);
 
   function handleTabClick(tabName) {
     navigate(`/${projectName}/${tabName}`);
+  }
+
+  function renderTabContent(tab) {
+    switch (tab) {
+      case 'tasks':
+        return <TaskPanel tasks={tasks} projectId={project.id} onRefresh={refreshTasks} />;
+      default:
+        return <div>Tab: {tab}</div>;
+    }
   }
 
   if (projectsLoading || (!project && !projects)) {
@@ -54,7 +64,7 @@ export default function ProjectView() {
         <div className="panel"><p className="nav-hint">Error: {error}</p></div>
       ) : (
         <section className="panel" data-testid={`panel-${activeTab}`}>
-          <div>Tab: {activeTab}</div>
+          {renderTabContent(activeTab)}
         </section>
       )}
     </div>
