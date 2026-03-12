@@ -48,5 +48,7 @@ node_modules/
 
 # User-specific Claude Code settings (machine-specific permissions)
 .claude/settings.local.json
+# React build output (source of truth is ui-src/)
 mcp_memory/ui/assets/
+mcp_memory/ui/index.html
 .claude/worktrees/
