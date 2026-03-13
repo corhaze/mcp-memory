@@ -538,6 +538,86 @@ class TestTaskDetailEndpoint:
         assert len(data["events"]) >= 1
 
 
+# ── Cross-project Task Listing ────────────────────────────────────────────────
+
+class TestGetAllTasks:
+    """Tests for GET /api/tasks (cross-project task listing)."""
+
+    def test_returns_tasks_from_all_projects(self, tmp_db):
+        proj1 = client.post("/api/projects", json={"name": "proj-alpha"}).json()
+        proj2 = client.post("/api/projects", json={"name": "proj-beta"}).json()
+
+        task1 = client.post(f"/api/projects/{proj1['id']}/tasks",
+                            json={"title": "Alpha task"}).json()
+        task2 = client.post(f"/api/projects/{proj2['id']}/tasks",
+                            json={"title": "Beta task"}).json()
+
+        r = client.get("/api/tasks")
+        assert r.status_code == 200
+        data = r.json()
+        ids = {t["id"] for t in data}
+        assert task1["id"] in ids
+        assert task2["id"] in ids
+
+    def test_includes_project_name(self, tmp_db):
+        proj1 = client.post("/api/projects", json={"name": "proj-alpha"}).json()
+        proj2 = client.post("/api/projects", json={"name": "proj-beta"}).json()
+
+        client.post(f"/api/projects/{proj1['id']}/tasks", json={"title": "Alpha task"})
+        client.post(f"/api/projects/{proj2['id']}/tasks", json={"title": "Beta task"})
+
+        r = client.get("/api/tasks")
+        assert r.status_code == 200
+        data = r.json()
+        names = {t["project_name"] for t in data}
+        assert "proj-alpha" in names
+        assert "proj-beta" in names
+
+    def test_project_id_filter_returns_single_project(self, tmp_db):
+        proj1 = client.post("/api/projects", json={"name": "proj-gamma"}).json()
+        proj2 = client.post("/api/projects", json={"name": "proj-delta"}).json()
+
+        task1 = client.post(f"/api/projects/{proj1['id']}/tasks",
+                            json={"title": "Gamma task"}).json()
+        task2 = client.post(f"/api/projects/{proj2['id']}/tasks",
+                            json={"title": "Delta task"}).json()
+
+        r = client.get(f"/api/tasks?project_id={proj1['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["id"] == task1["id"]
+        assert data[0]["project_name"] == "proj-gamma"
+
+    def test_returns_empty_when_no_projects(self, tmp_db):
+        r = client.get("/api/tasks")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_status_filter(self, tmp_db):
+        proj = client.post("/api/projects", json={"name": "proj-status"}).json()
+        t1 = client.post(f"/api/projects/{proj['id']}/tasks",
+                         json={"title": "Open task"}).json()
+        t2 = client.post(f"/api/projects/{proj['id']}/tasks",
+                         json={"title": "Done task", "status": "done"}).json()
+
+        r = client.get("/api/tasks?status=done")
+        assert r.status_code == 200
+        data = r.json()
+        ids = {t["id"] for t in data}
+        assert t2["id"] in ids
+        assert t1["id"] not in ids
+
+    def test_limit_parameter(self, tmp_db):
+        proj = client.post("/api/projects", json={"name": "proj-limit"}).json()
+        for i in range(5):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get("/api/tasks?limit=3")
+        assert r.status_code == 200
+        assert len(r.json()) == 3
+
+
 # ── Unified Semantic Search ────────────────────────────────────────────────────
 
 class TestUnifiedSemanticSearch:

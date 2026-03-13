@@ -31,6 +31,13 @@ export const getProjectSummary = async (projectId) => {
 export const updateProjectSummary = (projectId, summaryText) =>
   request(`/api/projects/${projectId}/summary`, 'POST', { summary_text: summaryText });
 
+// Cross-project tasks
+export const getAllTasks = (projectIds = []) => {
+  const params = new URLSearchParams();
+  projectIds.forEach((id) => params.append('project_id', id));
+  return request(`/api/tasks${params.toString() ? '?' + params : ''}`);
+};
+
 // Tasks
 export const getProjectTasks = (projectId) =>
   request(`/api/projects/${projectId}/tasks?topo=true`);

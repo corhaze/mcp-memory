@@ -564,6 +564,44 @@ def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
 
 # ── Task Notes ────────────────────────────────────────────────────────────────
 
+@app.get("/api/tasks")
+def get_all_tasks(
+    project_id: List[str] = Query(default=[]),
+    status: Optional[str] = None,
+    limit: int = 200,
+) -> List[Dict[str, Any]]:
+    """
+    Return tasks across all projects as a flat list.
+
+    Each task dict includes project_name in addition to all standard task fields.
+    Subtasks are not included at the top level — they are embedded in their parent's
+    subtasks field via get_task_tree.
+
+    Query parameters:
+      project_id (repeatable): filter to specific projects; omit for all projects
+      status: filter by task status
+      limit: max tasks to return (default 200)
+    """
+    projects = _db.list_projects()
+    if project_id:
+        project_id_set = set(project_id)
+        projects = [p for p in projects if p.id in project_id_set]
+
+    result: List[Dict[str, Any]] = []
+    for proj in projects:
+        tree = _db.get_task_tree(proj.id)
+        for task in tree:
+            if status and task.status != status:
+                continue
+            task_dict = task.to_dict()
+            task_dict["project_name"] = proj.name
+            result.append(task_dict)
+            if len(result) >= limit:
+                return result
+
+    return result
+
+
 @app.get("/api/tasks/{task_id}/notes")
 def get_task_notes(task_id: str) -> List[Dict[str, Any]]:
     """Return all notes attached to a task."""
