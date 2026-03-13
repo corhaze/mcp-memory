@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
 import { useTask } from '../hooks/useTask';
@@ -8,6 +9,7 @@ import StatusDropdown from './StatusDropdown';
 import TaskForm from './TaskForm';
 import TaskNoteList from './TaskNoteList';
 import TaskNoteForm from './TaskNoteForm';
+import ConfirmDialog from './ConfirmDialog';
 import { formatRelativeTime } from '../utils';
 import * as api from '../api';
 
@@ -17,6 +19,7 @@ export default function TaskDetail() {
   const { projects } = useProjects();
   const state = useAppState();
   const dispatch = useAppDispatch();
+  const [confirmState, setConfirmState] = useState(null);
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
   const { task, loading, error, refresh } = useTask(project?.id, taskId);
@@ -29,11 +32,16 @@ export default function TaskDetail() {
     refresh();
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!project) return;
-    if (!window.confirm('Delete this task?')) return;
-    await api.deleteTask(project.id, taskId);
-    navigate(`/${projectName}/tasks`);
+    setConfirmState({
+      message: 'Delete this task?',
+      onConfirm: async () => {
+        setConfirmState(null);
+        await api.deleteTask(project.id, taskId);
+        navigate(`/${projectName}/tasks`);
+      },
+    });
   }
 
   function handleEditToggle() {
@@ -148,11 +156,17 @@ export default function TaskDetail() {
                         type="button"
                         className="icon-btn danger"
                         style={{ marginLeft: 'auto', width: '20px', height: '20px', fontSize: '12px' }}
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.preventDefault();
-                          if (!project || !window.confirm(`Delete subtask "${sub.title}"?`)) return;
-                          await api.deleteTask(project.id, sub.id);
-                          refresh();
+                          if (!project) return;
+                          setConfirmState({
+                            message: `Delete subtask "${sub.title}"?`,
+                            onConfirm: async () => {
+                              setConfirmState(null);
+                              await api.deleteTask(project.id, sub.id);
+                              refresh();
+                            },
+                          });
                         }}
                         title="Delete subtask"
                       >✗</button>
@@ -200,6 +214,13 @@ export default function TaskDetail() {
             </div>
           )}
         </>
+      )}
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
+        />
       )}
     </div>
   );

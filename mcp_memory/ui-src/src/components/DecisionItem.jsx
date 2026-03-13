@@ -1,16 +1,23 @@
 import { useState } from 'react';
 import MarkdownBody from './MarkdownBody';
 import DecisionForm from './DecisionForm';
+import ConfirmDialog from './ConfirmDialog';
 import { formatRelativeTime } from '../utils';
 import * as api from '../api';
 
 export default function DecisionItem({ decision, projectId, onRefresh }) {
   const [editing, setEditing] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
-  async function handleDelete() {
-    if (!window.confirm(`Delete decision "${decision.title}"?`)) return;
-    await api.deleteDecision(projectId, decision.id);
-    onRefresh();
+  function handleDelete() {
+    setConfirmState({
+      message: `Delete decision "${decision.title}"?`,
+      onConfirm: async () => {
+        setConfirmState(null);
+        await api.deleteDecision(projectId, decision.id);
+        onRefresh();
+      },
+    });
   }
 
   if (editing) {
@@ -28,6 +35,13 @@ export default function DecisionItem({ decision, projectId, onRefresh }) {
 
   return (
     <div className={`decision-item${decision.status === 'superseded' ? ' superseded' : ''}`} data-testid={`decision-${decision.id}`}>
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
       <div className="decision-header">
         <span className="decision-title">{decision.title}</span>
         <span

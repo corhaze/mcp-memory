@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
 import MarkdownBody from './MarkdownBody';
 import CustomSelect from './CustomSelect';
+import ConfirmDialog from './ConfirmDialog';
 import { formatRelativeTime } from '../utils';
 import * as api from '../api';
 
@@ -14,6 +15,7 @@ export default function GlobalNoteItem({ note, onRefresh }) {
   const isExpanded = expandedGlobalNotes.has(note.id);
 
   const [editing, setEditing] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
   const [title, setTitle] = useState(note.title);
   const [noteText, setNoteText] = useState(note.note_text);
   const [noteType, setNoteType] = useState(note.note_type ?? '');
@@ -57,14 +59,26 @@ export default function GlobalNoteItem({ note, onRefresh }) {
     }
   }
 
-  async function handleDelete() {
-    if (!window.confirm(`Delete note "${note.title}"?`)) return;
-    await api.deleteGlobalNote(note.id);
-    onRefresh();
+  function handleDelete() {
+    setConfirmState({
+      message: `Delete note "${note.title}"?`,
+      onConfirm: async () => {
+        setConfirmState(null);
+        await api.deleteGlobalNote(note.id);
+        onRefresh();
+      },
+    });
   }
 
   return (
     <div className="note-item" data-testid={`global-note-${note.id}`}>
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
       <div className="note-header" onClick={toggleExpand} role="button" tabIndex={0}>
         <button className={`task-toggle${isExpanded ? ' open' : ''}`} type="button">▶</button>
         <span className="note-title">{note.title}</span>

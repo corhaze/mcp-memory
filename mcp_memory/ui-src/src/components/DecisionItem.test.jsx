@@ -60,24 +60,27 @@ describe('DecisionItem', () => {
     expect(screen.getByTestId('decision-form')).toBeInTheDocument();
   });
 
-  it('delete calls API with confirmation', async () => {
+  it('delete shows confirm dialog and calls API on confirm', async () => {
     const onRefresh = vi.fn();
-    window.confirm = vi.fn(() => true);
     renderItem(mockDecision, onRefresh);
 
     fireEvent.click(screen.getByTitle('Delete'));
-    expect(window.confirm).toHaveBeenCalled();
-    // wait for async delete
+    expect(screen.getByTestId('confirm-dialog-overlay')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Confirm'));
     await vi.waitFor(() => {
       expect(api.deleteDecision).toHaveBeenCalledWith('p1', 'd1');
     });
     expect(onRefresh).toHaveBeenCalled();
   });
 
-  it('delete does nothing if user cancels confirm', () => {
-    window.confirm = vi.fn(() => false);
+  it('delete does nothing if user cancels confirm dialog', () => {
     renderItem();
     fireEvent.click(screen.getByTitle('Delete'));
+    expect(screen.getByTestId('confirm-dialog-overlay')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
     expect(api.deleteDecision).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('confirm-dialog-overlay')).not.toBeInTheDocument();
   });
 });

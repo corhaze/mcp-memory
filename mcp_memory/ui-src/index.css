@@ -1519,6 +1519,24 @@ form.summary-form textarea.summary-textarea {
   cursor: pointer;
 }
 
+/* ── Confirm Dialog ──────────────────────────────────────────────────────────── */
+.confirm-dialog {
+  max-width: 360px;
+}
+
+.confirm-dialog-message {
+  font-size: 13px;
+  color: var(--text-sec);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ── Forms ───────────────────────────────────────────────────────────────────── */
 .form-group {
   margin-bottom: 16px;

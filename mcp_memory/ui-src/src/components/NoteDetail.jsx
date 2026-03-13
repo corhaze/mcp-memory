@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import MarkdownBody from './MarkdownBody';
+import ConfirmDialog from './ConfirmDialog';
 import { formatRelativeTime } from '../utils';
 import { useProjects } from '../hooks/useProjects';
 import * as api from '../api';
@@ -16,6 +17,7 @@ export default function NoteDetail() {
   const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,15 +46,20 @@ export default function NoteDetail() {
     return () => { cancelled = true; };
   }, [noteId, isGlobal, project]);
 
-  async function handleDelete() {
-    if (!window.confirm(`Delete note "${note.title}"?`)) return;
-    if (isGlobal) {
-      await api.deleteGlobalNote(note.id);
-      navigate('/global');
-    } else {
-      await api.deleteNote(project.id, note.id);
-      navigate(`/${projectName}/notes`);
-    }
+  function handleDelete() {
+    setConfirmState({
+      message: `Delete note "${note.title}"?`,
+      onConfirm: async () => {
+        setConfirmState(null);
+        if (isGlobal) {
+          await api.deleteGlobalNote(note.id);
+          navigate('/global');
+        } else {
+          await api.deleteNote(project.id, note.id);
+          navigate(`/${projectName}/notes`);
+        }
+      },
+    });
   }
 
   const backLink = isGlobal ? '/global' : `/${projectName}/notes`;
@@ -82,6 +89,13 @@ export default function NoteDetail() {
 
   return (
     <div className="note-detail" data-testid="note-detail">
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
       <Link to={backLink} className="back-link">&larr; Back to {backLabel}</Link>
 
       <header className="note-detail-header">

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { marked } from 'marked';
 import { Link } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
@@ -6,6 +7,7 @@ import TaskForm from './TaskForm';
 import TaskNoteList from './TaskNoteList';
 import TaskNoteForm from './TaskNoteForm';
 import TaskList from './TaskList';
+import ConfirmDialog from './ConfirmDialog';
 import { statusEmoji, formatRelativeTime } from '../utils';
 import * as api from '../api';
 
@@ -19,6 +21,7 @@ function subtaskSummary(task) {
 export default function TaskItem({ task, projectId, projectName, depth = 0, onRefresh }) {
   const state = useAppState();
   const dispatch = useAppDispatch();
+  const [confirmState, setConfirmState] = useState(null);
 
   const expanded = state.expandedTasks.has(task.id);
   const isEditing = state.editingTaskId === task.id;
@@ -36,10 +39,15 @@ export default function TaskItem({ task, projectId, projectName, depth = 0, onRe
     onRefresh?.();
   }
 
-  async function handleDelete() {
-    if (!window.confirm('Delete this task?')) return;
-    await api.deleteTask(projectId, task.id);
-    onRefresh?.();
+  function handleDelete() {
+    setConfirmState({
+      message: 'Delete this task?',
+      onConfirm: async () => {
+        setConfirmState(null);
+        await api.deleteTask(projectId, task.id);
+        onRefresh?.();
+      },
+    });
   }
 
   function handleEditClick() {
@@ -84,6 +92,13 @@ export default function TaskItem({ task, projectId, projectName, depth = 0, onRe
 
   return (
     <div className="task-group" data-depth={depth} data-testid={`task-item-${task.id}`}>
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
       <div className={`task-item ${task.status}`}>
         <div className="task-header">
           {task.urgent && <span className="urgent-dot" title="Urgent" />}
