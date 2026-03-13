@@ -51,6 +51,14 @@ export default function GlobalBoard() {
 
   const { groups, totalDone } = groupTasksByStatus(visibleTasks);
 
+  async function handleDrop(taskId, status) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    await api.updateTask(task.project_id, taskId, { status });
+    const data = await api.getAllTasks();
+    setTasks(data.items);
+  }
+
   function handleCardClick(task) {
     navigate(`/${task.project_name}/tasks/${task.id}`);
   }
@@ -79,7 +87,7 @@ export default function GlobalBoard() {
             title={col.title}
             tasks={groups[col.status]}
             totalCount={col.status === 'done' ? totalDone : null}
-            onDrop={null}
+            onDrop={handleDrop}
             onCardClick={handleCardClick}
           />
         ))}
