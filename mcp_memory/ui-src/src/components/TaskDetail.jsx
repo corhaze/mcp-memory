@@ -20,6 +20,15 @@ export default function TaskDetail() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [confirmState, setConfirmState] = useState(null);
+  const [expandedSubtasks, setExpandedSubtasks] = useState(new Set());
+
+  function toggleExpand(id) {
+    setExpandedSubtasks((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   const project = projects?.find((p) => p.name === projectName) ?? null;
   const { task, loading, error, refresh } = useTask(project?.id, taskId);
@@ -147,10 +156,14 @@ export default function TaskDetail() {
                 {task.subtasks.map((sub) => (
                   <li key={sub.id} className="task-detail-subtask">
                     <div className="task-detail-subtask-row">
-                      <Link to={`/${projectName}/tasks/${sub.id}`} style={{ display: 'contents' }}>
-                        <span className="subtask-expand-toggle">›</span>
-                        <StatusBadge status={sub.status} />
-                        <span className="task-detail-subtask-title">{sub.title}</span>
+                      <button
+                        type="button"
+                        className={`subtask-expand-toggle${expandedSubtasks.has(sub.id) ? ' open' : ''}`}
+                        onClick={() => toggleExpand(sub.id)}
+                      >›</button>
+                      <StatusBadge status={sub.status} />
+                      <Link to={`/${projectName}/tasks/${sub.id}`} className="task-detail-subtask-title">
+                        {sub.title}
                       </Link>
                       <button
                         type="button"
@@ -171,6 +184,19 @@ export default function TaskDetail() {
                         title="Delete subtask"
                       >✗</button>
                     </div>
+                    {expandedSubtasks.has(sub.id) && (
+                      <div className="subtask-expand-body">
+                        {sub.description && (
+                          <div
+                            className="subtask-expand-description markdown-body"
+                            dangerouslySetInnerHTML={{ __html: marked.parse(sub.description) }}
+                          />
+                        )}
+                        {sub.next_action && (
+                          <div className="task-detail-next-action">{sub.next_action}</div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

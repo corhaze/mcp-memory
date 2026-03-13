@@ -2317,6 +2317,13 @@ textarea.form-control {
   color: var(--green);
 }
 
+.subtask-expand-body {
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .subtask-expansion {
   border-top: 1px solid var(--border);
   padding: 0.6rem 0.75rem 0.6rem 1.5rem;

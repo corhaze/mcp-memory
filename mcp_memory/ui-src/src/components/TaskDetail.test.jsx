@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../context/AppContext';
 import TaskDetail from './TaskDetail';
@@ -27,6 +27,26 @@ const mockTask = {
   events: [],
   parent_task_id: null,
   blocked_by_task_id: null,
+};
+
+const mockTaskWithSubtaskDetails = {
+  ...mockTask,
+  subtasks: [
+    {
+      id: 't2',
+      title: 'Subtask 1',
+      status: 'done',
+      description: 'Subtask description text',
+      next_action: 'Do the next thing',
+    },
+  ],
+};
+
+const mockTaskWithSubtaskNoDetails = {
+  ...mockTask,
+  subtasks: [
+    { id: 't2', title: 'Subtask 1', status: 'done' },
+  ],
 };
 
 const mockProjects = [
@@ -96,5 +116,65 @@ describe('TaskDetail', () => {
     renderTaskDetail();
 
     expect(screen.getByText('Error: Not found')).toBeInTheDocument();
+  });
+
+  describe('subtask accordion expansion', () => {
+    it('toggle arrow click expands the subtask body', () => {
+      useTask.mockReturnValue({ task: mockTaskWithSubtaskDetails, loading: false, error: null, refresh: vi.fn() });
+      useProjects.mockReturnValue({ projects: mockProjects, loading: false, error: null, refresh: vi.fn() });
+
+      renderTaskDetail();
+
+      expect(screen.queryByText('Subtask description text')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '›' }));
+      expect(screen.getByText('Subtask description text')).toBeInTheDocument();
+    });
+
+    it('toggle arrow click again collapses the subtask body', () => {
+      useTask.mockReturnValue({ task: mockTaskWithSubtaskDetails, loading: false, error: null, refresh: vi.fn() });
+      useProjects.mockReturnValue({ projects: mockProjects, loading: false, error: null, refresh: vi.fn() });
+
+      renderTaskDetail();
+
+      const toggleBtn = screen.getByRole('button', { name: '›' });
+      fireEvent.click(toggleBtn);
+      expect(screen.getByText('Subtask description text')).toBeInTheDocument();
+      fireEvent.click(toggleBtn);
+      expect(screen.queryByText('Subtask description text')).not.toBeInTheDocument();
+    });
+
+    it('subtask title link has correct href', () => {
+      useTask.mockReturnValue({ task: mockTask, loading: false, error: null, refresh: vi.fn() });
+      useProjects.mockReturnValue({ projects: mockProjects, loading: false, error: null, refresh: vi.fn() });
+
+      renderTaskDetail();
+
+      const titleLink = screen.getByText('Subtask 1').closest('a');
+      expect(titleLink).toHaveAttribute('href', '/my-project/tasks/t2');
+    });
+
+    it('expansion shows description and next_action when present', () => {
+      useTask.mockReturnValue({ task: mockTaskWithSubtaskDetails, loading: false, error: null, refresh: vi.fn() });
+      useProjects.mockReturnValue({ projects: mockProjects, loading: false, error: null, refresh: vi.fn() });
+
+      renderTaskDetail();
+
+      fireEvent.click(screen.getByRole('button', { name: '›' }));
+      expect(screen.getByText('Subtask description text')).toBeInTheDocument();
+      expect(screen.getByText('Do the next thing')).toBeInTheDocument();
+    });
+
+    it('no expansion body rendered when no description and no next_action', () => {
+      useTask.mockReturnValue({ task: mockTaskWithSubtaskNoDetails, loading: false, error: null, refresh: vi.fn() });
+      useProjects.mockReturnValue({ projects: mockProjects, loading: false, error: null, refresh: vi.fn() });
+
+      renderTaskDetail();
+
+      fireEvent.click(screen.getByRole('button', { name: '›' }));
+      const container = screen.getByTestId('task-detail');
+      expect(container.querySelector('.subtask-expand-body')).toBeInTheDocument();
+      expect(container.querySelector('.subtask-expand-description')).not.toBeInTheDocument();
+      expect(container.querySelector('.task-detail-next-action')).not.toBeInTheDocument();
+    });
   });
 });
