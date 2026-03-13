@@ -33,32 +33,44 @@ export default function GlobalNoteForm({ onSuccess, onCancel }) {
   return (
     <form className="inline-form" onSubmit={handleSubmit} data-testid="global-note-form">
       {error && <div className="form-error">{error}</div>}
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Note title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-      />
-      <select
-        className="form-control"
-        value={noteType}
-        onChange={(e) => setNoteType(e.target.value)}
-      >
-        <option value="">No type</option>
-        {NOTE_TYPES.map((t) => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select>
-      <textarea
-        className="form-control"
-        placeholder="Note text (markdown)"
-        value={noteText}
-        onChange={(e) => setNoteText(e.target.value)}
-        rows={4}
-        required
-      />
+      <div className="form-group">
+        <label htmlFor="global-note-title">Title</label>
+        <input
+          id="global-note-title"
+          type="text"
+          className="form-control"
+          placeholder="Note title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="global-note-text">Note text</label>
+        <textarea
+          id="global-note-text"
+          className="form-control"
+          placeholder="Note text (markdown)"
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          rows={4}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="global-note-type">Type</label>
+        <select
+          id="global-note-type"
+          className="form-control"
+          value={noteType}
+          onChange={(e) => setNoteType(e.target.value)}
+        >
+          <option value="">No type</option>
+          {NOTE_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Saving...' : 'Create'}
