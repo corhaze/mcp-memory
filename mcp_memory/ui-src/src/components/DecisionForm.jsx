@@ -2,7 +2,11 @@ import { useState } from 'react';
 import CustomSelect from './CustomSelect';
 import * as api from '../api';
 
-const STATUS_OPTIONS = ['active', 'draft', 'superseded'];
+const DECISION_STATUS_OPTIONS = [
+  { value: 'active', label: 'active', className: 'badge-active' },
+  { value: 'draft', label: 'draft', className: 'badge-draft' },
+  { value: 'superseded', label: 'superseded', className: 'badge-superseded' },
+];
 
 export default function DecisionForm({ projectId, decision, onSuccess, onCancel }) {
   const isEdit = Boolean(decision);
@@ -59,7 +63,7 @@ export default function DecisionForm({ projectId, decision, onSuccess, onCancel 
         <CustomSelect
           value={status}
           onChange={setStatus}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+          options={DECISION_STATUS_OPTIONS}
         />
       </div>
       <div className="form-group">

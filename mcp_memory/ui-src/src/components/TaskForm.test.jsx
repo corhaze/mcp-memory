@@ -18,7 +18,7 @@ describe('TaskForm', () => {
 
     expect(screen.getByLabelText('Title')).toHaveValue('');
     expect(screen.getByLabelText('Description')).toHaveValue('');
-    expect(screen.getByText('open')).toBeInTheDocument();
+    expect(screen.getByText(/open/)).toBeInTheDocument();
     expect(screen.getByText('Create Task')).toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe('TaskForm', () => {
 
     expect(screen.getByLabelText('Title')).toHaveValue('Existing task');
     expect(screen.getByLabelText('Description')).toHaveValue('Existing desc');
-    expect(screen.getByText('in_progress')).toBeInTheDocument();
+    expect(screen.getByText(/in_progress/)).toBeInTheDocument();
     expect(screen.getByText('Update Task')).toBeInTheDocument();
   });
 

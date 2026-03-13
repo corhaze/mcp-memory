@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STATUS_OPTIONS } from '../utils';
+import { statusSelectOptions } from '../utils';
 import CustomSelect from './CustomSelect';
 import * as api from '../api';
 
@@ -87,7 +87,7 @@ export default function TaskForm({ projectId, task, parentTaskId, onSuccess, onC
         <CustomSelect
           value={status}
           onChange={setStatus}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+          options={statusSelectOptions()}
         />
       </div>
       <div className="form-group form-checkbox">

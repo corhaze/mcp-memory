@@ -13,6 +13,15 @@ export function statusEmoji(status) {
   return map[status] || '\u25CB';
 }
 
+/** Build options array for CustomSelect with status colors and emoji. */
+export function statusSelectOptions() {
+  return STATUS_OPTIONS.map((s) => ({
+    value: s,
+    label: `${statusEmoji(s)} ${s}`,
+    className: `badge-${s}`,
+  }));
+}
+
 export function formatRelativeTime(isoString) {
   if (!isoString) return '';
   try {

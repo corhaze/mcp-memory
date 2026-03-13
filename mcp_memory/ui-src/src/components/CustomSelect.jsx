@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react';
  *
  * @param {string}   value       - Current selected value
  * @param {function} onChange    - Called with the new value string
- * @param {Array}    options     - Array of { value, label } objects
+ * @param {Array}    options     - Array of { value, label, className? } objects
  * @param {string}   [placeholder] - Shown when value is empty
  */
 export default function CustomSelect({ value, onChange, options, placeholder }) {
@@ -24,12 +24,14 @@ export default function CustomSelect({ value, onChange, options, placeholder }) 
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [open]);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label ?? placeholder ?? '';
+  const selected = options.find((o) => o.value === value);
+  const selectedLabel = selected?.label ?? placeholder ?? '';
+  const triggerExtra = selected?.className ?? '';
 
   return (
     <div className="custom-select" ref={ref}>
       <button
-        className="custom-select-trigger"
+        className={`custom-select-trigger${triggerExtra ? ` ${triggerExtra}` : ''}`}
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         type="button"
       >
@@ -43,7 +45,7 @@ export default function CustomSelect({ value, onChange, options, placeholder }) 
           {options.map((opt) => (
             <div
               key={opt.value}
-              className={`custom-select-option${opt.value === value ? ' active' : ''}`}
+              className={`custom-select-option${opt.value === value ? ' active' : ''}${opt.className ? ` ${opt.className}` : ''}`}
               onClick={(e) => { e.stopPropagation(); onChange(opt.value); setOpen(false); }}
             >
               {opt.label}
