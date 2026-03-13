@@ -238,7 +238,10 @@ class TestDecisionEndpoints:
     def test_get_decisions_empty(self, proj):
         r = client.get(f"/api/projects/{proj['id']}/decisions")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+        assert data["has_more"] is False
 
     def test_get_decisions_404(self):
         r = client.get("/api/projects/bad-id/decisions")
@@ -261,7 +264,21 @@ class TestDecisionEndpoints:
     def test_get_decisions_with_filter(self, proj, decision):
         r = client.get(f"/api/projects/{proj['id']}/decisions?status=active")
         assert r.status_code == 200
-        assert len(r.json()) == 1
+        assert len(r.json()["items"]) == 1
+
+    def test_decisions_paginated(self, proj):
+        """3 decisions, limit=2 → 2 items, has_more=True."""
+        for i in range(3):
+            client.post(f"/api/projects/{proj['id']}/decisions",
+                        json={"title": f"Decision {i}", "decision_text": f"Text {i}"})
+        r = client.get(f"/api/projects/{proj['id']}/decisions?limit=2&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 3
+        assert data["limit"] == 2
+        assert data["offset"] == 0
+        assert data["has_more"] is True
 
     def test_update_decision(self, proj, decision):
         r = client.patch(f"/api/projects/{proj['id']}/decisions/{decision['id']}",
@@ -290,7 +307,10 @@ class TestNoteEndpoints:
     def test_get_notes_empty(self, proj):
         r = client.get(f"/api/projects/{proj['id']}/notes")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+        assert data["has_more"] is False
 
     def test_get_notes_404(self):
         r = client.get("/api/projects/bad-id/notes")
@@ -313,7 +333,21 @@ class TestNoteEndpoints:
     def test_get_notes_type_filter(self, proj, note):
         r = client.get(f"/api/projects/{proj['id']}/notes?note_type=bug")
         assert r.status_code == 200
-        assert r.json() == []
+        assert r.json()["items"] == []
+
+    def test_notes_paginated(self, proj):
+        """3 notes, limit=2 → 2 items, has_more=True."""
+        for i in range(3):
+            client.post(f"/api/projects/{proj['id']}/notes",
+                        json={"title": f"Note {i}", "note_text": f"Body {i}"})
+        r = client.get(f"/api/projects/{proj['id']}/notes?limit=2&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 3
+        assert data["limit"] == 2
+        assert data["offset"] == 0
+        assert data["has_more"] is True
 
     def test_update_note(self, proj, note):
         r = client.patch(f"/api/projects/{proj['id']}/notes/{note['id']}",
@@ -396,7 +430,10 @@ class TestGlobalNoteEndpoints:
     def test_get_global_notes_empty(self):
         r = client.get("/api/global-notes")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+        assert data["has_more"] is False
 
     def test_create_global_note(self):
         r = client.post("/api/global-notes",
@@ -413,8 +450,23 @@ class TestGlobalNoteEndpoints:
                     json={"title": "Rule B", "note_text": "Body", "note_type": "implementation"})
         r = client.get("/api/global-notes?note_type=context")
         assert r.status_code == 200
-        assert len(r.json()) == 1
-        assert r.json()[0]["note_type"] == "context"
+        data = r.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["note_type"] == "context"
+
+    def test_global_notes_paginated(self):
+        """3 global notes, limit=2 → 2 items, has_more=True."""
+        for i in range(3):
+            client.post("/api/global-notes",
+                        json={"title": f"Global Note {i}", "note_text": f"Body {i}"})
+        r = client.get("/api/global-notes?limit=2&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 3
+        assert data["limit"] == 2
+        assert data["offset"] == 0
+        assert data["has_more"] is True
 
     def test_update_global_note(self):
         r = client.post("/api/global-notes",

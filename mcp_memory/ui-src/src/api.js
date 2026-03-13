@@ -60,8 +60,10 @@ export const deleteTaskNote = (noteId) =>
   request(`/api/task-notes/${noteId}`, 'DELETE');
 
 // Decisions
-export const getProjectDecisions = (projectId) =>
-  request(`/api/projects/${projectId}/decisions`);
+export const getProjectDecisions = (projectId, { limit = 0, offset = 0 } = {}) => {
+  const params = new URLSearchParams({ limit, offset });
+  return request(`/api/projects/${projectId}/decisions?${params}`);
+};
 export const createDecision = (projectId, data) =>
   request(`/api/projects/${projectId}/decisions`, 'POST', data);
 export const updateDecision = (projectId, decId, data) =>
@@ -70,8 +72,10 @@ export const deleteDecision = (projectId, decId) =>
   request(`/api/projects/${projectId}/decisions/${decId}`, 'DELETE');
 
 // Notes
-export const getProjectNotes = (projectId) =>
-  request(`/api/projects/${projectId}/notes`);
+export const getProjectNotes = (projectId, { limit = 0, offset = 0 } = {}) => {
+  const params = new URLSearchParams({ limit, offset });
+  return request(`/api/projects/${projectId}/notes?${params}`);
+};
 export const createNote = (projectId, data) =>
   request(`/api/projects/${projectId}/notes`, 'POST', data);
 export const updateNote = (projectId, noteId, data) =>
@@ -80,7 +84,10 @@ export const deleteNote = (projectId, noteId) =>
   request(`/api/projects/${projectId}/notes/${noteId}`, 'DELETE');
 
 // Global Notes
-export const getGlobalNotes = () => request('/api/global-notes');
+export const getGlobalNotes = ({ limit = 0, offset = 0 } = {}) => {
+  const params = new URLSearchParams({ limit, offset });
+  return request(`/api/global-notes?${params}`);
+};
 export const getGlobalNote = (noteId) => request(`/api/global-notes/${noteId}`);
 export const createGlobalNote = (data) => request('/api/global-notes', 'POST', data);
 export const updateGlobalNote = (noteId, data) =>

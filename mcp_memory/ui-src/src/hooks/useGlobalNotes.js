@@ -11,7 +11,7 @@ export function useGlobalNotes() {
     setError(null);
     try {
       const data = await api.getGlobalNotes();
-      setGlobalNotes(data);
+      setGlobalNotes(data.items);
     } catch (err) {
       setError(err.message);
     } finally {

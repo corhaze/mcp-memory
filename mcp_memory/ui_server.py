@@ -242,22 +242,36 @@ def get_tasks(
 def get_decisions(
     project_id: str,
     status: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    limit: int = 0,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """Return decisions for a project, optionally filtered by status."""
     proj = _project_or_404(project_id)
     decisions = _db.list_decisions(proj.id, status)
-    return [d.to_dict() for d in decisions]
+    items_list = [d.to_dict() for d in decisions]
+    total = len(items_list)
+    clamped = min(limit, 200) if limit > 0 else 0
+    items = items_list[offset : offset + clamped] if clamped > 0 else items_list[offset:]
+    has_more = clamped > 0 and (offset + clamped) < total
+    return {"items": items, "total": total, "limit": clamped, "offset": offset, "has_more": has_more}
 
 
 @app.get("/api/projects/{project_id}/notes")
 def get_notes(
     project_id: str,
     note_type: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    limit: int = 0,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """Return notes for a project, optionally filtered by type."""
     proj = _project_or_404(project_id)
     notes = _db.list_notes(proj.id, note_type)
-    return [n.to_dict() for n in notes]
+    items_list = [n.to_dict() for n in notes]
+    total = len(items_list)
+    clamped = min(limit, 200) if limit > 0 else 0
+    items = items_list[offset : offset + clamped] if clamped > 0 else items_list[offset:]
+    has_more = clamped > 0 and (offset + clamped) < total
+    return {"items": items, "total": total, "limit": clamped, "offset": offset, "has_more": has_more}
 
 
 @app.get("/api/projects/{project_id}/timeline")
@@ -650,9 +664,19 @@ def delete_task_note(note_id: str) -> Dict[str, str]:
 # ── Global Notes ──────────────────────────────────────────────────────────────
 
 @app.get("/api/global-notes")
-def get_global_notes(note_type: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_global_notes(
+    note_type: Optional[str] = None,
+    limit: int = 0,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """Return all global notes, optionally filtered by type."""
-    return [n.to_dict() for n in _db.list_global_notes(note_type)]
+    notes = _db.list_global_notes(note_type)
+    items_list = [n.to_dict() for n in notes]
+    total = len(items_list)
+    clamped = min(limit, 200) if limit > 0 else 0
+    items = items_list[offset : offset + clamped] if clamped > 0 else items_list[offset:]
+    has_more = clamped > 0 and (offset + clamped) < total
+    return {"items": items, "total": total, "limit": clamped, "offset": offset, "has_more": has_more}
 
 
 @app.post("/api/global-notes")

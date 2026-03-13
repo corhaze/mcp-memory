@@ -25,13 +25,13 @@ export function useProjectData(projectId) {
   const refreshDecisions = useCallback(async () => {
     if (!projectId) return;
     const data = await getProjectDecisions(projectId);
-    setDecisions(data);
+    setDecisions(data.items);
   }, [projectId]);
 
   const refreshNotes = useCallback(async () => {
     if (!projectId) return;
     const data = await getProjectNotes(projectId);
-    setNotes(data);
+    setNotes(data.items);
   }, [projectId]);
 
   const refreshTimeline = useCallback(async () => {
@@ -59,8 +59,8 @@ export function useProjectData(projectId) {
         getProjectSummary(projectId),
       ]);
       setTasks(results[0].items);
-      setDecisions(results[1]);
-      setNotes(results[2]);
+      setDecisions(results[1].items);
+      setNotes(results[2].items);
       setTimeline(results[3]);
       setSummary(results[4]);
     } catch (err) {
