@@ -85,7 +85,7 @@ export default function GlobalNoteItem({ note, onRefresh }) {
           {formatRelativeTime(note.updated_at || note.created_at)}
         </span>
         <div className="header-actions" onClick={(e) => e.stopPropagation()}>
-          <button type="button" className="icon-btn" onClick={startEdit} title="Edit">✎</button>
+          <button type="button" className="icon-btn" onClick={() => editing ? cancelEdit() : startEdit()} title="Edit">✎</button>
           <button type="button" className="icon-btn danger" onClick={handleDelete} title="Delete">✗</button>
         </div>
         {note.note_type && (
