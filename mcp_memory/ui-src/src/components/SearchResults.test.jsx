@@ -63,6 +63,6 @@ describe('SearchResults', () => {
   it('click navigates to entity', () => {
     renderResults();
     fireEvent.click(screen.getByText('Build widget'));
-    expect(mockNavigate).toHaveBeenCalledWith('/proj/tasks');
+    expect(mockNavigate).toHaveBeenCalledWith('/proj/tasks/t1');
   });
 });

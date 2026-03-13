@@ -5,6 +5,7 @@ import EmptyState from './src/components/EmptyState';
 import ProjectView from './src/components/ProjectView';
 import TaskDetail from './src/components/TaskDetail';
 import NoteDetail from './src/components/NoteDetail';
+import DecisionDetail from './src/components/DecisionDetail';
 import GlobalWorkspace from './src/components/GlobalWorkspace';
 
 function AppRoutes() {
@@ -19,6 +20,7 @@ function AppRoutes() {
         <Route path=":projectName/:tab" element={<ProjectView />} />
         <Route path=":projectName/tasks/:taskId" element={<TaskDetail />} />
         <Route path=":projectName/notes/:noteId" element={<NoteDetail />} />
+        <Route path=":projectName/decisions/:decisionId" element={<DecisionDetail />} />
       </Route>
     </Routes>
   );

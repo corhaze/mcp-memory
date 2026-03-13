@@ -43,26 +43,41 @@ describe('formatRelativeTime', () => {
 });
 
 describe('entityNavTarget', () => {
-  it('returns task target', () => {
-    const result = entityNavTarget({
-      entity_type: 'task',
-      id: 't1',
-      project_name: 'proj',
-    });
-    expect(result).toEqual({
-      projectName: 'proj',
-      tab: 'tasks',
-      anchor: 'task-t1',
-    });
+  it('returns task URL', () => {
+    const result = entityNavTarget({ entity_type: 'task', id: 't1', project_name: 'proj' });
+    expect(result).toBe('/proj/tasks/t1');
+  });
+
+  it('returns note URL', () => {
+    const result = entityNavTarget({ entity_type: 'note', id: 'n1', project_name: 'proj' });
+    expect(result).toBe('/proj/notes/n1');
+  });
+
+  it('returns task_note URL using task_id', () => {
+    const result = entityNavTarget({ entity_type: 'task_note', id: 'tn1', task_id: 'task1', project_name: 'proj' });
+    expect(result).toBe('/proj/tasks/task1');
+  });
+
+  it('returns global_note URL without project', () => {
+    const result = entityNavTarget({ entity_type: 'global_note', id: 'gn1' });
+    expect(result).toBe('/global/notes/gn1');
+  });
+
+  it('returns decision URL', () => {
+    const result = entityNavTarget({ entity_type: 'decision', id: 'd1', project_name: 'proj' });
+    expect(result).toBe('/proj/decisions/d1');
+  });
+
+  it('returns null when project_name missing for task', () => {
+    expect(entityNavTarget({ entity_type: 'task', id: 't1', project_name: null })).toBeNull();
+  });
+
+  it('returns null when task_id missing for task_note', () => {
+    expect(entityNavTarget({ entity_type: 'task_note', id: 'tn1', project_name: 'proj', task_id: null })).toBeNull();
   });
 
   it('returns null for unknown entity type', () => {
     expect(entityNavTarget({ entity_type: 'unknown' })).toBeNull();
-  });
-
-  it('returns null projectName for global_note', () => {
-    const result = entityNavTarget({ entity_type: 'global_note', id: 'gn1' });
-    expect(result.projectName).toBeNull();
   });
 });
 

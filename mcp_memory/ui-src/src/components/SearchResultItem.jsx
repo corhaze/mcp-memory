@@ -7,11 +7,7 @@ export default function SearchResultItem({ result }) {
 
   function handleClick() {
     if (!target) return;
-    if (target.projectName) {
-      navigate(`/${target.projectName}/${target.tab}`);
-    } else {
-      navigate('/global');
-    }
+    navigate(target);
   }
 
   const score = result.score != null ? Math.round(result.score * 100) + '%' : null;

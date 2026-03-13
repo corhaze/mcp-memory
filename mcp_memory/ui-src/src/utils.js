@@ -45,15 +45,15 @@ export function entityNavTarget(result) {
   const { entity_type, id, project_name, task_id } = result;
   switch (entity_type) {
     case 'task':
-      return { projectName: project_name, tab: 'tasks', anchor: `task-${id}` };
-    case 'decision':
-      return { projectName: project_name, tab: 'decisions', anchor: `decision-${id}` };
+      return project_name ? `/${project_name}/tasks/${id}` : null;
     case 'note':
-      return { projectName: project_name, tab: 'notes', anchor: `note-${id}` };
+      return project_name ? `/${project_name}/notes/${id}` : null;
     case 'task_note':
-      return { projectName: project_name, tab: 'tasks', anchor: `task-${task_id}` };
+      return (project_name && task_id) ? `/${project_name}/tasks/${task_id}` : null;
     case 'global_note':
-      return { projectName: null, tab: 'notes', anchor: `global-note-${id}` };
+      return `/global/notes/${id}`;
+    case 'decision':
+      return project_name ? `/${project_name}/decisions/${id}` : null;
     default:
       return null;
   }
