@@ -102,7 +102,10 @@ class TestTaskEndpoints:
     def test_get_tasks_empty(self, proj):
         r = client.get(f"/api/projects/{proj['id']}/tasks")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+        assert data["has_more"] is False
 
     def test_get_tasks_404(self):
         r = client.get("/api/projects/bad-id/tasks")
@@ -124,19 +127,22 @@ class TestTaskEndpoints:
         r = client.get(f"/api/projects/{proj['id']}/tasks")
         assert r.status_code == 200
         data = r.json()
-        assert len(data) == 1
-        assert data[0]["title"] == "Test task"
-        assert "depth" in data[0]
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+        assert data["items"][0]["title"] == "Test task"
+        assert "depth" in data["items"][0]
 
     def test_get_tasks_status_filter(self, proj, task):
         r = client.get(f"/api/projects/{proj['id']}/tasks?status=done")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     def test_get_tasks_no_topo(self, proj, task):
         r = client.get(f"/api/projects/{proj['id']}/tasks?topo=false")
         assert r.status_code == 200
-        assert len(r.json()) == 1
+        assert len(r.json()["items"]) == 1
 
     def test_update_task(self, proj, task):
         r = client.patch(f"/api/projects/{proj['id']}/tasks/{task['id']}",
@@ -164,9 +170,66 @@ class TestTaskEndpoints:
                     json={"title": "Blocked", "blocked_by_task_id": blocker_id})
 
         r = client.get(f"/api/projects/{proj['id']}/tasks")
-        data = r.json()
+        data = r.json()["items"]
         titles = [t["title"] for t in data]
         assert titles.index("Blocker") < titles.index("Blocked")
+
+    def test_default_returns_all(self, proj):
+        """Default limit=0 returns all tasks wrapped in a pagination envelope."""
+        for i in range(3):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get(f"/api/projects/{proj['id']}/tasks")
+        assert r.status_code == 200
+        data = r.json()
+        assert "items" in data
+        assert "total" in data
+        assert "limit" in data
+        assert "offset" in data
+        assert "has_more" in data
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
+        assert data["has_more"] is False
+
+    def test_limit_and_offset(self, proj):
+        """limit=2&offset=1 returns 2 items starting from index 1, has_more=True."""
+        for i in range(5):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get(f"/api/projects/{proj['id']}/tasks?limit=2&offset=1")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 5
+        assert data["limit"] == 2
+        assert data["offset"] == 1
+        assert data["has_more"] is True
+
+    def test_limit_zero_returns_all(self, proj):
+        """Explicit limit=0 returns all tasks."""
+        for i in range(4):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get(f"/api/projects/{proj['id']}/tasks?limit=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 4
+        assert data["total"] == 4
+        assert data["has_more"] is False
+
+    def test_has_more_accurate_last_page(self, proj):
+        """has_more is False when the last page is exactly reached."""
+        for i in range(4):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        # Page 1 of 2: offset=0, limit=2 → has_more=True
+        r1 = client.get(f"/api/projects/{proj['id']}/tasks?limit=2&offset=0")
+        assert r1.json()["has_more"] is True
+
+        # Page 2 of 2: offset=2, limit=2 → has_more=False
+        r2 = client.get(f"/api/projects/{proj['id']}/tasks?limit=2&offset=2")
+        assert r2.json()["has_more"] is False
+        assert len(r2.json()["items"]) == 2
 
 
 # ── Decisions ─────────────────────────────────────────────────────────────────
@@ -555,7 +618,7 @@ class TestGetAllTasks:
         r = client.get("/api/tasks")
         assert r.status_code == 200
         data = r.json()
-        ids = {t["id"] for t in data}
+        ids = {t["id"] for t in data["items"]}
         assert task1["id"] in ids
         assert task2["id"] in ids
 
@@ -569,7 +632,7 @@ class TestGetAllTasks:
         r = client.get("/api/tasks")
         assert r.status_code == 200
         data = r.json()
-        names = {t["project_name"] for t in data}
+        names = {t["project_name"] for t in data["items"]}
         assert "proj-alpha" in names
         assert "proj-beta" in names
 
@@ -585,14 +648,16 @@ class TestGetAllTasks:
         r = client.get(f"/api/tasks?project_id={proj1['id']}")
         assert r.status_code == 200
         data = r.json()
-        assert len(data) == 1
-        assert data[0]["id"] == task1["id"]
-        assert data[0]["project_name"] == "proj-gamma"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == task1["id"]
+        assert data["items"][0]["project_name"] == "proj-gamma"
 
     def test_returns_empty_when_no_projects(self, tmp_db):
         r = client.get("/api/tasks")
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     def test_status_filter(self, tmp_db):
         proj = client.post("/api/projects", json={"name": "proj-status"}).json()
@@ -604,7 +669,7 @@ class TestGetAllTasks:
         r = client.get("/api/tasks?status=done")
         assert r.status_code == 200
         data = r.json()
-        ids = {t["id"] for t in data}
+        ids = {t["id"] for t in data["items"]}
         assert t2["id"] in ids
         assert t1["id"] not in ids
 
@@ -615,7 +680,42 @@ class TestGetAllTasks:
 
         r = client.get("/api/tasks?limit=3")
         assert r.status_code == 200
-        assert len(r.json()) == 3
+        data = r.json()
+        assert len(data["items"]) == 3
+        assert data["total"] == 5
+        assert data["has_more"] is True
+
+    def test_all_tasks_paginated(self, tmp_db):
+        """Paginated cross-project task listing: limit and offset work correctly."""
+        proj = client.post("/api/projects", json={"name": "proj-paginate"}).json()
+        for i in range(4):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get("/api/tasks?limit=2&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 2
+        assert data["total"] == 4
+        assert data["limit"] == 2
+        assert data["offset"] == 0
+        assert data["has_more"] is True
+
+        r2 = client.get("/api/tasks?limit=2&offset=2")
+        data2 = r2.json()
+        assert len(data2["items"]) == 2
+        assert data2["has_more"] is False
+
+    def test_limit_zero_returns_all(self, tmp_db):
+        """limit=0 means return all tasks without an upper bound."""
+        proj = client.post("/api/projects", json={"name": "proj-nolimit"}).json()
+        for i in range(5):
+            client.post(f"/api/projects/{proj['id']}/tasks", json={"title": f"Task {i}"})
+
+        r = client.get("/api/tasks?limit=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 5
+        assert data["has_more"] is False
 
 
 # ── Unified Semantic Search ────────────────────────────────────────────────────

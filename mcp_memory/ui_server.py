@@ -208,22 +208,34 @@ def get_tasks(
     project_id: str,
     status: Optional[str] = None,
     topo: bool = True,
-) -> List[Dict[str, Any]]:
+    limit: int = 0,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """
-    Return tasks for a project.
+    Return tasks for a project, wrapped in a pagination envelope.
 
     Pass topo=true (default) to get tasks ordered by their dependency chain
     (blocking tasks first). Each task includes a `depth` field reflecting
     how many blockers it has in the result set.
+
+    limit=0 (default) returns all matching tasks. Max enforced at 200.
+    offset skips the first N tasks after sorting.
     """
     proj = _project_or_404(project_id)
-    # Load all top-level tasks with subtasks already attached
     tree = _db.get_task_tree(proj.id)
     if status:
         tree = [t for t in tree if t.status == status]
     if topo:
-        return _topo_sort_tasks(tree)
-    return [t.to_dict() for t in tree]
+        sorted_tasks = _topo_sort_tasks(tree)
+    else:
+        sorted_tasks = [t.to_dict() for t in tree]
+
+    total = len(sorted_tasks)
+    clamped_limit = min(limit, 200) if limit > 0 else 0
+    items = sorted_tasks[offset : offset + clamped_limit] if clamped_limit > 0 else sorted_tasks[offset:]
+    has_more = clamped_limit > 0 and (offset + clamped_limit) < total
+
+    return {"items": items, "total": total, "limit": clamped_limit, "offset": offset, "has_more": has_more}
 
 
 @app.get("/api/projects/{project_id}/decisions")
@@ -569,10 +581,11 @@ def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
 def get_all_tasks(
     project_id: List[str] = Query(default=[]),
     status: Optional[str] = None,
-    limit: int = 200,
-) -> List[Dict[str, Any]]:
+    limit: int = 50,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """
-    Return tasks across all projects as a flat list.
+    Return tasks across all projects as a paginated envelope.
 
     Each task dict includes project_name in addition to all standard task fields.
     Subtasks are not included at the top level — they are embedded in their parent's
@@ -581,7 +594,8 @@ def get_all_tasks(
     Query parameters:
       project_id (repeatable): filter to specific projects; omit for all projects
       status: filter by task status
-      limit: max tasks to return (default 200)
+      limit: max tasks to return (default 50); 0 means return all. Max 200.
+      offset: skip the first N matching tasks (default 0)
     """
     projects = _db.list_projects()
     if project_id:
@@ -597,10 +611,13 @@ def get_all_tasks(
             task_dict = task.to_dict()
             task_dict["project_name"] = proj.name
             result.append(task_dict)
-            if len(result) >= limit:
-                return result
 
-    return result
+    total = len(result)
+    clamped_limit = min(limit, 200) if limit > 0 else 0
+    items = result[offset : offset + clamped_limit] if clamped_limit > 0 else result[offset:]
+    has_more = clamped_limit > 0 and (offset + clamped_limit) < total
+
+    return {"items": items, "total": total, "limit": clamped_limit, "offset": offset, "has_more": has_more}
 
 
 # ── Task Notes ────────────────────────────────────────────────────────────────
