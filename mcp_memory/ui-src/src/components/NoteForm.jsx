@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CustomSelect from './CustomSelect';
 import * as api from '../api';
 
 const NOTE_TYPES = ['foundation', 'context', 'investigation', 'implementation', 'bug', 'handover'];
@@ -64,18 +65,13 @@ export default function NoteForm({ projectId, note, onSuccess, onCancel }) {
         />
       </div>
       <div className="form-group">
-        <label htmlFor="note-type">Type</label>
-        <select
-          id="note-type"
-          className="form-control"
+        <label>Type</label>
+        <CustomSelect
           value={noteType}
-          onChange={(e) => setNoteType(e.target.value)}
-        >
-          <option value="">No type</option>
-          {NOTE_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
+          onChange={setNoteType}
+          options={[{ value: '', label: 'No type' }, ...NOTE_TYPES.map((t) => ({ value: t, label: t }))]}
+          placeholder="No type"
+        />
       </div>
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>

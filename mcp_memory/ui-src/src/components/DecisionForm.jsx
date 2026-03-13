@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CustomSelect from './CustomSelect';
 import * as api from '../api';
 
 const STATUS_OPTIONS = ['active', 'draft', 'superseded'];
@@ -41,37 +42,48 @@ export default function DecisionForm({ projectId, decision, onSuccess, onCancel 
   return (
     <form className="inline-form" onSubmit={handleSubmit} data-testid="decision-form">
       {error && <div className="form-error">{error}</div>}
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Decision title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-      />
-      <select
-        className="form-control"
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-      >
-        {STATUS_OPTIONS.map((s) => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
-      <textarea
-        className="form-control"
-        placeholder="Decision text (markdown)"
-        value={decisionText}
-        onChange={(e) => setDecisionText(e.target.value)}
-        rows={3}
-      />
-      <textarea
-        className="form-control"
-        placeholder="Rationale"
-        value={rationale}
-        onChange={(e) => setRationale(e.target.value)}
-        rows={2}
-      />
+      <div className="form-group">
+        <label htmlFor="decision-title">Title</label>
+        <input
+          id="decision-title"
+          type="text"
+          className="form-control"
+          placeholder="Decision title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Status</label>
+        <CustomSelect
+          value={status}
+          onChange={setStatus}
+          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="decision-text">Decision text</label>
+        <textarea
+          id="decision-text"
+          className="form-control"
+          placeholder="Decision text (markdown)"
+          value={decisionText}
+          onChange={(e) => setDecisionText(e.target.value)}
+          rows={3}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="decision-rationale">Rationale</label>
+        <textarea
+          id="decision-rationale"
+          className="form-control"
+          placeholder="Rationale"
+          value={rationale}
+          onChange={(e) => setRationale(e.target.value)}
+          rows={2}
+        />
+      </div>
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Saving...' : isEdit ? 'Update' : 'Create'}

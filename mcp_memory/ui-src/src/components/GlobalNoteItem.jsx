@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
 import MarkdownBody from './MarkdownBody';
+import CustomSelect from './CustomSelect';
 import { formatRelativeTime } from '../utils';
 import * as api from '../api';
 
@@ -84,30 +85,37 @@ export default function GlobalNoteItem({ note, onRefresh }) {
           {editing ? (
             <form className="inline-form" onSubmit={handleSave} data-testid="global-note-edit-form">
               {error && <div className="form-error">{error}</div>}
-              <input
-                type="text"
-                className="form-control"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-              <select
-                className="form-control"
-                value={noteType}
-                onChange={(e) => setNoteType(e.target.value)}
-              >
-                <option value="">No type</option>
-                {NOTE_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <textarea
-                className="form-control"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                rows={4}
-                required
-              />
+              <div className="form-group">
+                <label htmlFor="global-note-edit-title">Title</label>
+                <input
+                  id="global-note-edit-title"
+                  type="text"
+                  className="form-control"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Type</label>
+                <CustomSelect
+                  value={noteType}
+                  onChange={setNoteType}
+                  options={[{ value: '', label: 'No type' }, ...NOTE_TYPES.map((t) => ({ value: t, label: t }))]}
+                  placeholder="No type"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="global-note-edit-text">Note text</label>
+                <textarea
+                  id="global-note-edit-text"
+                  className="form-control"
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  rows={4}
+                  required
+                />
+              </div>
               <div className="form-actions">
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Saving...' : 'Save'}

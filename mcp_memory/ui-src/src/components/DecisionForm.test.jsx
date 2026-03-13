@@ -56,7 +56,7 @@ describe('DecisionForm', () => {
     );
 
     expect(screen.getByDisplayValue('Existing')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('draft')).toBeInTheDocument();
+    expect(screen.getByText('draft')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Text here')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Because')).toBeInTheDocument();
     expect(screen.getByText('Update')).toBeInTheDocument();

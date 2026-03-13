@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { STATUS_OPTIONS } from '../utils';
+import CustomSelect from './CustomSelect';
 import * as api from '../api';
 
 export default function TaskForm({ projectId, task, parentTaskId, onSuccess, onCancel }) {
@@ -82,17 +83,12 @@ export default function TaskForm({ projectId, task, parentTaskId, onSuccess, onC
         />
       </div>
       <div className="form-group">
-        <label htmlFor="task-status">Status</label>
-        <select
-          id="task-status"
-          className="form-control"
+        <label>Status</label>
+        <CustomSelect
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+          onChange={setStatus}
+          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+        />
       </div>
       <div className="form-group form-checkbox">
         <label>
