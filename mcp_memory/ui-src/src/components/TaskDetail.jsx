@@ -89,7 +89,7 @@ export default function TaskDetail() {
           </div>
         </div>
         <div className="task-detail-meta">
-          <StatusBadge status={task.status} />
+          <StatusDropdown currentStatus={task.status} onStatusChange={handleStatusChange} align="left" />
           {task.urgent && <span className="status-badge" style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>URGENT</span>}
           <span className="entity-id-chip" title="Copy ID" onClick={(e) => {
             navigator.clipboard.writeText(task.id);
@@ -122,11 +122,6 @@ export default function TaskDetail() {
               {task.next_action}
             </div>
           )}
-
-          <StatusDropdown
-            currentStatus={task.status}
-            onStatusChange={handleStatusChange}
-          />
 
           {task.blocked_by_task_id && (
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '1rem' }}>

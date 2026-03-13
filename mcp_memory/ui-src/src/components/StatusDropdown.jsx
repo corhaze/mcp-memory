@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { STATUS_OPTIONS, statusEmoji } from '../utils';
 
-export default function StatusDropdown({ currentStatus, onStatusChange }) {
+export default function StatusDropdown({ currentStatus, onStatusChange, align = 'right' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -37,7 +37,7 @@ export default function StatusDropdown({ currentStatus, onStatusChange }) {
         {statusEmoji(currentStatus)} {currentStatus}
       </button>
       {open && (
-        <div className="task-status-options">
+        <div className={`task-status-options align-${align}`}>
           {STATUS_OPTIONS.map((status) => (
             <div
               key={status}

@@ -55,8 +55,8 @@ describe('TaskDetail', () => {
 
     expect(screen.getByText('Test task detail')).toBeInTheDocument();
     expect(screen.getByText('Detailed description here')).toBeInTheDocument();
-    const statusBadge = screen.getByTestId('task-detail').querySelector('.status-badge');
-    expect(statusBadge).toHaveTextContent('open');
+    const statusTrigger = screen.getByTestId('task-detail').querySelector('.task-status-trigger');
+    expect(statusTrigger).toHaveTextContent('open');
   });
 
   it('back link present', () => {
