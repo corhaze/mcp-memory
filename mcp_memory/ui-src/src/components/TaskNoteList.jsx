@@ -5,6 +5,15 @@ import TaskNoteForm from './TaskNoteForm';
 export default function TaskNoteList({ taskId, notes: notesProp, bare = false }) {
   const [notes, setNotes] = useState(notesProp ?? null);
   const [showForm, setShowForm] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
+
+  function toggleNote(id) {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (notesProp != null) {
@@ -36,12 +45,19 @@ export default function TaskNoteList({ taskId, notes: notesProp, bare = false })
       {notes.map((note) => (
         <div key={note.id} className="task-note-item">
           <div className="task-note-header">
-            <strong>{note.title}</strong>
+            <button
+              type="button"
+              className={`subtask-expand-toggle${expandedNotes.has(note.id) ? ' open' : ''}`}
+              onClick={() => toggleNote(note.id)}
+            >›</button>
+            <span className="task-note-title">{note.title}</span>
             {note.note_type && (
               <span className="note-type-pill">{note.note_type}</span>
             )}
           </div>
-          {note.note_text && <p className="task-note-body">{note.note_text}</p>}
+          {expandedNotes.has(note.id) && note.note_text && (
+            <p className="task-note-text">{note.note_text}</p>
+          )}
         </div>
       ))}
       {!bare && (showForm ? (
