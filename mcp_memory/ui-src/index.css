@@ -146,6 +146,29 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
+.sidebar-new-project-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-new-project-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.sidebar-new-project-input:focus {
+  border-color: var(--green);
+}
+
 .sidebar-logo-box {
   display: flex;
   align-items: center;
@@ -322,6 +345,8 @@ a:hover {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Search ──────────────────────────────────────────────────────────────────── */
@@ -705,7 +730,6 @@ form.summary-form textarea.summary-textarea {
 
 .task-status-options {
   position: absolute;
-  right: 0;
   top: calc(100% + 3px);
   z-index: 100;
   background: var(--bg-surface);
@@ -713,6 +737,14 @@ form.summary-form textarea.summary-textarea {
   min-width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.task-status-options.align-right {
+  right: 0;
+}
+
+.task-status-options.align-left {
+  left: 0;
 }
 
 .task-status-options.hidden {
@@ -1787,7 +1819,7 @@ select.form-control option {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2007/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300aa29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300aa29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-position: calc(100% - 8px) center;
   background-size: 14px;
   background-repeat: no-repeat;
