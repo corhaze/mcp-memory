@@ -34,7 +34,7 @@ export default function GlobalBoard() {
 
   useEffect(() => {
     api.getProjects().then(setProjects).catch(console.error);
-    api.getAllTasks().then(setTasks).catch(console.error);
+    api.getAllTasks().then((data) => setTasks(data.items)).catch(console.error);
   }, []);
 
   // When projects load, default-select all

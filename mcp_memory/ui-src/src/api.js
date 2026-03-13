@@ -32,15 +32,17 @@ export const updateProjectSummary = (projectId, summaryText) =>
   request(`/api/projects/${projectId}/summary`, 'POST', { summary_text: summaryText });
 
 // Cross-project tasks
-export const getAllTasks = (projectIds = []) => {
-  const params = new URLSearchParams();
+export const getAllTasks = (projectIds = [], { limit = 0, offset = 0 } = {}) => {
+  const params = new URLSearchParams({ limit, offset });
   projectIds.forEach((id) => params.append('project_id', id));
-  return request(`/api/tasks${params.toString() ? '?' + params : ''}`);
+  return request(`/api/tasks?${params}`);
 };
 
 // Tasks
-export const getProjectTasks = (projectId) =>
-  request(`/api/projects/${projectId}/tasks?topo=true`);
+export const getProjectTasks = (projectId, { limit = 0, offset = 0 } = {}) => {
+  const params = new URLSearchParams({ topo: 'true', limit, offset });
+  return request(`/api/projects/${projectId}/tasks?${params}`);
+};
 export const createTask = (projectId, data) =>
   request(`/api/projects/${projectId}/tasks`, 'POST', data);
 export const updateTask = (projectId, taskId, data) =>

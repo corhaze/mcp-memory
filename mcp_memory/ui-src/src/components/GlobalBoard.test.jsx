@@ -15,7 +15,7 @@ const mockTasks = [
 
 vi.mock('../api', () => ({
   getProjects: vi.fn(() => Promise.resolve([])),
-  getAllTasks: vi.fn(() => Promise.resolve([])),
+  getAllTasks: vi.fn(() => Promise.resolve({ items: [], total: 0, limit: 0, offset: 0, has_more: false })),
 }));
 
 import * as api from '../api';
@@ -31,7 +31,7 @@ function renderBoard() {
 beforeEach(() => {
   vi.clearAllMocks();
   api.getProjects.mockResolvedValue([]);
-  api.getAllTasks.mockResolvedValue([]);
+  api.getAllTasks.mockResolvedValue({ items: [], total: 0, limit: 0, offset: 0, has_more: false });
 });
 
 describe('GlobalBoard', () => {
@@ -54,7 +54,7 @@ describe('GlobalBoard', () => {
 
   it('renders ProjectFilterBar when projects exist', async () => {
     api.getProjects.mockResolvedValue(mockProjects);
-    api.getAllTasks.mockResolvedValue(mockTasks);
+    api.getAllTasks.mockResolvedValue({ items: mockTasks, total: 2, limit: 0, offset: 0, has_more: false });
 
     renderBoard();
 
@@ -65,7 +65,7 @@ describe('GlobalBoard', () => {
 
   it('does not render ProjectFilterBar when no projects', async () => {
     api.getProjects.mockResolvedValue([]);
-    api.getAllTasks.mockResolvedValue([]);
+    api.getAllTasks.mockResolvedValue({ items: [], total: 0, limit: 0, offset: 0, has_more: false });
 
     renderBoard();
 

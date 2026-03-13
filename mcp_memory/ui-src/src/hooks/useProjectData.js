@@ -19,7 +19,7 @@ export function useProjectData(projectId) {
   const refreshTasks = useCallback(async () => {
     if (!projectId) return;
     const data = await getProjectTasks(projectId);
-    setTasks(data);
+    setTasks(data.items);
   }, [projectId]);
 
   const refreshDecisions = useCallback(async () => {
@@ -58,7 +58,7 @@ export function useProjectData(projectId) {
         getTimeline(projectId),
         getProjectSummary(projectId),
       ]);
-      setTasks(results[0]);
+      setTasks(results[0].items);
       setDecisions(results[1]);
       setNotes(results[2]);
       setTimeline(results[3]);
