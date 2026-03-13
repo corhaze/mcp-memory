@@ -90,7 +90,7 @@ export default function DecisionDetail() {
       {decision.rationale && (
         <div className="task-detail-section">
           <h3>Rationale</h3>
-          <div className="markdown-body">{decision.rationale}</div>
+          <MarkdownBody content={decision.rationale} />
         </div>
       )}
     </div>
