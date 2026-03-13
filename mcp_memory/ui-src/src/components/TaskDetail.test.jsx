@@ -172,9 +172,7 @@ describe('TaskDetail', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '›' }));
       const container = screen.getByTestId('task-detail');
-      expect(container.querySelector('.subtask-expand-body')).toBeInTheDocument();
-      expect(container.querySelector('.subtask-expand-description')).not.toBeInTheDocument();
-      expect(container.querySelector('.task-detail-next-action')).not.toBeInTheDocument();
+      expect(container.querySelector('.subtask-expand-body')).not.toBeInTheDocument();
     });
   });
 });

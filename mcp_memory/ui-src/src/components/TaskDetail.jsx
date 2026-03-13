@@ -184,7 +184,7 @@ export default function TaskDetail() {
                         title="Delete subtask"
                       >✗</button>
                     </div>
-                    {expandedSubtasks.has(sub.id) && (
+                    {expandedSubtasks.has(sub.id) && (sub.description || sub.next_action) && (
                       <div className="subtask-expand-body">
                         {sub.description && (
                           <div
