@@ -41,31 +41,33 @@ def get_working_context(project_id: str) -> str:
         for t in ctx["active_tasks"]:
             na = f" → {t['next_action']}" if t.get("next_action") else ""
             urgent_flag = "[!] " if t.get("urgent") else ""
-            lines.append(f"  [{t['status']}] {urgent_flag}{t['title']} ({t['id'][:8]}){na}")
+            lines.append(f"  [{t['status']}] {urgent_flag}{t['title']} ({t['id']}){na}")
         lines.append("")
 
     if ctx["linked_decisions"]:
         lines.append("## Linked Decisions (from active tasks)")
         for d in ctx["linked_decisions"]:
-            lines.append(f"  [{d['status']}] {d['title']} ({d['id'][:8]})")
+            lines.append(f"  [{d['status']}] {d['title']} ({d['id']})")
         lines.append("")
 
     if ctx["active_decisions"]:
         lines.append("## Active Decisions")
         for d in ctx["active_decisions"]:
-            lines.append(f"  [{d['status']}] {d['title']} ({d['id'][:8]})")
+            lines.append(f"  [{d['status']}] {d['title']} ({d['id']})")
         lines.append("")
 
     if ctx["recent_notes"]:
         lines.append("## Recent Notes")
         for n in ctx["recent_notes"]:
-            lines.append(f"  [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            label = f"[{n['note_type']}] " if n.get("note_type") else ""
+            lines.append(f"  {label}{n['title']} ({n['id']})")
         lines.append("")
 
     if ctx.get("global_notes"):
         lines.append("## Global Notes (cross-project philosophy — read before implementing)")
         for n in ctx["global_notes"]:
-            lines.append(f"\n### [{n['note_type']}] {n['title']} ({n['id'][:8]})")
+            label = f"[{n['note_type']}] " if n.get("note_type") else ""
+            lines.append(f"\n### {label}{n['title']} ({n['id']})")
             lines.append(n["note_text"])
         lines.append("")
 

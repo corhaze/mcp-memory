@@ -365,7 +365,7 @@ class TestNotes:
 
     def test_create_and_get(self):
         note = create_note(self.proj.id, "My finding", "SQLite is fast for reads.")
-        assert note.note_type == "context"
+        assert note.note_type is None
         fetched = get_note(note.id)
         assert fetched.title == "My finding"
 
@@ -591,7 +591,7 @@ class TestTaskNotes:
     def test_create_and_get(self):
         note = create_task_note(self.proj.id, self.task.id, "Finding", "Important observation")
         assert note.task_id == self.task.id
-        assert note.note_type == "context"
+        assert note.note_type is None
         fetched = get_task_note(note.id)
         assert fetched.title == "Finding"
 
@@ -645,7 +645,7 @@ class TestTaskNotes:
 class TestGlobalNotes:
     def test_create_and_get(self):
         note = create_global_note("Style guide", "Always use type hints.")
-        assert note.note_type == "context"
+        assert note.note_type is None
         fetched = get_global_note(note.id)
         assert fetched.title == "Style guide"
         assert fetched.note_text == "Always use type hints."

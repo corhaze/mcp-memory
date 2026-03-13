@@ -5,7 +5,7 @@ from .models import Note, GlobalNote, _row_to_note, _row_to_global_note
 from .search import _store_embedding, _semantic_search_raw
 
 def create_note(project_id: str, title: str, note_text: str,
-                note_type: str = "context") -> Note:
+                note_type: Optional[str] = None) -> Note:
     now = _now()
     nid = str(uuid4())
     with get_conn() as conn:
@@ -65,7 +65,7 @@ def delete_note(note_id: str) -> bool:
 
 # ── Global Notes ───────────────────────────────────────────────────────────────
 
-def create_global_note(title: str, note_text: str, note_type: str = "context") -> GlobalNote:
+def create_global_note(title: str, note_text: str, note_type: Optional[str] = None) -> GlobalNote:
     now = _now()
     nid = str(uuid4())
     with get_conn() as conn:

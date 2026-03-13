@@ -44,7 +44,7 @@ def decision(proj):
 @pytest.fixture
 def note(proj):
     r = client.post(f"/api/projects/{proj['id']}/notes",
-                    json={"title": "My note", "note_text": "Some context", "note_type": "context"})
+                    json={"title": "My note", "note_text": "Some context"})
     assert r.status_code == 200
     return r.json()
 

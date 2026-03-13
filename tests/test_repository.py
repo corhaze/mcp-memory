@@ -95,12 +95,12 @@ class TestModelToDict:
         assert "created_at" in d
 
     def test_note_to_dict(self, proj):
-        note = create_note(proj.id, "My note", "note body", "context")
+        note = create_note(proj.id, "My note", "note body")
         d = note.to_dict()
         assert d["id"] == note.id
         assert d["title"] == "My note"
         assert d["note_text"] == "note body"
-        assert d["note_type"] == "context"
+        assert d["note_type"] is None
 
     def test_global_note_to_dict(self):
         gn = create_global_note("Global rule", "Always test", "implementation")

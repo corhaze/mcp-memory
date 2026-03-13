@@ -10,6 +10,9 @@ _EMBEDDINGS_UNAVAILABLE = (
     "Use the `search` tool for keyword search instead."
 )
 
+def _note_label(n) -> str:
+    return f"[{n.note_type}] " if n.note_type else ""
+
 # ── Unified Search ────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -53,20 +56,20 @@ def search(
     if "notes" in types:
         results = _db.search_notes(query, pid)
         if results:
-            lines = [f"  [{n.note_type}] {n.title} ({n.id})" for n in results]
+            lines = [f"  {_note_label(n)}{n.title} ({n.id})" for n in results]
             sections.append("Notes:\n" + "\n".join(lines))
 
     if "task_notes" in types:
         results = _db.search_task_notes(query, pid)
         if results:
-            lines = [f"  [{n.note_type}] {n.title} (task: {n.task_id[:8]}, id: {n.id})"
+            lines = [f"  {_note_label(n)}{n.title} (task: {n.task_id[:8]}, id: {n.id})"
                      for n in results]
             sections.append("Task notes:\n" + "\n".join(lines))
 
     if "global_notes" in types:
         results = _db.search_global_notes(query)
         if results:
-            lines = [f"  [{n.note_type}] {n.title} ({n.id})" for n in results]
+            lines = [f"  {_note_label(n)}{n.title} ({n.id})" for n in results]
             sections.append("Global notes:\n" + "\n".join(lines))
 
     if "chunks" in types:
@@ -158,7 +161,7 @@ def semantic_search_notes(
     notes = _db.semantic_search_notes(query, pid, limit)
     if not notes:
         return "No results found."
-    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    lines = [f"{_note_label(n)}{n.title} ({n.id})" for n in notes]
     return f"{len(notes)} result(s):\n" + "\n".join(lines)
 
 
@@ -234,13 +237,16 @@ def semantic_search_all(
             lines.append(f"  Status: {entity.status}")
         elif entity_type == "note":
             lines.append(f"[note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
-            lines.append(f"  Type: {entity.note_type}")
+            if entity.note_type:
+                lines.append(f"  Type: {entity.note_type}")
         elif entity_type == "task_note":
             lines.append(f"[task_note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
-            lines.append(f"  Type: {entity.note_type} | Task: {entity.task_id[:8]}")
+            type_part = f"Type: {entity.note_type} | " if entity.note_type else ""
+            lines.append(f"  {type_part}Task: {entity.task_id[:8]}")
         elif entity_type == "global_note":
             lines.append(f"[global_note] {entity.title} (score: {score:.2f}, id: {str(entity.id)[:8]})")
-            lines.append(f"  Type: {entity.note_type}")
+            if entity.note_type:
+                lines.append(f"  Type: {entity.note_type}")
         else:
             lines.append(f"[{entity_type}] {entity_type} (score: {score:.2f}, id: {str(entity.id)[:8]})")
             lines.append(f"  (unknown entity type)")

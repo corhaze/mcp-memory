@@ -142,7 +142,7 @@ class DecisionUpdate(BaseModel):
 class NoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = None
@@ -152,12 +152,12 @@ class NoteUpdate(BaseModel):
 class TaskNoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class GlobalNoteCreate(BaseModel):
     title: str
     note_text: str
-    note_type: str = "context"
+    note_type: Optional[str] = None
 
 class GlobalNoteUpdate(BaseModel):
     title: Optional[str] = None
@@ -650,12 +650,15 @@ def reembed(req: ReembedRequest = ReembedRequest()) -> Dict[str, int]:
 # Catch-all: serve static files if they exist, otherwise serve index.html so
 # that client-side routes like /mcp-memory or /blog/decisions work on refresh.
 
-_NO_CACHE_SUFFIXES = {".js", ".css"}
-
 @app.get("/{full_path:path}")
 def spa_catch_all(full_path: str):
     candidate = UI_DIR / full_path
     if candidate.exists() and candidate.is_file():
-        headers = {"Cache-Control": "no-store"} if candidate.suffix in _NO_CACHE_SUFFIXES else {}
+        # Vite hashed assets (assets/index-abc123.js) are immutable — cache aggressively.
+        # Everything else (index.html) should not be cached.
+        if "/assets/" in full_path:
+            headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+        else:
+            headers = {"Cache-Control": "no-store"}
         return FileResponse(str(candidate), headers=headers)
     return FileResponse(str(UI_DIR / "index.html"), headers={"Cache-Control": "no-store"})

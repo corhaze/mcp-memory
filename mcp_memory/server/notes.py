@@ -8,6 +8,10 @@ _EMBEDDINGS_UNAVAILABLE = (
     "Use the `search` tool for keyword search instead."
 )
 
+def _format_note_line(n) -> str:
+    label = f"[{n.note_type}] " if n.note_type else ""
+    return f"{label}{n.title} ({n.id})"
+
 # ── Project Notes ─────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -15,29 +19,22 @@ def create_note(
     project_id: str,
     title: str,
     note_text: str,
-    note_type: str = "context",
+    note_type: Optional[str] = None,
 ) -> str:
     """
     Create a freeform operational note.
-
-    Note types:
-      - investigation: Research findings, debugging notes
-      - implementation: How something was built
-      - bug: A bug found or fixed
-      - context: General project context
-      - handover: Session handover notes
 
     Args:
         project_id: Project UUID or name.
         title:      Short note title.
         note_text:  The note content.
-        note_type:  investigation, implementation, bug, context (default), handover.
+        note_type:  Optional tag (e.g. 'foundation'). Usually omitted.
     """
     proj = _db.get_project(project_id)
     if not proj:
         return f"Project '{project_id}' not found."
     note = _db.create_note(proj.id, title, note_text, note_type)
-    return f"Note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
+    return f"Note created: '{note.title}' (id: {note.id})"
 
 
 @mcp.tool()
@@ -51,7 +48,8 @@ def get_note(note_id: str) -> str:
     note = _db.get_note(note_id)
     if not note:
         return f"Note '{note_id}' not found."
-    return f"[{note.note_type}] {note.title}\n\n{note.note_text}"
+    label = f"[{note.note_type}] " if note.note_type else ""
+    return f"{label}{note.title}\n\n{note.note_text}"
 
 
 @mcp.tool()
@@ -64,7 +62,7 @@ def list_notes(
 
     Args:
         project_id: Project UUID or name.
-        note_type:  Filter by type — investigation, implementation, bug, context, handover.
+        note_type:  Optional filter (e.g. 'foundation').
     """
     proj = _db.get_project(project_id)
     if not proj:
@@ -72,7 +70,7 @@ def list_notes(
     notes = _db.list_notes(proj.id, note_type)
     if not notes:
         return "No notes found."
-    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    lines = [_format_note_line(n) for n in notes]
     return f"{len(notes)} note(s):\n" + "\n".join(lines)
 
 
@@ -116,7 +114,7 @@ def delete_note(note_id: str) -> str:
 def create_global_note(
     title: str,
     note_text: str,
-    note_type: str = "context",
+    note_type: Optional[str] = None,
 ) -> str:
     """
     Create a global note — not tied to any project.
@@ -126,15 +124,14 @@ def create_global_note(
     note_type='foundation' are included in get_working_context responses;
     other types remain searchable but are not auto-injected into context.
 
-    Note types: foundation, investigation, implementation, bug, context (default), handover.
-
     Args:
         title:     Short note title.
         note_text: The note content.
-        note_type: foundation, investigation, implementation, bug, context, handover.
+        note_type: Optional tag. Use 'foundation' for notes that should be
+                   auto-injected into context. Usually omitted.
     """
     note = _db.create_global_note(title, note_text, note_type)
-    return f"Global note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
+    return f"Global note created: '{note.title}' (id: {note.id})"
 
 
 @mcp.tool()
@@ -148,7 +145,8 @@ def get_global_note(note_id: str) -> str:
     note = _db.get_global_note(note_id)
     if not note:
         return f"Global note '{note_id}' not found."
-    return f"[{note.note_type}] {note.title}\n\n{note.note_text}"
+    label = f"[{note.note_type}] " if note.note_type else ""
+    return f"{label}{note.title}\n\n{note.note_text}"
 
 
 @mcp.tool()
@@ -160,12 +158,12 @@ def list_global_notes(note_type: Optional[str] = None) -> str:
     Use this tool to see all global notes or filter by type.
 
     Args:
-        note_type: Optional filter — foundation, investigation, implementation, bug, context, handover.
+        note_type: Optional filter (e.g. 'foundation').
     """
     notes = _db.list_global_notes(note_type)
     if not notes:
         return "No global notes found."
-    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    lines = [_format_note_line(n) for n in notes]
     return f"{len(notes)} global note(s):\n" + "\n".join(lines)
 
 
@@ -217,7 +215,7 @@ def semantic_search_global_notes(query: str, limit: int = 5) -> str:
     notes = _db.semantic_search_global_notes(query, limit)
     if not notes:
         return "No results found."
-    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    lines = [_format_note_line(n) for n in notes]
     return f"{len(notes)} result(s):\n" + "\n".join(lines)
 
 
@@ -228,7 +226,7 @@ def create_task_note(
     task_id: str,
     title: str,
     note_text: str,
-    note_type: str = "context",
+    note_type: Optional[str] = None,
 ) -> str:
     """
     Create a note scoped to a specific task.
@@ -237,19 +235,17 @@ def create_task_note(
     task-specific findings, attempts, and context rather than project-wide
     observations.
 
-    Note types: investigation, implementation, bug, context (default), handover.
-
     Args:
         task_id:   UUID of the task.
         title:     Short note title.
         note_text: The note content.
-        note_type: investigation, implementation, bug, context, handover.
+        note_type: Optional tag. Usually omitted.
     """
     task = _db.get_task(task_id)
     if not task:
         return f"Task '{task_id}' not found."
     note = _db.create_task_note(task.project_id, task_id, title, note_text, note_type)
-    return f"Task note created: '{note.title}' (id: {note.id}, type: {note.note_type})"
+    return f"Task note created: '{note.title}' (id: {note.id})"
 
 
 @mcp.tool()
@@ -263,7 +259,8 @@ def get_task_note(note_id: str) -> str:
     note = _db.get_task_note(note_id)
     if not note:
         return f"Task note '{note_id}' not found."
-    return f"[{note.note_type}] {note.title}\n\n{note.note_text}"
+    label = f"[{note.note_type}] " if note.note_type else ""
+    return f"{label}{note.title}\n\n{note.note_text}"
 
 
 @mcp.tool()
@@ -273,12 +270,12 @@ def list_task_notes(task_id: str, note_type: Optional[str] = None) -> str:
 
     Args:
         task_id:   UUID of the task.
-        note_type: Optional filter — investigation, implementation, bug, context, handover.
+        note_type: Optional filter (e.g. 'foundation').
     """
     notes = _db.list_task_notes(task_id, note_type)
     if not notes:
         return "No task notes found."
-    lines = [f"[{n.note_type}] {n.title} ({n.id})" for n in notes]
+    lines = [_format_note_line(n) for n in notes]
     return f"{len(notes)} note(s):\n" + "\n".join(lines)
 
 
@@ -341,5 +338,5 @@ def semantic_search_task_notes(
     notes = _db.semantic_search_task_notes(query, pid, task_id, limit)
     if not notes:
         return "No results found."
-    lines = [f"[{n.note_type}] {n.title} (task: {n.task_id[:8]}, id: {n.id})" for n in notes]
+    lines = [f"{_format_note_line(n)} (task: {n.task_id[:8]})" for n in notes]
     return f"{len(notes)} result(s):\n" + "\n".join(lines)
