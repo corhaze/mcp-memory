@@ -1,6 +1,6 @@
 import TaskItem from './TaskItem';
 
-export default function TaskList({ tasks, projectId, depth = 0, onRefresh }) {
+export default function TaskList({ tasks, projectId, projectName, depth = 0, onRefresh }) {
   if (!tasks || tasks.length === 0) {
     if (depth === 0) {
       return <p className="nav-hint" data-testid="task-list-empty">No tasks found.</p>;
@@ -19,6 +19,7 @@ export default function TaskList({ tasks, projectId, depth = 0, onRefresh }) {
           key={task.id}
           task={task}
           projectId={projectId}
+          projectName={projectName}
           depth={depth}
           onRefresh={onRefresh}
         />

@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { Link } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
 import StatusDropdown from './StatusDropdown';
 import TaskForm from './TaskForm';
@@ -15,7 +16,7 @@ function subtaskSummary(task) {
   return <span className="subtask-summary">{done}/{total} completed</span>;
 }
 
-export default function TaskItem({ task, projectId, depth = 0, onRefresh }) {
+export default function TaskItem({ task, projectId, projectName, depth = 0, onRefresh }) {
   const state = useAppState();
   const dispatch = useAppDispatch();
 
@@ -89,13 +90,16 @@ export default function TaskItem({ task, projectId, depth = 0, onRefresh }) {
           <div className="task-title-area">
             <div className="task-title">
               {statusEmoji(task.status)}{' '}
-              <button
-                type="button"
-                className="task-title-link"
-                onClick={handleToggle}
-              >
-                {task.title}
-              </button>
+              {projectName ? (
+                <Link
+                  className="task-title-link"
+                  to={`/${projectName}/tasks/${task.id}`}
+                >
+                  {task.title}
+                </Link>
+              ) : (
+                <span className="task-title-link">{task.title}</span>
+              )}
             </div>
             <div className="task-meta">
               <span
@@ -181,6 +185,7 @@ export default function TaskItem({ task, projectId, depth = 0, onRefresh }) {
               <TaskList
                 tasks={task.subtasks}
                 projectId={projectId}
+                projectName={projectName}
                 depth={depth + 1}
                 onRefresh={onRefresh}
               />

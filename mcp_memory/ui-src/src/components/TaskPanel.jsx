@@ -16,7 +16,7 @@ function filterTasks(tasks, filter) {
   return tasks.filter((t) => t.status === filter);
 }
 
-export default function TaskPanel({ tasks, projectId, onRefresh }) {
+export default function TaskPanel({ tasks, projectId, projectName, onRefresh }) {
   const state = useAppState();
   const dispatch = useAppDispatch();
 
@@ -72,6 +72,7 @@ export default function TaskPanel({ tasks, projectId, onRefresh }) {
       <TaskList
         tasks={filteredTasks}
         projectId={projectId}
+        projectName={projectName}
         onRefresh={onRefresh}
       />
     </div>

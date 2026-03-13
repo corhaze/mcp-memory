@@ -35,6 +35,7 @@ function TabContent({ activeTab, project, projectName, data }) {
         <TaskPanel
           tasks={data.tasks}
           projectId={project.id}
+          projectName={projectName}
           onRefresh={data.refreshTasks}
         />
       );
