@@ -13,6 +13,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route index element={<EmptyState />} />
         <Route path="global" element={<GlobalWorkspace />} />
+        <Route path="global/board" element={<GlobalWorkspace />} />
         <Route path="global/notes/:noteId" element={<NoteDetail />} />
         <Route path=":projectName" element={<ProjectView />} />
         <Route path=":projectName/:tab" element={<ProjectView />} />

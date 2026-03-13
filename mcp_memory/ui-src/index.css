@@ -2117,6 +2117,47 @@ textarea.form-control {
   border: 1px dashed var(--border);
 }
 
+/* ── Project filter bar ───────────────────────────────────────────────────────── */
+.project-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.project-filter-btn {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.project-filter-btn.active {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.project-filter-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── Project badge on kanban cards ───────────────────────────────────────────── */
+.project-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  color: #fff;
+  margin-top: 0.25rem;
+}
+
 /* ── Refresh indicator ────────────────────────────────────────────────────────── */
 #refresh-indicator {
   position: fixed;

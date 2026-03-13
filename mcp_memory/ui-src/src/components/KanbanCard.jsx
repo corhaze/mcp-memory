@@ -1,5 +1,12 @@
 import { useRef } from 'react';
 
+function projectColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 40%, 45%)`;
+}
+
 export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
   const didDrag = useRef(false);
 
@@ -38,6 +45,14 @@ export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
       onClick={handleClick}
     >
       <div className="kanban-card-title">{task.title}</div>
+      {task.project_name && (
+        <span
+          className="project-badge"
+          style={{ backgroundColor: projectColor(task.project_name) }}
+        >
+          {task.project_name}
+        </span>
+      )}
       {hasMetaBadges && (
         <div className="kanban-card-meta">
           {task.urgent && <span className="urgent-dot" title="Urgent" />}

@@ -1,17 +1,27 @@
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
 import { useGlobalNotes } from '../hooks/useGlobalNotes';
 import TabBar from './TabBar';
 import GlobalNoteItem from './GlobalNoteItem';
 import GlobalNoteForm from './GlobalNoteForm';
+import GlobalBoard from './GlobalBoard';
 
-const TABS = [{ name: 'notes', label: 'Notes' }];
+const TABS = [
+  { name: 'notes', label: 'Notes' },
+  { name: 'board', label: 'Board' },
+];
+
 const FILTERS = ['', 'foundation'];
 const FILTER_LABELS = { '': 'All', foundation: 'Foundation' };
 
 export default function GlobalWorkspace() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { globalNoteFilter, showAddGlobalNoteForm } = useAppState();
   const dispatch = useAppDispatch();
   const { globalNotes, loading, error, refresh } = useGlobalNotes();
+
+  const activeTab = location.pathname.endsWith('/board') ? 'board' : 'notes';
 
   const filtered = (globalNotes || []).filter(
     (n) => !globalNoteFilter || n.note_type === globalNoteFilter,
@@ -19,6 +29,14 @@ export default function GlobalWorkspace() {
 
   function toggleAddForm() {
     dispatch({ type: 'SET_SHOW_ADD_GLOBAL_NOTE_FORM', value: !showAddGlobalNoteForm });
+  }
+
+  function handleTabClick(tab) {
+    if (tab === 'board') {
+      navigate('/global/board');
+    } else {
+      navigate('/global');
+    }
   }
 
   return (
@@ -33,49 +51,53 @@ export default function GlobalWorkspace() {
         </p>
       </header>
 
-      <TabBar tabs={TABS} activeTab="notes" onTabClick={() => {}} />
+      <TabBar tabs={TABS} activeTab={activeTab} onTabClick={handleTabClick} />
 
-      <section className="panel" data-testid="panel-notes">
-        <div className="panel-toolbar">
-          <div className="filter-group">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`filter-btn${globalNoteFilter === f ? ' active' : ''}`}
-                onClick={() => dispatch({ type: 'SET_GLOBAL_NOTE_FILTER', value: f })}
-              >
-                {FILTER_LABELS[f]}
-              </button>
-            ))}
+      {activeTab === 'board' ? (
+        <GlobalBoard />
+      ) : (
+        <section className="panel" data-testid="panel-notes">
+          <div className="panel-toolbar">
+            <div className="filter-group">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  className={`filter-btn${globalNoteFilter === f ? ' active' : ''}`}
+                  onClick={() => dispatch({ type: 'SET_GLOBAL_NOTE_FILTER', value: f })}
+                >
+                  {FILTER_LABELS[f]}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="filter-btn" onClick={toggleAddForm}>
+              {showAddGlobalNoteForm ? 'Cancel' : '+ Add Note'}
+            </button>
           </div>
-          <button type="button" className="filter-btn" onClick={toggleAddForm}>
-            {showAddGlobalNoteForm ? 'Cancel' : '+ Add Note'}
-          </button>
-        </div>
 
-        {showAddGlobalNoteForm && (
-          <GlobalNoteForm
-            onSuccess={() => {
-              dispatch({ type: 'SET_SHOW_ADD_GLOBAL_NOTE_FORM', value: false });
-              refresh();
-            }}
-            onCancel={() => dispatch({ type: 'SET_SHOW_ADD_GLOBAL_NOTE_FORM', value: false })}
-          />
-        )}
+          {showAddGlobalNoteForm && (
+            <GlobalNoteForm
+              onSuccess={() => {
+                dispatch({ type: 'SET_SHOW_ADD_GLOBAL_NOTE_FORM', value: false });
+                refresh();
+              }}
+              onCancel={() => dispatch({ type: 'SET_SHOW_ADD_GLOBAL_NOTE_FORM', value: false })}
+            />
+          )}
 
-        {loading ? (
-          <p className="nav-hint">Loading...</p>
-        ) : error ? (
-          <p className="nav-hint">Error: {error}</p>
-        ) : filtered.length === 0 ? (
-          <p className="nav-hint">No global notes found.</p>
-        ) : (
-          filtered.map((n) => (
-            <GlobalNoteItem key={n.id} note={n} onRefresh={refresh} />
-          ))
-        )}
-      </section>
+          {loading ? (
+            <p className="nav-hint">Loading...</p>
+          ) : error ? (
+            <p className="nav-hint">Error: {error}</p>
+          ) : filtered.length === 0 ? (
+            <p className="nav-hint">No global notes found.</p>
+          ) : (
+            filtered.map((n) => (
+              <GlobalNoteItem key={n.id} note={n} onRefresh={refresh} />
+            ))
+          )}
+        </section>
+      )}
     </div>
   );
 }
