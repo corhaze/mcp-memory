@@ -42,6 +42,7 @@ export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
+      onDragOver={(e) => e.preventDefault()}
       onClick={handleClick}
     >
       <div className="kanban-card-title">{task.title}</div>

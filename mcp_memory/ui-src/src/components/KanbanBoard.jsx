@@ -74,12 +74,14 @@ export default function KanbanBoard({ tasks, projectId, projectName, onRefresh }
         </button>
       </div>
       {showForm && (
-        <TaskForm
-          projectId={projectId}
-          task={null}
-          onSuccess={handleTaskCreated}
-          onCancel={() => setShowForm(false)}
-        />
+        <div style={{ marginBottom: '16px' }}>
+          <TaskForm
+            projectId={projectId}
+            task={null}
+            onSuccess={handleTaskCreated}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
       )}
       <div className="kanban-board">
         {COLUMNS.map((col) => (
