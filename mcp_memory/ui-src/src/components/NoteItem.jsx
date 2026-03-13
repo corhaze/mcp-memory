@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAppState, useAppDispatch } from '../context/AppContext';
 import MarkdownBody from './MarkdownBody';
 import NoteForm from './NoteForm';
@@ -7,7 +6,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { formatRelativeTime } from '../utils';
 import * as api from '../api';
 
-export default function NoteItem({ note, projectId, projectName, onRefresh }) {
+export default function NoteItem({ note, projectId, onRefresh }) {
   const { expandedNotes, editingNoteId } = useAppState();
   const dispatch = useAppDispatch();
   const [confirmState, setConfirmState] = useState(null);

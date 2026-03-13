@@ -8,6 +8,7 @@ export default function TaskNoteList({ taskId, notes: notesProp, bare = false })
 
   useEffect(() => {
     if (notesProp != null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotes(notesProp);
       return;
     }

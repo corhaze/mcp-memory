@@ -25,12 +25,6 @@ export default function KanbanCard({ task, onDragStart, onDragEnd, onClick }) {
     }
   }
 
-  const truncatedAction = task.next_action
-    ? task.next_action.length > 80
-      ? task.next_action.slice(0, 80) + '...'
-      : task.next_action
-    : null;
-
   const hasMetaBadges = task.urgent || task.complex || (task.subtasks && task.subtasks.length > 0);
 
   return (
