@@ -1607,18 +1607,26 @@ select.form-control option {
   transition: color var(--transition), background var(--transition);
 }
 
+.global-workspace-nav-item::before {
+  content: '> ';
+  color: var(--text-dim);
+  flex-shrink: 0;
+  white-space: pre;
+}
+
 .global-workspace-nav-item:hover {
   color: var(--text-sec);
   background: var(--bg-raised);
 }
 
-.global-workspace-nav-item span {
-  pointer-events: none;
-}
-
 .global-workspace-nav-item.active {
   color: var(--green);
   background: var(--bg-raised);
+}
+
+.global-workspace-nav-item.active::before {
+  content: '▶ ';
+  color: var(--green);
 }
 
 .entity-detail {

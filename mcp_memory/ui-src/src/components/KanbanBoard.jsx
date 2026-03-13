@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import KanbanColumn from './KanbanColumn';
+import TaskForm from './TaskForm';
 
 const COLUMNS = [
   { status: 'open', title: 'Open' },
@@ -42,6 +44,7 @@ function groupTasksByStatus(tasks) {
 
 export default function KanbanBoard({ tasks, projectId, projectName, onRefresh }) {
   const navigate = useNavigate();
+  const [showForm, setShowForm] = useState(false);
 
   const { groups, totalDone } = groupTasksByStatus(tasks);
 
@@ -54,19 +57,43 @@ export default function KanbanBoard({ tasks, projectId, projectName, onRefresh }
     navigate(`/${projectName}/tasks/${task.id}`);
   }
 
+  function handleTaskCreated() {
+    setShowForm(false);
+    onRefresh?.();
+  }
+
   return (
-    <div className="kanban-board" data-testid="kanban-board">
-      {COLUMNS.map((col) => (
-        <KanbanColumn
-          key={col.status}
-          status={col.status}
-          title={col.title}
-          tasks={groups[col.status]}
-          totalCount={col.status === 'done' ? totalDone : null}
-          onDrop={handleDrop}
-          onCardClick={handleCardClick}
+    <div data-testid="kanban-board">
+      <div className="panel-toolbar">
+        <button
+          type="button"
+          className="filter-btn"
+          onClick={() => setShowForm((v) => !v)}
+        >
+          {showForm ? 'Cancel' : '+ Add Task'}
+        </button>
+      </div>
+      {showForm && (
+        <TaskForm
+          projectId={projectId}
+          task={null}
+          onSuccess={handleTaskCreated}
+          onCancel={() => setShowForm(false)}
         />
-      ))}
+      )}
+      <div className="kanban-board">
+        {COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col.status}
+            status={col.status}
+            title={col.title}
+            tasks={groups[col.status]}
+            totalCount={col.status === 'done' ? totalDone : null}
+            onDrop={handleDrop}
+            onCardClick={handleCardClick}
+          />
+        ))}
+      </div>
     </div>
   );
 }

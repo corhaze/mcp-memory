@@ -27,7 +27,7 @@ export default function Sidebar() {
           className={`global-workspace-nav-item${isGlobalActive ? ' active' : ''}`}
           onClick={() => navigate('/global')}
         >
-          <span className="nav-section-label">// global workspace</span>
+          // global workspace
         </button>
       </div>
 
