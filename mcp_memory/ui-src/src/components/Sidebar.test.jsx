@@ -89,7 +89,7 @@ describe('Sidebar', () => {
     });
 
     renderSidebar();
-    expect(screen.getByText('// global workspace')).toBeInTheDocument();
+    expect(screen.getByText('global workspace')).toBeInTheDocument();
   });
 
   it('clicking Global Workspace navigates', async () => {
@@ -102,7 +102,7 @@ describe('Sidebar', () => {
     });
 
     renderSidebar();
-    await user.click(screen.getByText('// global workspace'));
+    await user.click(screen.getByText('global workspace'));
     expect(mockNavigate).toHaveBeenCalledWith('/global');
   });
 

@@ -23,11 +23,14 @@ export default function GlobalWorkspace() {
 
   return (
     <div data-testid="global-workspace">
-      <header id="project-header">
+      <header id="project-header" className="global-workspace-header">
         <div className="project-title-row">
           <h2>Global Workspace</h2>
+          <span className="global-workspace-badge">cross-project</span>
         </div>
-        <p className="project-description">Cross-project notes and standards</p>
+        <p className="project-description global-workspace-description">
+          Shared standards, architecture decisions, and context for all projects.
+        </p>
       </header>
 
       <TabBar tabs={TABS} activeTab="notes" onTabClick={() => {}} />

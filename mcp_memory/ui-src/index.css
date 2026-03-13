@@ -1685,6 +1685,28 @@ textarea.form-control {
   color: var(--text-sec);
 }
 
+/* ── Global Workspace Header ─────────────────────────────────────────────────── */
+.global-workspace-header {
+  border-left: 3px solid var(--green);
+  background: var(--bg-raised);
+}
+
+.global-workspace-badge {
+  font-size: 10px;
+  font-family: var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  border: 1px solid var(--green-muted);
+  padding: 2px 7px;
+  margin-left: 4px;
+}
+
+.global-workspace-description {
+  color: var(--text-sec) !important;
+  font-size: 12px !important;
+}
+
 /* ── Global Workspace & Entity Detail ────────────────────────────────────────── */
 .global-workspace-nav-item {
   display: flex;
@@ -1693,17 +1715,19 @@ textarea.form-control {
   padding: 7px 16px;
   background: none;
   border: none;
-  color: var(--text-muted);
+  border-left: 2px solid transparent;
+  color: var(--text-sec);
   font-family: var(--font);
   font-size: 12px;
+  letter-spacing: 0.04em;
   cursor: pointer;
   text-align: left;
-  transition: color var(--transition), background var(--transition);
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
 }
 
 .global-workspace-nav-item::before {
-  content: '> ';
-  color: var(--text-dim);
+  content: '◈ ';
+  color: var(--text-muted);
   flex-shrink: 0;
   white-space: pre;
 }
@@ -1711,15 +1735,17 @@ textarea.form-control {
 .global-workspace-nav-item:hover {
   color: var(--text-sec);
   background: var(--bg-raised);
+  border-left-color: var(--green-muted);
 }
 
 .global-workspace-nav-item.active {
   color: var(--green);
   background: var(--bg-raised);
+  border-left-color: var(--green);
 }
 
 .global-workspace-nav-item.active::before {
-  content: '▶ ';
+  content: '◈ ';
   color: var(--green);
 }
 

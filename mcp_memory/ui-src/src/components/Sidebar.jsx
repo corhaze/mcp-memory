@@ -49,7 +49,7 @@ export default function Sidebar() {
           className={`global-workspace-nav-item${isGlobalActive ? ' active' : ''}`}
           onClick={() => navigate('/global')}
         >
-          // global workspace
+          global workspace
         </button>
       </div>
 
