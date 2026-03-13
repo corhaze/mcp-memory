@@ -8,6 +8,7 @@ Endpoints:
   GET /api/projects/{project_id}/decisions — decisions
   GET /api/projects/{project_id}/notes    — notes
   GET /api/projects/{project_id}/timeline — task events (recent)
+  GET /api/tasks                   — all tasks across projects (optional project_id filter)
   GET /api/search                  — keyword search across all entities
   DELETE /api/projects/{project_id}       — delete project
 
@@ -562,7 +563,7 @@ def delete_note(project_id: str, note_id: str) -> Dict[str, str]:
     return {"deleted": note_id}
 
 
-# ── Task Notes ────────────────────────────────────────────────────────────────
+# ── Cross-project tasks ────────────────────────────────────────────────────────
 
 @app.get("/api/tasks")
 def get_all_tasks(
@@ -601,6 +602,8 @@ def get_all_tasks(
 
     return result
 
+
+# ── Task Notes ────────────────────────────────────────────────────────────────
 
 @app.get("/api/tasks/{task_id}/notes")
 def get_task_notes(task_id: str) -> List[Dict[str, Any]]:
